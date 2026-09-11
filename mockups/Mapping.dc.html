@@ -7,168 +7,176 @@
 <body>
 <x-dc>
 <helmet>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <style>
-    body { margin: 0; background: #0e1013; }
-    a { color: #f0a93b; } a:hover { color: #ffc46a; }
-    .lbl { font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
-    .mono { font-family: 'IBM Plex Mono', Consolas, monospace; }
-    .row { display: grid; grid-template-columns: 220px 180px 240px 1fr 90px; align-items: center; gap: 12px; height: 46px; padding: 0 12px; border-radius: 6px; }
-    .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; font-size: 11px; font-family: 'IBM Plex Mono', Consolas, monospace; background: #1f242c; color: #9aa3b1; border: 1px solid #2a3039; }
-    .chip-midi { color: #f0a93b; border-color: #4a3a1c; background: #241d10; }
-    .chip-osc { color: #3dc6c2; border-color: #1c4a48; background: #10241f; }
-    .chip-empty { color: #6f7784; border-style: dashed; background: transparent; }
-    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 6px; background: #1b1f26; border: 1px solid #2a3039; color: #e6e9ee; font-size: 12px; font-weight: 500; }
+    body { margin: 0; background: #1c2026; }
+    a { color: #5ec98a; } a:hover { color: #8be3ad; }
+    .mono { font-family: 'JetBrains Mono', Consolas, monospace; }
+    .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #7b8494; font-family: 'JetBrains Mono', Consolas, monospace; }
+    .row { display: grid; grid-template-columns: 220px 180px 240px 1fr 90px; align-items: center; gap: 12px; height: 46px; padding: 0 12px; border-radius: 4px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 3px; font-size: 11px; font-family: 'JetBrains Mono', Consolas, monospace; background: #2a3038; color: #aeb6c2; border: 1px solid #39414c; }
+    .chip-midi { color: #e0a83a; border-color: #5a4720; background: #2a2416; }
+    .chip-osc { color: #5ec98a; border-color: #2f6b4a; background: #16281f; }
+    .chip-empty { color: #7b8494; border-style: dashed; background: transparent; }
+    .b { display: flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 4px; background: #2a3038; border: 1px solid #39414c; color: #d5dae2; font-size: 12px; font-weight: 500; }
     .group { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 12px; margin-top: 6px; }
-    .toggle { width: 34px; height: 20px; border-radius: 10px; background: #2a3039; position: relative; }
-    .toggle-on { background: #3dc6c2; }
+    .toggle { width: 34px; height: 20px; border-radius: 10px; background: #39414c; position: relative; }
+    .toggle-on { background: #5ec98a; }
     .toggle-on .dot { left: 16px; }
-    .dot { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #e6e9ee; }
+    .dot { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #d5dae2; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   </style>
 </helmet>
 
-<div style="width: 1100px; height: 760px; background: #0e1013; color: #e6e9ee; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; overflow: hidden;">
+<div style="width: 1100px; height: 760px; background: #1c2026; color: #d5dae2; font-family: 'Chivo', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; overflow: hidden;">
 
-  <div style="height: 56px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 20px; border-bottom: 1px solid #262b33; background: #111419;">
-    <span class="lbl" style="font-size: 18px;">Mapping</span>
-    <span style="color: #8b93a1;">MIDI · OSC · keyboard</span>
+  <div style="height: 44px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid #2a3038; background: #14171b;">
+    <span style="font-weight: 700; letter-spacing: 0.04em;">MAPPING</span>
+    <span class="mono" style="font-size: 11px; color: #7b8494;">MIDI · OSC · keyboard</span>
     <div style="flex: 1;"></div>
-    <div style="display: flex; gap: 4px; height: 56px;">
-      <div class="lbl" style="display: flex; align-items: center; padding: 0 12px; border-bottom: 2px solid #f0a93b; font-size: 13px;">CAM 1 Stage Left</div>
-      <div class="lbl" style="display: flex; align-items: center; padding: 0 12px; border-bottom: 2px solid transparent; font-size: 13px; color: #8b93a1;">CAM 2 Wide</div>
-      <div class="lbl" style="display: flex; align-items: center; padding: 0 12px; border-bottom: 2px solid transparent; font-size: 13px; color: #8b93a1;">Global</div>
+    <div style="display: flex; gap: 4px; height: 44px;">
+      <div style="display: flex; align-items: center; padding: 0 12px; border-bottom: 2px solid #5ec98a; font-size: 12px; font-weight: 700;">CAM 1 Stage Left</div>
+      <div style="display: flex; align-items: center; padding: 0 12px; border-bottom: 2px solid transparent; font-size: 12px; color: #7b8494;">CAM 2 Wide</div>
+      <div style="display: flex; align-items: center; padding: 0 12px; border-bottom: 2px solid transparent; font-size: 12px; color: #7b8494;">CAM 3 Reverse</div>
+      <div style="display: flex; align-items: center; padding: 0 12px; border-bottom: 2px solid transparent; font-size: 12px; color: #7b8494;">Global</div>
     </div>
-    <div class="btn">Import</div>
-    <div class="btn">Export</div>
+    <div class="b">Import</div>
+    <div class="b">Export</div>
   </div>
 
   <div style="flex: 1; display: flex; min-height: 0;">
 
     <!-- Action table -->
     <div style="flex: 1; display: flex; flex-direction: column; padding: 12px 16px; overflow: hidden; min-width: 0;">
-      <div class="row lbl" style="height: 30px; font-size: 11px; color: #6f7784;">
+      <div class="row lbl" style="height: 30px;">
         <span>Action</span><span>MIDI</span><span>OSC address</span><span>Keyboard</span><span></span>
       </div>
 
-      <div class="group"><span class="lbl" style="font-size: 12px; color: #f0a93b;">Pan / Tilt</span><div style="flex: 1; height: 1px; background: #22272f;"></div></div>
-      <div class="row" style="background: #14171c;">
+      <div class="group"><span class="lbl" style="color: #5ec98a;">Pan / Tilt</span><div style="flex: 1; height: 1px; background: #2a3038;"></div></div>
+      <div class="row" style="background: #232830;">
         <span>Jog left / right</span>
         <span class="chip chip-midi">CC 16 · knob 1</span>
         <span class="chip chip-osc">/cam/1/ptz/pan</span>
         <span class="chip">A · D</span>
-        <div class="btn">Learn</div>
+        <div class="b">Learn</div>
       </div>
       <div class="row">
         <span>Jog up / down</span>
         <span class="chip chip-midi">CC 17 · knob 2</span>
         <span class="chip chip-osc">/cam/1/ptz/tilt</span>
         <span class="chip">W · S</span>
-        <div class="btn">Learn</div>
+        <div class="b">Learn</div>
       </div>
-      <div class="row" style="background: #14171c;">
+      <div class="row" style="background: #232830;">
         <span>Home</span>
         <span class="chip chip-midi">Note C2</span>
         <span class="chip chip-osc">/cam/1/home</span>
         <span class="chip">H</span>
-        <div class="btn">Learn</div>
+        <div class="b">Learn</div>
       </div>
 
-      <div class="group"><span class="lbl" style="font-size: 12px; color: #f0a93b;">Zoom</span><div style="flex: 1; height: 1px; background: #22272f;"></div></div>
-      <div class="row" style="background: #14171c;">
+      <div class="group"><span class="lbl" style="color: #5ec98a;">Zoom</span><div style="flex: 1; height: 1px; background: #2a3038;"></div></div>
+      <div class="row" style="background: #232830;">
         <span>Zoom level 1–12×</span>
         <span class="chip chip-midi">CC 21 · fader 1</span>
         <span class="chip chip-osc">/cam/1/zoom</span>
         <span class="chip chip-empty">none</span>
-        <div class="btn">Learn</div>
+        <div class="b">Learn</div>
       </div>
-      <div class="row" style="border: 1px solid #f0a93b; background: #1c170f;">
+      <div class="row" style="border: 1px solid #5ec98a; background: rgba(94,201,138,0.10);">
         <span>Zoom tele (hold)</span>
         <span class="chip chip-midi" style="animation: pulse 1.2s ease-in-out infinite;">Waiting for MIDI…</span>
         <span class="chip chip-osc">/cam/1/zoom/tele</span>
         <span class="chip">=</span>
-        <div class="btn" style="border-color: #f0a93b; color: #f0a93b;">Cancel</div>
+        <div class="b" style="border-color: #5ec98a; color: #5ec98a;">Cancel</div>
       </div>
-      <div class="row" style="background: #14171c;">
+      <div class="row" style="background: #232830;">
         <span>Zoom wide (hold)</span>
         <span class="chip chip-empty">none</span>
         <span class="chip chip-osc">/cam/1/zoom/wide</span>
         <span class="chip">−</span>
-        <div class="btn">Learn</div>
+        <div class="b">Learn</div>
       </div>
 
-      <div class="group"><span class="lbl" style="font-size: 12px; color: #f0a93b;">Presets</span><div style="flex: 1; height: 1px; background: #22272f;"></div></div>
-      <div class="row" style="background: #14171c;">
+      <div class="group"><span class="lbl" style="color: #5ec98a;">Presets</span><div style="flex: 1; height: 1px; background: #2a3038;"></div></div>
+      <div class="row" style="background: #232830;">
         <span>Recall preset 1–27</span>
         <span class="chip chip-midi">Notes C3 … D5</span>
         <span class="chip chip-osc">/cam/1/preset/&lt;n&gt;</span>
         <span class="chip">1 … 9</span>
-        <div class="btn">Edit…</div>
+        <div class="b">Edit…</div>
       </div>
       <div class="row">
         <span>Save current position</span>
         <span class="chip chip-midi">Note C6</span>
         <span class="chip chip-osc">/cam/1/preset/save</span>
         <span class="chip">Ctrl S</span>
-        <div class="btn">Learn</div>
+        <div class="b">Learn</div>
       </div>
 
-      <div class="group"><span class="lbl" style="font-size: 12px; color: #f0a93b;">AI &amp; recording</span><div style="flex: 1; height: 1px; background: #22272f;"></div></div>
-      <div class="row" style="background: #14171c;">
+      <div class="group"><span class="lbl" style="color: #5ec98a;">Cameras, AI &amp; recording</span><div style="flex: 1; height: 1px; background: #2a3038;"></div></div>
+      <div class="row" style="background: #232830;">
+        <span>Select camera 1 / 2 / 3</span>
+        <span class="chip chip-midi">Notes C1 … D1</span>
+        <span class="chip chip-osc">/cam/select &lt;n&gt;</span>
+        <span class="chip">1 · 2 · 3</span>
+        <div class="b">Edit…</div>
+      </div>
+      <div class="row">
         <span>Tracking on / off</span>
         <span class="chip chip-midi">Note F2</span>
         <span class="chip chip-osc">/cam/1/track</span>
         <span class="chip">T</span>
-        <div class="btn">Learn</div>
+        <div class="b">Learn</div>
       </div>
-      <div class="row">
+      <div class="row" style="background: #232830;">
         <span>Record start / stop</span>
         <span class="chip chip-midi">Note G2</span>
         <span class="chip chip-osc">/cam/1/record</span>
         <span class="chip">R</span>
-        <div class="btn">Learn</div>
+        <div class="b">Learn</div>
       </div>
     </div>
 
     <!-- Devices -->
-    <div style="width: 320px; flex: none; display: flex; flex-direction: column; gap: 16px; padding: 16px; border-left: 1px solid #262b33; background: #111419;">
+    <div style="width: 320px; flex: none; display: flex; flex-direction: column; gap: 16px; padding: 16px; border-left: 1px solid #2a3038; background: #191d22;">
       <div style="display: flex; flex-direction: column; gap: 8px;">
-        <span class="lbl" style="font-size: 12px; color: #8b93a1;">MIDI inputs</span>
-        <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 6px; background: #14171c; border: 1px solid #22272f;">
-          <span style="width: 7px; height: 7px; border-radius: 50%; background: #3dc6c2;"></span>
+        <span class="lbl">MIDI inputs</span>
+        <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 4px; background: #232830; border: 1px solid #2f3640;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #5ec98a;"></span>
           <span style="flex: 1;">nanoKONTROL2</span>
           <div class="toggle toggle-on"><div class="dot"></div></div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 6px; background: #14171c; border: 1px solid #22272f; color: #8b93a1;">
-          <span style="width: 7px; height: 7px; border-radius: 50%; background: #3a3f48;"></span>
+        <div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 4px; background: #232830; border: 1px solid #2f3640; color: #7b8494;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #39414c;"></span>
           <span style="flex: 1;">APC mini</span>
           <div class="toggle"><div class="dot"></div></div>
         </div>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 8px;">
-        <span class="lbl" style="font-size: 12px; color: #8b93a1;">OSC</span>
-        <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 6px; background: #14171c; border: 1px solid #22272f;">
-          <div style="display: flex; justify-content: space-between; align-items: center;"><span style="color: #9aa3b1;">Listen port</span><span class="mono">9000</span></div>
-          <div style="display: flex; justify-content: space-between; align-items: center;"><span style="color: #9aa3b1;">Feedback to</span><span class="mono">&lt;ip address&gt;:9001</span></div>
-          <div style="display: flex; justify-content: space-between; align-items: center;"><span style="color: #9aa3b1;">This machine</span><span class="mono">&lt;ip address&gt;</span></div>
-          <div class="btn" style="margin-top: 4px;">Copy address list</div>
+        <span class="lbl">OSC</span>
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 4px; background: #232830; border: 1px solid #2f3640;">
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span style="color: #aeb6c2;">Listen port</span><span class="mono">9000</span></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span style="color: #aeb6c2;">Feedback to</span><span class="mono">&lt;ip address&gt;:9001</span></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span style="color: #aeb6c2;">This machine</span><span class="mono">&lt;ip address&gt;</span></div>
+          <div class="b" style="margin-top: 4px;">Copy address list</div>
         </div>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 8px;">
-        <span class="lbl" style="font-size: 12px; color: #8b93a1;">Monitor</span>
-        <div class="mono" style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 6px; background: #0e1013; border: 1px solid #22272f; font-size: 11px; color: #9aa3b1;">
-          <span><span style="color: #f0a93b;">MIDI</span> ch1 CC 21 = 87</span>
-          <span><span style="color: #f0a93b;">MIDI</span> ch1 Note D#3 on</span>
-          <span><span style="color: #3dc6c2;">OSC </span> /cam/1/preset/4</span>
-          <span><span style="color: #3dc6c2;">OSC </span> /cam/1/zoom 2.4</span>
+        <span class="lbl">Monitor</span>
+        <div class="mono" style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 4px; background: #14171b; border: 1px solid #2f3640; font-size: 11px; color: #aeb6c2;">
+          <span><span style="color: #e0a83a;">MIDI</span> ch1 CC 21 = 87</span>
+          <span><span style="color: #e0a83a;">MIDI</span> ch1 Note D#3 on</span>
+          <span><span style="color: #5ec98a;">OSC </span> /cam/1/preset/4</span>
+          <span><span style="color: #5ec98a;">OSC </span> /cam/1/zoom 2.4</span>
           <span style="color: #4a5160;">…</span>
         </div>
       </div>
 
       <div style="flex: 1;"></div>
-      <span style="font-size: 12px; color: #6f7784;">Works with TouchOSC, Bitfocus Companion (generic OSC) and any class-compliant MIDI controller.</span>
+      <span style="font-size: 12px; color: #7b8494;">Works with TouchOSC, Bitfocus Companion (generic OSC) and any class-compliant MIDI controller.</span>
     </div>
   </div>
 </div>

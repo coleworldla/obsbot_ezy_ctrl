@@ -24,11 +24,38 @@ Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× 
 
 ## Status
 
-Milestone 0 (research + UI design) is done. See [ROADMAP.md](ROADMAP.md) for what comes next and the GitHub issues for individual features.
+- M0 research + UI design: done. Direction chosen: **Rack** (multi-camera first).
+- M1 talk to the camera: first cut in. VISCA-over-IP client with tests, add camera by IP, jog / zoom / home, live position read-back. Not yet verified against a real Tail 2.
+
+See [ROADMAP.md](ROADMAP.md) for what comes next and the GitHub issues for individual features.
+
+## Running it
+
+```bash
+npm install
+npm run dev        # Electron + hot reload
+npm test           # unit tests (VISCA framing + a fake camera on loopback)
+npm run typecheck
+npm run build      # bundles to out/
+```
+
+On the camera: put the Tail 2 on the same LAN, find its IP (OBSBOT Center → Device Management, or the Web UI), and in the app press **Add camera**, type the IP, then **Test connection**. RTSP mode only matters once the viewport lands in M2.
+
+Keyboard: `1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed.
 
 ## Repo layout
 
 ```
+src/
+  main/                  # Electron main process
+    visca/               #   packet.ts (framing, nibbles) · commands.ts (Tail 2 command set) · client.ts (UDP) · tail2.ts (friendly API)
+    store/cameras.ts     #   cameras.json persistence
+    cameras.ts           #   one connection per camera + position polling
+    ipc.ts               #   IPC handlers
+  preload/               # window.ezy bridge
+  renderer/              # React UI (rack, stage, add-camera dialog)
+  shared/types.ts
+tests/                   # vitest: framing + fake camera over loopback
 docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit
   protocol/

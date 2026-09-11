@@ -7,11 +7,12 @@ Each milestone maps to GitHub issues (labelled by milestone). Order is the inten
 - Convert OBSBOT's VISCA spreadsheet into `docs/protocol/visca-over-ip.md`.
 - UI mockups: live console, connect dialog, MIDI/OSC mapping panel, plus alternate directions.
 
-## M1 — Talk to the camera
-- VISCA-over-IP client (Sony header, sequence numbers, ACK/completion, timeouts).
-- Add camera by IP; persist camera list.
-- Pan/tilt jog with speed, zoom rocker + direct zoom, home.
-- Position read-back (pan/tilt/zoom inquiries) shown on screen.
+## M1 — Talk to the camera  (first cut 2026-09-11, needs a real-camera test)
+- [x] VISCA-over-IP client (Sony header, sequence numbers, ACK/completion, timeouts) — `src/main/visca/`
+- [x] Add camera by IP; persist camera list — `cameras.json`
+- [x] Pan/tilt jog with speed, zoom rocker + direct zoom, home — on-screen + keyboard
+- [x] Position read-back (pan/tilt/zoom inquiries) shown on screen — polled every 500 ms
+- [ ] Verify against a Tail 2: inquiry payload type (0x0110 vs 0x0100), reply sequence echo, jog stop latency
 
 ## M2 — See the picture
 - RTSP viewport: ffmpeg sidecar remuxes H.264 → fragmented MP4 → MediaSource in the renderer.

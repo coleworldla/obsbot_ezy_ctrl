@@ -7,291 +7,148 @@
 <body>
 <x-dc>
 <helmet>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <style>
-    body { margin: 0; background: #0e1013; }
-    a { color: #f0a93b; } a:hover { color: #ffc46a; }
-    .lbl { font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
-    .mono { font-family: 'IBM Plex Mono', Consolas, monospace; }
-    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 6px; background: #1b1f26; border: 1px solid #2a3039; color: #e6e9ee; font-size: 13px; font-weight: 500; }
-    .btn-on { background: #143b3a; border-color: #3dc6c2; color: #7fe3df; }
-    .btn-live { background: #3a1416; border-color: #e5484d; color: #ff8c90; }
-    .jog { display: flex; align-items: center; justify-content: center; background: #1b1f26; border: 1px solid #2a3039; border-radius: 8px; color: #b6bdc8; }
-    .preset { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 8px; background: #14171c; border: 1px solid #22272f; }
-    .thumb { width: 96px; height: 54px; border-radius: 4px; flex: none; }
-    .chip { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 4px; font-size: 11px; font-family: 'IBM Plex Mono', Consolas, monospace; background: #1f242c; color: #9aa3b1; border: 1px solid #2a3039; }
-    .chip-midi { color: #f0a93b; border-color: #4a3a1c; background: #241d10; }
-    .chip-osc { color: #3dc6c2; border-color: #1c4a48; background: #10241f; }
-    .track { position: relative; height: 4px; background: #2a3039; border-radius: 2px; }
-    .fill { position: absolute; left: 0; top: 0; bottom: 0; background: #f0a93b; border-radius: 2px; }
-    .knob { position: absolute; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: #e6e9ee; border: 2px solid #0e1013; box-shadow: 0 0 0 1px #f0a93b; }
-    .acts .btn { padding: 0 8px; font-size: 12px; white-space: nowrap; }
+    body { margin: 0; background: #1c2026; }
+    a { color: #5ec98a; } a:hover { color: #8be3ad; }
+    .mono { font-family: 'JetBrains Mono', Consolas, monospace; }
+    .cam { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 6px; background: #232830; border: 1px solid #2f3640; }
+    .cam-on { border-color: #5ec98a; box-shadow: 0 0 0 1px #5ec98a; }
+    .mini { position: relative; height: 118px; border-radius: 4px; overflow: hidden; background: #0f1215; }
+    .cell { display: flex; align-items: center; height: 34px; padding: 0 10px; border-bottom: 1px solid #2a3038; }
+    .b { display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 4px; background: #2a3038; border: 1px solid #39414c; color: #d5dae2; font-size: 12px; font-weight: 500; }
+    .kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 3px; background: #2a3038; border: 1px solid #39414c; color: #aeb6c2; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 11px; }
+    .led { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #5ec98a; vertical-align: middle; margin: 0 3px; }
+    .hb { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 4px; background: #232830; border: 1px solid #2f3640; color: #aeb6c2; font-size: 12px; }
   </style>
 </helmet>
 
-<div style="width: 1440px; height: 900px; background: #0e1013; color: #e6e9ee; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; overflow: hidden;">
+<div style="width: 1440px; height: 900px; background: #1c2026; color: #d5dae2; font-family: 'Chivo', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; overflow: hidden;">
 
-  <!-- Top bar -->
-  <div style="height: 56px; flex: none; display: flex; align-items: center; gap: 20px; padding: 0 20px; border-bottom: 1px solid #262b33; background: #111419;">
-    <div style="display: flex; align-items: baseline; gap: 6px;">
-      <span class="lbl" style="font-size: 22px; color: #f0a93b; letter-spacing: 0.06em;">EZY</span>
-      <span class="lbl" style="font-size: 22px; color: #e6e9ee; font-weight: 500; letter-spacing: 0.06em;">CTRL</span>
-    </div>
-
-    <div style="display: flex; align-items: stretch; gap: 4px; height: 56px;">
-      <div style="display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 2px solid #f0a93b; color: #e6e9ee;">
-        <span style="width: 8px; height: 8px; border-radius: 50%; background: #3dc6c2; box-shadow: 0 0 8px #3dc6c2;"></span>
-        <span class="lbl" style="font-size: 14px;">CAM 1</span>
-        <span style="font-weight: 500;">Stage Left</span>
-        <span class="mono" style="font-size: 11px; color: #8b93a1;">&lt;ip address&gt;</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 2px solid transparent; color: #9aa3b1;">
-        <span style="width: 8px; height: 8px; border-radius: 50%; background: #3dc6c2;"></span>
-        <span class="lbl" style="font-size: 14px;">CAM 2</span>
-        <span style="font-weight: 500;">Wide</span>
-        <span class="mono" style="font-size: 11px; color: #6f7784;">&lt;ip address&gt;</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px; padding: 0 14px; color: #8b93a1;">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg>
-        <span>Add camera</span>
-      </div>
-    </div>
-
+  <!-- Header -->
+  <div style="height: 44px; flex: none; display: flex; align-items: center; gap: 16px; padding: 0 16px; background: #14171b; border-bottom: 1px solid #2a3038;">
+    <span style="font-weight: 700; letter-spacing: 0.04em;">EZY CTRL</span>
+    <span class="mono" style="font-size: 11px; color: #7b8494;">3 cameras · 41 presets</span>
     <div style="flex: 1;"></div>
-
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 15px; background: #161a20; border: 1px solid #262b33;">
-        <span style="width: 7px; height: 7px; border-radius: 50%; background: #3dc6c2;"></span>
-        <span class="lbl" style="font-size: 12px; color: #9aa3b1;">MIDI</span>
-        <span style="font-size: 12px;">nanoKONTROL2</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 15px; background: #161a20; border: 1px solid #262b33;">
-        <span style="width: 7px; height: 7px; border-radius: 50%; background: #3dc6c2;"></span>
-        <span class="lbl" style="font-size: 12px; color: #9aa3b1;">OSC</span>
-        <span class="mono" style="font-size: 12px;">:9000</span>
-      </div>
-      <div style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 6px; color: #9aa3b1;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
-      </div>
-    </div>
+    <span class="mono" style="font-size: 11px; color: #7b8494;">MIDI <span class="led"></span> nanoKONTROL2</span>
+    <span class="mono" style="font-size: 11px; color: #7b8494;">OSC <span class="led"></span> :9000 → &lt;ip address&gt;:9001</span>
+    <div class="hb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 14h6v6h-6z"></path><path d="M10 7h4v10"></path></svg>Mapping</div>
+    <div class="hb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.2 2.2M16.9 16.9l2.2 2.2M4.9 19.1l2.2-2.2M16.9 7.1l2.2-2.2"></path></svg>Settings</div>
+    <span class="mono" style="font-size: 11px; color: #7b8494;">14:52:07</span>
   </div>
 
-  <!-- Body -->
   <div style="flex: 1; display: flex; min-height: 0;">
 
-    <!-- Left: viewport + transport -->
-    <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 16px; min-width: 0;">
-
-      <!-- Viewport -->
-      <div style="flex: 1; position: relative; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid #22272f;">
-        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%;">
-          <defs>
-            <linearGradient id="bgA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1d23"></stop><stop offset="0.62" stop-color="#22262d"></stop><stop offset="0.63" stop-color="#2c3038"></stop><stop offset="1" stop-color="#181b20"></stop></linearGradient>
-            <radialGradient id="spotA" cx="0.62" cy="0.35" r="0.5"><stop offset="0" stop-color="#5a4a2a" stop-opacity="0.55"></stop><stop offset="1" stop-color="#000" stop-opacity="0"></stop></radialGradient>
-          </defs>
-          <rect width="1600" height="900" fill="url(#bgA)"></rect>
-          <rect width="1600" height="900" fill="url(#spotA)"></rect>
-          <g stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"><line x1="533" y1="0" x2="533" y2="900"></line><line x1="1066" y1="0" x2="1066" y2="900"></line><line x1="0" y1="300" x2="1600" y2="300"></line><line x1="0" y1="600" x2="1600" y2="600"></line></g>
-          <rect x="120" y="120" width="520" height="300" rx="6" fill="#0f1114" stroke="#3a3f48" stroke-width="3"></rect>
-          <rect x="1180" y="180" width="90" height="380" rx="4" fill="#15181d" stroke="#3a3f48" stroke-width="3"></rect>
-          <g fill="#0c0e11">
-            <circle cx="990" cy="330" r="54"></circle>
-            <path d="M900 640 C 900 470, 1080 470, 1080 640 L 1080 700 L 900 700 Z"></path>
-            <rect x="915" y="690" width="60" height="120" rx="20"></rect>
-            <rect x="1005" y="690" width="60" height="120" rx="20"></rect>
-          </g>
-          <g fill="none" stroke="#f0a93b" stroke-width="5" stroke-linecap="round">
-            <path d="M880 250 L880 210 L920 210"></path><path d="M1060 210 L1100 210 L1100 250"></path><path d="M880 690 L880 730 L920 730"></path><path d="M1060 730 L1100 730 L1100 690"></path>
-          </g>
-        </svg>
-
-        <div style="position: absolute; left: 14px; top: 14px; display: flex; gap: 8px;">
-          <div style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 4px; background: rgba(14,16,19,0.8); border: 1px solid #2a3039;">
-            <span style="width: 7px; height: 7px; border-radius: 50%; background: #3dc6c2;"></span>
-            <span class="mono" style="font-size: 11px; color: #c7cdd6;">RTSP · 1080p60 · 340 ms</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 4px; background: rgba(14,16,19,0.8); border: 1px solid #2a3039;">
-            <span class="mono" style="font-size: 11px; color: #c7cdd6;">fw 7.2.13</span>
-            <span class="mono" style="font-size: 11px; color: #c7cdd6;">78%</span>
-          </div>
+    <!-- Camera rack -->
+    <div style="width: 300px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-right: 1px solid #2a3038; background: #191d22;">
+      <div class="cam cam-on">
+        <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="font-size: 11px; color: #5ec98a;">CAM 1</span><span style="font-weight: 700;">Stage Left</span><span class="mono" style="margin-left: auto; font-size: 11px; color: #7b8494;">&lt;ip address&gt;</span></div>
+        <div class="mini">
+          <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%;"><rect width="1600" height="900" fill="#262b33"></rect><rect x="0" y="560" width="1600" height="340" fill="#1c2026"></rect><g fill="#0f1215"><circle cx="990" cy="330" r="54"></circle><path d="M900 640 C 900 470, 1080 470, 1080 640 L 1080 700 L 900 700 Z"></path></g><g fill="none" stroke="#5ec98a" stroke-width="6"><path d="M880 250 L880 210 L920 210"></path><path d="M1060 210 L1100 210 L1100 250"></path><path d="M880 690 L880 730 L920 730"></path><path d="M1060 730 L1100 730 L1100 690"></path></g></svg>
+          <span class="mono" style="position: absolute; left: 6px; top: 6px; font-size: 10px; padding: 2px 5px; border-radius: 3px; background: #b32d2d; color: #fff;">PGM</span>
         </div>
-
-        <div style="position: absolute; right: 14px; top: 14px; display: flex; gap: 8px;">
-          <div class="lbl" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 4px; background: #143b3a; border: 1px solid #3dc6c2; color: #7fe3df; font-size: 12px;">
-            <span style="width: 7px; height: 7px; border-radius: 50%; background: #3dc6c2;"></span>Tracking · Single
-          </div>
-          <div class="lbl" style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 4px; background: #3a1416; border: 1px solid #e5484d; color: #ff8c90; font-size: 12px;">
-            <span style="width: 7px; height: 7px; border-radius: 50%; background: #e5484d; box-shadow: 0 0 8px #e5484d;"></span>REC 00:12:41
-          </div>
+        <div class="mono" style="display: flex; justify-content: space-between; font-size: 11px; color: #aeb6c2;"><span>P +12.3</span><span>T −4.5</span><span>Z 2.4×</span><span style="color: #5ec98a;">TRK</span></div>
+      </div>
+      <div class="cam">
+        <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="font-size: 11px; color: #7b8494;">CAM 2</span><span style="font-weight: 700;">Wide</span><span class="mono" style="margin-left: auto; font-size: 11px; color: #7b8494;">&lt;ip address&gt;</span></div>
+        <div class="mini">
+          <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%;"><rect width="1600" height="900" fill="#232830"></rect><rect x="0" y="600" width="1600" height="300" fill="#1a1e23"></rect><rect x="200" y="200" width="420" height="260" rx="6" fill="#14171b"></rect><g fill="#0f1215"><circle cx="1100" cy="420" r="30"></circle><path d="M1050 600 C 1050 500, 1150 500, 1150 600 Z"></path></g></svg>
+          <span class="mono" style="position: absolute; left: 6px; top: 6px; font-size: 10px; padding: 2px 5px; border-radius: 3px; background: #2f8f4e; color: #fff;">PVW</span>
         </div>
-
-        <div style="position: absolute; left: 14px; bottom: 14px; display: flex; gap: 6px;">
-          <div class="mono" style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 4px; background: rgba(14,16,19,0.85); border: 1px solid #2a3039; font-size: 12px;"><span style="color: #8b93a1;">PAN</span><span>+12.3°</span></div>
-          <div class="mono" style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 4px; background: rgba(14,16,19,0.85); border: 1px solid #2a3039; font-size: 12px;"><span style="color: #8b93a1;">TILT</span><span>−4.5°</span></div>
-          <div class="mono" style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 4px; background: rgba(14,16,19,0.85); border: 1px solid #2a3039; font-size: 12px;"><span style="color: #8b93a1;">ZOOM</span><span>2.4×</span></div>
-          <div class="mono" style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 4px; background: rgba(14,16,19,0.85); border: 1px solid #2a3039; font-size: 12px;"><span style="color: #8b93a1;">FOCUS</span><span>AF</span></div>
+        <div class="mono" style="display: flex; justify-content: space-between; font-size: 11px; color: #aeb6c2;"><span>P −1.0</span><span>T +2.0</span><span>Z 1.0×</span><span style="color: #7b8494;">—</span></div>
+      </div>
+      <div class="cam">
+        <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="font-size: 11px; color: #7b8494;">CAM 3</span><span style="font-weight: 700;">Reverse</span><span class="mono" style="margin-left: auto; font-size: 11px; color: #7b8494;">&lt;ip address&gt;</span></div>
+        <div class="mini" style="display: flex; align-items: center; justify-content: center; border: 1px dashed #39414c;">
+          <span class="mono" style="font-size: 11px; color: #7b8494;">RTSP reconnecting…</span>
         </div>
+        <div class="mono" style="display: flex; justify-content: space-between; font-size: 11px; color: #7b8494;"><span>P —</span><span>T —</span><span>Z —</span><span>—</span></div>
+      </div>
+      <div class="b" style="height: 36px; margin-top: auto; gap: 8px;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg>Add camera</div>
+    </div>
 
-        <div style="position: absolute; right: 14px; bottom: 14px; display: flex; gap: 6px;">
-          <div class="lbl" style="height: 28px; display: flex; align-items: center; padding: 0 10px; border-radius: 4px; background: rgba(14,16,19,0.85); border: 1px solid #2a3039; font-size: 12px; color: #9aa3b1;">Landscape</div>
-          <div class="lbl" style="height: 28px; display: flex; align-items: center; padding: 0 10px; border-radius: 4px; background: rgba(240,169,59,0.15); border: 1px solid #f0a93b; font-size: 12px; color: #f0a93b;">P4 · Podium</div>
-        </div>
+    <!-- Selected camera -->
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 12px; min-width: 0;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-weight: 700; font-size: 15px;">CAM 1 · Stage Left</span>
+        <span class="mono" style="font-size: 11px; color: #7b8494;">rtsp://&lt;ip address&gt;:8554/live · 1080p60 · 340 ms · fw 7.2.13 · 78%</span>
+        <div style="flex: 1;"></div>
+        <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="mono" style="font-size: 11px; color: #7b8494;">switch camera</span>
       </div>
 
-      <!-- Transport -->
-      <div style="height: 200px; flex: none; display: flex; gap: 14px;">
+      <div style="flex: 1; position: relative; border-radius: 6px; overflow: hidden; background: #0f1215; border: 1px solid #2a3038;">
+        <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%;">
+          <defs><linearGradient id="bgC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#20252c"></stop><stop offset="0.62" stop-color="#2a3038"></stop><stop offset="0.63" stop-color="#353c46"></stop><stop offset="1" stop-color="#1a1e23"></stop></linearGradient></defs>
+          <rect width="1600" height="900" fill="url(#bgC)"></rect>
+          <g stroke="#ffffff" stroke-opacity="0.07" stroke-width="2"><line x1="533" y1="0" x2="533" y2="900"></line><line x1="1066" y1="0" x2="1066" y2="900"></line><line x1="0" y1="300" x2="1600" y2="300"></line><line x1="0" y1="600" x2="1600" y2="600"></line></g>
+          <rect x="120" y="120" width="520" height="300" rx="6" fill="#14171b" stroke="#454d58" stroke-width="3"></rect>
+          <g fill="#0c0e11"><circle cx="990" cy="330" r="54"></circle><path d="M900 640 C 900 470, 1080 470, 1080 640 L 1080 700 L 900 700 Z"></path><rect x="915" y="690" width="60" height="120" rx="20"></rect><rect x="1005" y="690" width="60" height="120" rx="20"></rect></g>
+          <g fill="none" stroke="#5ec98a" stroke-width="5" stroke-linecap="round"><path d="M880 250 L880 210 L920 210"></path><path d="M1060 210 L1100 210 L1100 250"></path><path d="M880 690 L880 730 L920 730"></path><path d="M1060 730 L1100 730 L1100 690"></path></g>
+        </svg>
+        <div class="mono" style="position: absolute; left: 10px; top: 10px; font-size: 11px; padding: 3px 7px; border-radius: 3px; background: #b32d2d; color: #fff;">PGM · REC 00:12:41</div>
+        <div class="mono" style="position: absolute; right: 10px; top: 10px; font-size: 11px; padding: 3px 7px; border-radius: 3px; background: rgba(20,23,27,0.85); border: 1px solid #39414c;">TRACK single · speed fast · auto-zoom off</div>
+        <div class="mono" style="position: absolute; left: 10px; bottom: 10px; font-size: 11px; padding: 3px 7px; border-radius: 3px; background: rgba(20,23,27,0.85); border: 1px solid #39414c;">PAN +12.3°  TILT −4.5°  ZOOM 2.4×  AF</div>
+        <div class="mono" style="position: absolute; right: 10px; bottom: 10px; font-size: 11px; padding: 3px 7px; border-radius: 3px; background: rgba(94,201,138,0.15); border: 1px solid #5ec98a; color: #8be3ad;">P4 Podium</div>
+      </div>
 
-        <!-- Jog -->
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <div class="lbl" style="font-size: 12px; color: #8b93a1;">Pan / Tilt</div>
-          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 6px; width: 172px; height: 172px;">
-            <div class="jog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17 7 7M7 15V7h8"></path></svg></div>
-            <div class="jog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></div>
-            <div class="jog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"></path></svg></div>
-            <div class="jog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></div>
-            <div class="jog" style="background: #22272f; color: #f0a93b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg></div>
-            <div class="jog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></div>
-            <div class="jog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"></path></svg></div>
-            <div class="jog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"></path></svg></div>
-            <div class="jog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10M17 9v8H9"></path></svg></div>
-          </div>
+      <div style="height: 110px; flex: none; display: flex; gap: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px; width: 260px;">
+          <div class="b"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17 7 7M7 15V7h8"></path></svg><span style="margin-left: 6px;">Q</span></div>
+          <div class="b"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg><span style="margin-left: 6px;">W</span></div>
+          <div class="b"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"></path></svg><span style="margin-left: 6px;">E</span></div>
+          <div class="b"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg><span style="margin-left: 6px;">A</span></div>
+          <div class="b" style="border-color: #5ec98a; color: #5ec98a;">HOME</div>
+          <div class="b"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg><span style="margin-left: 6px;">D</span></div>
         </div>
-
-        <!-- Speeds -->
-        <div style="display: flex; flex-direction: column; gap: 8px; width: 170px;">
-          <div class="lbl" style="font-size: 12px; color: #8b93a1;">Jog speed</div>
-          <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 6px 10px; background: #14171c; border: 1px solid #22272f; border-radius: 8px;">
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; justify-content: space-between;"><span class="lbl" style="font-size: 11px; color: #8b93a1;">Pan</span><span class="mono" style="font-size: 12px;">12 / 24</span></div>
-              <div class="track"><div class="fill" style="width: 50%;"></div><div class="knob" style="left: calc(50% - 8px);"></div></div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; justify-content: space-between;"><span class="lbl" style="font-size: 11px; color: #8b93a1;">Tilt</span><span class="mono" style="font-size: 12px;">10 / 23</span></div>
-              <div class="track"><div class="fill" style="width: 43%;"></div><div class="knob" style="left: calc(43% - 8px);"></div></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;"><span class="lbl" style="font-size: 11px; color: #8b93a1;">Keyboard</span><span class="chip">W A S D</span></div>
-          </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; width: 120px;">
+          <div class="b"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"></path></svg><span style="margin-left: 6px;">S</span></div>
+          <div class="b"><span>Z</span><span style="margin: 0 8px; color: #7b8494;">/</span><span>C</span></div>
         </div>
-
-        <!-- Zoom -->
-        <div style="display: flex; flex-direction: column; gap: 8px; width: 300px;">
-          <div class="lbl" style="font-size: 12px; color: #8b93a1;">Zoom</div>
-          <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 12px; background: #14171c; border: 1px solid #22272f; border-radius: 8px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div class="btn" style="width: 56px; padding: 0;"><span class="lbl" style="font-size: 14px;">W</span></div>
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                <div class="track"><div class="fill" style="width: 13%;"></div><div class="knob" style="left: calc(13% - 8px);"></div></div>
-                <div class="mono" style="display: flex; justify-content: space-between; font-size: 10px; color: #6f7784;"><span>1×</span><span>5× optical</span><span>12×</span></div>
-              </div>
-              <div class="btn" style="width: 56px; padding: 0;"><span class="lbl" style="font-size: 14px;">T</span></div>
-            </div>
-            <div style="display: flex; gap: 6px;">
-              <div class="btn" style="flex: 1; height: 36px;"><span class="mono">1×</span></div>
-              <div class="btn" style="flex: 1; height: 36px; border-color: #f0a93b; color: #f0a93b;"><span class="mono">2.4×</span></div>
-              <div class="btn" style="flex: 1; height: 36px;"><span class="mono">4×</span></div>
-              <div class="btn" style="flex: 1; height: 36px;"><span class="mono">8×</span></div>
-              <div class="btn" style="flex: 1; height: 36px;"><span class="mono">12×</span></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;"><span class="lbl" style="font-size: 11px; color: #8b93a1;">MIDI</span><span class="chip chip-midi">CC 21 · fader 1</span></div>
-          </div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 4px; background: #232830; border: 1px solid #2f3640;">
+          <div class="mono" style="display: flex; justify-content: space-between; font-size: 11px; color: #aeb6c2;"><span>ZOOM  −  /  =</span><span>2.4×</span></div>
+          <div style="position: relative; height: 6px; background: #2f3640; border-radius: 3px;"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 13%; background: #5ec98a; border-radius: 3px;"></div></div>
+          <div class="mono" style="display: flex; justify-content: space-between; font-size: 11px; color: #aeb6c2;"><span>JOG SPEED  [ / ]</span><span>12 · 10</span></div>
+          <div style="position: relative; height: 6px; background: #2f3640; border-radius: 3px;"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 50%; background: #5ec98a; border-radius: 3px;"></div></div>
         </div>
-
-        <!-- Quick actions -->
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
-          <div class="lbl" style="font-size: 12px; color: #8b93a1;">Actions</div>
-          <div class="acts" style="flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 6px;">
-            <div class="btn btn-on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path></svg>Track</div>
-            <div class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"></circle><circle cx="16" cy="9" r="2.5"></circle><path d="M3 20c0-3.5 3-5 6-5s6 1.5 6 5M14 19c0-2 2-3.5 4.5-3.5"></path></svg>Group</div>
-            <div class="btn btn-live"><span style="width: 10px; height: 10px; border-radius: 50%; background: #e5484d;"></span>Rec</div>
-            <div class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"></rect></svg>Landscape</div>
-            <div class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"></rect></svg>Portrait</div>
-            <div class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg>AF push</div>
-            <div class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a6 6 0 1 0 6 6"></path><path d="M12 2v4l3 1"></path></svg>Auto zoom</div>
-            <div class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M12 4v16"></path></svg>Only me</div>
-            <div class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 14h6v6h-6z"></path><path d="M10 7h4v10"></path></svg>Map…</div>
-          </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px; width: 220px;">
+          <div class="b" style="border-color: #5ec98a; color: #5ec98a;">TRACK · T</div>
+          <div class="b" style="color: #ff8c90;">REC · R</div>
+          <div class="b">ROTATE · O</div>
+          <div class="b">AF PUSH · F</div>
         </div>
       </div>
     </div>
 
-    <!-- Right: presets -->
-    <div style="width: 360px; flex: none; display: flex; flex-direction: column; border-left: 1px solid #262b33; background: #111419; min-height: 0;">
-      <div style="display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px 16px;">
-        <span class="lbl" style="font-size: 15px;">Presets</span>
-        <span class="mono" style="font-size: 12px; color: #8b93a1;">27 · no limit</span>
+    <!-- Preset table -->
+    <div style="width: 400px; flex: none; display: flex; flex-direction: column; border-left: 1px solid #2a3038; background: #191d22;">
+      <div style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border-bottom: 1px solid #2a3038;">
+        <span style="font-weight: 700;">Presets · CAM 1</span>
+        <span class="mono" style="font-size: 11px; color: #7b8494;">27 · no limit</span>
         <div style="flex: 1;"></div>
-        <div class="btn" style="height: 34px; background: #f0a93b; border-color: #f0a93b; color: #1a1205; font-weight: 600;">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg>Save position
-        </div>
+        <div class="b" style="height: 30px; padding: 0 10px; gap: 6px; border-color: #5ec98a; color: #5ec98a;"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg>Save</div>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px; margin: 0 16px 10px 16px; height: 34px; padding: 0 10px; border-radius: 6px; background: #0e1013; border: 1px solid #262b33; color: #6f7784;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
-        <span>Search presets</span>
+      <div class="cell mono" style="height: 28px; font-size: 10px; color: #7b8494; text-transform: uppercase; letter-spacing: 0.06em;">
+        <span style="width: 30px;">#</span><span style="flex: 1;">Name</span><span style="width: 120px;">P / T / Z</span><span style="width: 52px;">MIDI</span><span style="width: 36px;">Key</span>
       </div>
-
-      <div style="flex: 1; position: relative; display: flex; flex-direction: column; gap: 6px; padding: 0 16px; overflow: hidden; min-height: 0;">
-        <div style="position: absolute; right: 6px; top: 0; bottom: 0; width: 4px; border-radius: 2px; background: #1b1f26;"><div style="position: absolute; left: 0; right: 0; top: 0; height: 26%; border-radius: 2px; background: #3a4048;"></div></div>
-        <div class="preset">
-          <div class="thumb" style="background: linear-gradient(135deg, #2a2f38, #1a1d23);"></div>
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="color: #8b93a1; font-size: 11px;">01</span><span style="font-weight: 500;">Wide stage</span></div>
-            <div class="mono" style="font-size: 11px; color: #6f7784;">P −2.0° · T +1.5° · Z 1.0×</div>
-            <div style="display: flex; gap: 4px;"><span class="chip chip-midi">C3</span><span class="chip chip-osc">/cam/1/preset/1</span></div>
-          </div>
-        </div>
-        <div class="preset">
-          <div class="thumb" style="background: linear-gradient(135deg, #33302a, #1c1a17);"></div>
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="color: #8b93a1; font-size: 11px;">02</span><span style="font-weight: 500;">Speaker close</span></div>
-            <div class="mono" style="font-size: 11px; color: #6f7784;">P +8.1° · T −6.0° · Z 4.2×</div>
-            <div style="display: flex; gap: 4px;"><span class="chip chip-midi">C#3</span><span class="chip chip-osc">/cam/1/preset/2</span></div>
-          </div>
-        </div>
-        <div class="preset">
-          <div class="thumb" style="background: linear-gradient(135deg, #263034, #151b1e);"></div>
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="color: #8b93a1; font-size: 11px;">03</span><span style="font-weight: 500;">Band left</span></div>
-            <div class="mono" style="font-size: 11px; color: #6f7784;">P −41.3° · T −2.2° · Z 2.0×</div>
-            <div style="display: flex; gap: 4px;"><span class="chip chip-midi">D3</span><span class="chip chip-osc">/cam/1/preset/3</span></div>
-          </div>
-        </div>
-        <div class="preset" style="border-color: #f0a93b; background: #1c170f;">
-          <div class="thumb" style="background: linear-gradient(135deg, #3a3326, #201c14);"></div>
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="color: #f0a93b; font-size: 11px;">04</span><span style="font-weight: 500;">Podium</span><span class="lbl" style="font-size: 10px; color: #f0a93b; margin-left: auto;">Active</span></div>
-            <div class="mono" style="font-size: 11px; color: #9aa3b1;">P +12.3° · T −4.5° · Z 2.4×</div>
-            <div style="display: flex; gap: 4px;"><span class="chip chip-midi">D#3</span><span class="chip chip-osc">/cam/1/preset/4</span></div>
-          </div>
-        </div>
-        <div class="preset">
-          <div class="thumb" style="background: linear-gradient(135deg, #2c2a34, #17161d);"></div>
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="color: #8b93a1; font-size: 11px;">05</span><span style="font-weight: 500;">Drums</span></div>
-            <div class="mono" style="font-size: 11px; color: #6f7784;">P +55.0° · T −9.8° · Z 6.5×</div>
-            <div style="display: flex; gap: 4px;"><span class="chip chip-midi">E3</span><span class="chip chip-osc">/cam/1/preset/5</span></div>
-          </div>
-        </div>
-        <div class="preset">
-          <div class="thumb" style="background: linear-gradient(135deg, #2a3330, #161c1a);"></div>
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="color: #8b93a1; font-size: 11px;">06</span><span style="font-weight: 500;">Audience</span></div>
-            <div class="mono" style="font-size: 11px; color: #6f7784;">P +2.0° · T −28.0° · Z 1.0×</div>
-            <div style="display: flex; gap: 4px;"><span class="chip">unmapped</span></div>
-          </div>
-        </div>
-        <div class="preset">
-          <div class="thumb" style="background: linear-gradient(135deg, #34302c, #1d1a17);"></div>
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; align-items: center; gap: 8px;"><span class="mono" style="color: #8b93a1; font-size: 11px;">07</span><span style="font-weight: 500;">Screen</span></div>
-            <div class="mono" style="font-size: 11px; color: #6f7784;">P −66.4° · T +12.0° · Z 3.1×</div>
-            <div style="display: flex; gap: 4px;"><span class="chip chip-midi">F3</span><span class="chip chip-osc">/cam/1/preset/7</span></div>
-          </div>
-        </div>
+      <div style="flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="position: absolute; right: 3px; top: 4px; bottom: 4px; width: 4px; border-radius: 2px; background: #232830;"><div style="position: absolute; left: 0; right: 0; top: 0; height: 52%; border-radius: 2px; background: #39414c;"></div></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">01</span><span style="flex: 1;">Wide stage</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">−2.0 +1.5 1.0×</span><span class="mono" style="width: 52px; font-size: 11px;">C3</span><span class="kbd">1</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">02</span><span style="flex: 1;">Speaker close</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">+8.1 −6.0 4.2×</span><span class="mono" style="width: 52px; font-size: 11px;">C#3</span><span class="kbd">2</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">03</span><span style="flex: 1;">Band left</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">−41.3 −2.2 2.0×</span><span class="mono" style="width: 52px; font-size: 11px;">D3</span><span class="kbd">3</span></div>
+        <div class="cell" style="background: rgba(94,201,138,0.12); border-left: 3px solid #5ec98a;"><span class="mono" style="width: 27px; color: #5ec98a;">04</span><span style="flex: 1; font-weight: 700;">Podium</span><span class="mono" style="width: 120px; font-size: 11px;">+12.3 −4.5 2.4×</span><span class="mono" style="width: 52px; font-size: 11px;">D#3</span><span class="kbd">4</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">05</span><span style="flex: 1;">Drums</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">+55.0 −9.8 6.5×</span><span class="mono" style="width: 52px; font-size: 11px;">E3</span><span class="kbd">5</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">06</span><span style="flex: 1;">Audience</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">+2.0 −28.0 1.0×</span><span class="mono" style="width: 52px; font-size: 11px; color: #7b8494;">—</span><span class="kbd">6</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">07</span><span style="flex: 1;">Screen</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">−66.4 +12.0 3.1×</span><span class="mono" style="width: 52px; font-size: 11px;">F3</span><span class="kbd">7</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">08</span><span style="flex: 1;">Keys</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">−22.0 −7.5 5.0×</span><span class="mono" style="width: 52px; font-size: 11px;">F#3</span><span class="kbd">8</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">09</span><span style="flex: 1;">Choir</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">+4.0 +6.0 1.8×</span><span class="mono" style="width: 52px; font-size: 11px;">G3</span><span class="kbd">9</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">10</span><span style="flex: 1;">Pulpit tight</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">+12.0 −5.0 8.0×</span><span class="mono" style="width: 52px; font-size: 11px;">G#3</span><span class="kbd" style="color: #7b8494;">—</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">11</span><span style="flex: 1;">Stage right</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">+48.0 −3.0 2.0×</span><span class="mono" style="width: 52px; font-size: 11px;">A3</span><span class="kbd" style="color: #7b8494;">—</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">12</span><span style="flex: 1;">Baptistry</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">−12.0 +14.0 3.6×</span><span class="mono" style="width: 52px; font-size: 11px;">A#3</span><span class="kbd" style="color: #7b8494;">—</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">13</span><span style="flex: 1;">Lectern</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">+30.0 −6.0 5.5×</span><span class="mono" style="width: 52px; font-size: 11px;">B3</span><span class="kbd" style="color: #7b8494;">—</span></div>
+        <div class="cell"><span class="mono" style="width: 30px; color: #7b8494;">14</span><span style="flex: 1;">Wide high</span><span class="mono" style="width: 120px; font-size: 11px; color: #aeb6c2;">0.0 +18.0 1.0×</span><span class="mono" style="width: 52px; font-size: 11px;">C4</span><span class="kbd" style="color: #7b8494;">—</span></div>
       </div>
-
-      <div style="flex: none; display: flex; flex-direction: column; gap: 10px; padding: 12px 16px 14px 16px; border-top: 1px solid #262b33;">
-        <div style="display: flex; justify-content: space-between;"><span class="lbl" style="font-size: 11px; color: #8b93a1;">Recall speed</span><span class="mono" style="font-size: 12px;">18 / 24</span></div>
-        <div class="track"><div class="fill" style="width: 75%;"></div><div class="knob" style="left: calc(75% - 8px);"></div></div>
+      <div class="mono" style="display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 12px; border-top: 1px solid #2a3038; font-size: 11px; color: #7b8494;">
+        <span>recall speed 18/24 · 14 of 27 shown</span><span>drag to reorder · dbl-click to rename</span>
       </div>
     </div>
   </div>
