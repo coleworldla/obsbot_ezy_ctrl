@@ -29,7 +29,16 @@ Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× 
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and the GitHub issues for individual features.
 
-## Running it
+## Install (Windows)
+
+Grab the latest build from [Releases](https://github.com/coleworldla/obsbot_ezy_ctrl/releases):
+
+- `EZY-CTRL-Setup-<version>.exe` — one-click installer, adds a desktop shortcut, installs per user (no admin).
+- `EZY-CTRL-<version>-portable.exe` — no install, just run it.
+
+The builds are not code-signed yet, so Windows SmartScreen will show "Windows protected your PC" the first time: click **More info → Run anyway**.
+
+## Running it from source
 
 ```bash
 npm install

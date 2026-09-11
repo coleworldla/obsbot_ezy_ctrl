@@ -4,16 +4,16 @@
   "description": "Easy MIDI/OSC-mappable controller with live viewport and unlimited presets for OBSBOT Tail 2 cameras",
   "main": "./out/main/index.js",
   "private": true,
+  "author": "coleworldla",
+  "homepage": "https://github.com/coleworldla/obsbot_ezy_ctrl",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "dist": "electron-vite build && electron-builder --win --publish never",
+    "dist:dir": "electron-vite build && electron-builder --win --dir"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
@@ -21,9 +21,41 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^33.2.0",
+    "electron-builder": "^26.0.12",
     "electron-vite": "^2.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.0",
     "vitest": "^2.1.0"
+  },
+  "build": {
+    "appId": "com.coleworldla.ezyctrl",
+    "productName": "EZY CTRL",
+    "copyright": "Copyright © 2026 coleworldla",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": ["out/**/*", "package.json"],
+    "asar": true,
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "EZY CTRL",
+      "artifactName": "EZY-CTRL-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "EZY-CTRL-${version}-portable.${ext}"
+    },
+    "publish": null
   }
 }
