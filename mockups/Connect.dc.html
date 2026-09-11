@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; background: #0e1013; }
+    a { color: #f0a93b; } a:hover { color: #ffc46a; }
+    .lbl { font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .mono { font-family: 'IBM Plex Mono', Consolas, monospace; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .input { display: flex; align-items: center; height: 44px; padding: 0 12px; border-radius: 6px; background: #0e1013; border: 1px solid #2a3039; color: #e6e9ee; font-size: 14px; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 6px; background: #1b1f26; border: 1px solid #2a3039; color: #e6e9ee; font-size: 13px; font-weight: 500; }
+  </style>
+</helmet>
+
+<div style="width: 560px; height: 640px; background: #0e1013; color: #e6e9ee; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box;">
+  <div style="width: 100%; display: flex; flex-direction: column; gap: 18px; padding: 24px; border-radius: 10px; background: #14171c; border: 1px solid #262b33; box-shadow: 0 24px 60px rgba(0,0,0,0.5);">
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: #1f2229; color: #f0a93b;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"></rect><path d="m16 10 5-2.5v9L16 14"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span class="lbl" style="font-size: 18px;">Add camera</span>
+        <span style="color: #8b93a1;">OBSBOT Tail 2 on your local network</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="lbl" style="font-size: 11px; color: #8b93a1;">Name</span>
+      <div class="input">Stage Left</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+      <div class="field">
+        <span class="lbl" style="font-size: 11px; color: #8b93a1;">IP address</span>
+        <div class="input mono" style="border-color: #f0a93b;">&lt;ip address&gt;</div>
+      </div>
+      <div class="field">
+        <span class="lbl" style="font-size: 11px; color: #8b93a1;">VISCA port (UDP)</span>
+        <div class="input mono" style="color: #9aa3b1;">52381</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="lbl" style="font-size: 11px; color: #8b93a1;">Video</span>
+      <div style="display: flex; gap: 6px;">
+        <div class="btn" style="flex: 1; height: 38px; border-color: #f0a93b; color: #f0a93b; background: #241d10;">RTSP</div>
+        <div class="btn" style="flex: 1; height: 38px; color: #8b93a1;">NDI</div>
+        <div class="btn" style="flex: 1; height: 38px; color: #8b93a1;">SRT</div>
+        <div class="btn" style="flex: 1; height: 38px; color: #8b93a1;">Web UI</div>
+      </div>
+      <div class="input mono" style="color: #9aa3b1; font-size: 13px;">rtsp://&lt;ip address&gt;:8554/live</div>
+      <span style="color: #6f7784; font-size: 12px;">Turn on RTSP mode on the camera first: OBSBOT Center → More → Output → RTSP.</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 6px; background: #10241f; border: 1px solid #1c4a48;">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: #3dc6c2; box-shadow: 0 0 8px #3dc6c2; flex: none;"></span>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="color: #7fe3df; font-weight: 500;">Camera found</span>
+        <span class="mono" style="font-size: 11px; color: #9aa3b1;">Tail 2 · fw 7.2.13 · pan 0.0° tilt 0.0° zoom 1.0× · 4 ms</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <a href="#" style="font-size: 12px; text-decoration: none;">Find cameras on my network</a>
+      <div style="flex: 1;"></div>
+      <div class="btn" style="color: #9aa3b1;">Cancel</div>
+      <div class="btn" style="background: #f0a93b; border-color: #f0a93b; color: #1a1205; font-weight: 600;">Add camera</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

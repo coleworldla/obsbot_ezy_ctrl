@@ -1,0 +1,19 @@
+# Node
+node_modules/
+dist/
+out/
+.vite/
+*.log
+
+# Env / secrets
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local app data (never commit real camera IPs or presets)
+*.local.json

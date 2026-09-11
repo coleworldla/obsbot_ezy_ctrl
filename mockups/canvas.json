@@ -1,0 +1,16 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Control Room (leading)", "x": 0, "y": 0, "w": 1440, "h": 900 },
+    { "file": "Connect.dc.html", "title": "Add camera", "x": 1540, "y": 0, "w": 560, "h": 640 },
+    { "file": "Mapping.dc.html", "title": "MIDI / OSC mapping", "x": 2200, "y": 0, "w": 1100, "h": 760 },
+    { "file": "DirectionB.dc.html", "title": "Direction B: Deck", "x": 0, "y": 1040, "w": 1440, "h": 900 },
+    { "file": "DirectionC.dc.html", "title": "Direction C: Rack", "x": 1540, "y": 1040, "w": 1440, "h": 900 }
+  ],
+  "annotations": [
+    { "id": "note-main", "x": 0, "y": -150, "w": 420, "text": "CONTROL ROOM (leading direction)\nViewport first, presets always visible on the right, one transport strip. Amber = selected/active, teal = connected/OK, red = tally/record. Best for a single operator driving one camera live.\nTradeoff: presets are a list, so fewer visible at once than the Deck." },
+    { "id": "note-support", "x": 1540, "y": -150, "w": 520, "text": "SUPPORTING SCREENS (same system as Control Room)\nAdd camera: name + IP, VISCA port defaults to 52381, video source auto-fills rtsp://IP:8554/live, test result shows firmware and position.\nMapping: every control is an action with MIDI / OSC / keyboard columns and a Learn button; one row shown mid-learn." },
+    { "id": "note-b", "x": 0, "y": 970, "w": 420, "text": "DIRECTION B: DECK\nPreset wall with big touch tiles, physical-controller style keys, light warm surface. Best for tablet / touch operation and preset-heavy shows.\nTradeoff: smaller viewport, less room for fine controls." },
+    { "id": "note-c", "x": 1540, "y": 970, "w": 420, "text": "DIRECTION C: RACK\nMulti-camera first: a rack of cameras with tally state, the selected camera large, presets as a dense table with MIDI and keyboard columns. Best for 2-4 Tail 2s driven by one person.\nTradeoff: denser and keyboard-centric, less touch friendly." }
+  ],
+  "launch": { "view": "canvas" }
+}
