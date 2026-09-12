@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CameraConfig, CameraStatus, JogDir, ZoomDir } from '../../../shared/types';
 import type { Speed } from '../App';
+import { Viewport } from './Viewport';
 
 interface Props {
   camera: CameraConfig;
@@ -85,19 +86,16 @@ export function Stage({ camera, status, speed, onSpeed, onRemove }: Props) {
         </button>
       </div>
 
-      <div className="viewport">
-        <div className="hint">
-          <strong>Live picture arrives in milestone 2</strong>
-          <span>{camera.videoSource === 'rtsp' ? camera.videoUrl : 'RTSP is the default source'}</span>
-        </div>
+      <div className="stagewrap">
+        <Viewport camera={camera} />
         <div className={`ov tl${online ? '' : ' err'}`}>
           {online ? 'VISCA ONLINE' : status?.lastError ? `OFFLINE · ${status.lastError}` : 'CONNECTING…'}
         </div>
-        <div className="ov tr">
-          TRACK {tracking ? 'on' : 'off'} · REC {recording ? 'on' : 'off'} · {portrait ? 'PORTRAIT' : 'LANDSCAPE'}
-        </div>
         <div className="ov bl">
           PAN {fmt(p?.panDeg)} &nbsp; TILT {fmt(p?.tiltDeg)} &nbsp; ZOOM {p ? `${p.zoomRatio.toFixed(1)}×` : '—'}
+        </div>
+        <div className="ov br">
+          TRACK {tracking ? 'on' : 'off'} · REC {recording ? 'on' : 'off'} · {portrait ? 'PORTRAIT' : 'LANDSCAPE'}
         </div>
       </div>
 

@@ -26,6 +26,7 @@ Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× 
 
 - M0 research + UI design: done. Direction chosen: **Rack** (multi-camera first).
 - M1 talk to the camera: first cut in. VISCA-over-IP client with tests, add camera by IP, jog / zoom / home, live position read-back. Not yet verified against a real Tail 2.
+- M2 see the picture: first cut in. Live RTSP / SRT video for every camera via a bundled ffmpeg (no re-encode), reconnect, latency readout, Web UI fallback, and a built-in demo test pattern. RTSP path not yet verified against a real Tail 2.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and the GitHub issues for individual features.
 
@@ -48,7 +49,9 @@ npm run typecheck
 npm run build      # bundles to out/
 ```
 
-On the camera: put the Tail 2 on the same LAN, find its IP (OBSBOT Center → Device Management, or the Web UI), and in the app press **Add camera**, type the IP, then **Test connection**. RTSP mode only matters once the viewport lands in M2.
+On the camera: put the Tail 2 on the same LAN, find its IP (OBSBOT Center → Device Management, or the Web UI), turn on **RTSP mode** (OBSBOT Center → More → Output → RTSP), and in the app press **Add camera**, type the IP, then **Test connection**. No camera handy? Pick the **Demo** video source to see the whole thing run on a test pattern.
+
+Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits.
 
 Keyboard: `1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed.
 
@@ -60,9 +63,10 @@ src/
     visca/               #   packet.ts (framing, nibbles) · commands.ts (Tail 2 command set) · client.ts (UDP) · tail2.ts (friendly API)
     store/cameras.ts     #   cameras.json persistence
     cameras.ts           #   one connection per camera + position polling
+    video/               #   ffmpeg.ts (args, binary path) · stream.ts (process + restart) · mp4.ts (box splitter, codec) · manager.ts (fan-out over IPC)
     ipc.ts               #   IPC handlers
   preload/               # window.ezy bridge
-  renderer/              # React UI (rack, stage, add-camera dialog)
+  renderer/              # React UI (rack, stage, viewport, add-camera dialog); video/player.ts = MediaSource player per camera
   shared/types.ts
 tests/                   # vitest: framing + fake camera over loopback
 docs/

@@ -8,9 +8,10 @@ interface Props {
 
 const SOURCES: { id: VideoSource; label: string }[] = [
   { id: 'rtsp', label: 'RTSP' },
-  { id: 'ndi', label: 'NDI' },
   { id: 'srt', label: 'SRT' },
   { id: 'webui', label: 'Web UI' },
+  { id: 'ndi', label: 'NDI' },
+  { id: 'demo', label: 'Demo' },
 ];
 
 const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$|^[a-z0-9.-]+\.local$/i;
@@ -28,7 +29,8 @@ export function AddCamera({ onClose, onAdded }: Props) {
 
   const effectiveUrl = urlTouched ? videoUrl : defaultVideoUrl(source, host || '<ip>');
   const portNum = Number(port);
-  const valid = IP_RE.test(host.trim()) && Number.isInteger(portNum) && portNum > 0 && portNum < 65536;
+  const hostOk = source === 'demo' ? host.trim() === '' || IP_RE.test(host.trim()) : IP_RE.test(host.trim());
+  const valid = hostOk && Number.isInteger(portNum) && portNum > 0 && portNum < 65536;
 
   const test = async () => {
     setTesting(true);
@@ -43,12 +45,13 @@ export function AddCamera({ onClose, onAdded }: Props) {
   const save = async () => {
     setSaving(true);
     try {
+      const h = host.trim() || (source === 'demo' ? '127.0.0.1' : '');
       const cam = await window.ezy.cameras.add({
-        name: name.trim() || host.trim(),
-        host: host.trim(),
+        name: name.trim() || (source === 'demo' ? 'Demo pattern' : h),
+        host: h,
         viscaPort: portNum,
         videoSource: source,
-        videoUrl: urlTouched ? videoUrl : defaultVideoUrl(source, host.trim()),
+        videoUrl: urlTouched ? videoUrl : defaultVideoUrl(source, h),
       });
       onAdded(cam);
     } finally {
@@ -89,14 +92,15 @@ export function AddCamera({ onClose, onAdded }: Props) {
               </button>
             ))}
           </div>
-          {source !== 'ndi' && (
+          {source !== 'ndi' && source !== 'demo' && (
             <input className="input mono" style={{ fontSize: 13 }} value={effectiveUrl} onChange={(e) => { setUrlTouched(true); setVideoUrl(e.target.value); }} />
           )}
           <span className="note">
             {source === 'rtsp' && 'Turn on RTSP mode on the camera first: OBSBOT Center → More → Output → RTSP.'}
             {source === 'ndi' && 'NDI needs a licence key on the camera. The NDI viewport is planned for later.'}
             {source === 'srt' && 'Set the camera to SRT listener mode (default port 5000).'}
-            {source === 'webui' && 'Opens the camera web page (login Admin / Admin on first use).'}
+            {source === 'webui' && 'Shows the camera web page (login Admin / Admin on first use).'}
+            {source === 'demo' && 'Built-in moving test pattern, no camera needed. Controls stay offline unless an IP is given.'}
           </span>
         </div>
 

@@ -1,4 +1,5 @@
 import type { CameraConfig, CameraStatus } from '../../../shared/types';
+import { Viewport } from './Viewport';
 
 interface Props {
   cameras: CameraConfig[];
@@ -16,24 +17,29 @@ export function Rack({ cameras, status, selectedId, onSelect, onAdd }: Props) {
       {cameras.map((c, i) => {
         const s = status[c.id];
         const p = s?.position;
+        const selected = c.id === selectedId;
         return (
-          <button key={c.id} className={`cam${c.id === selectedId ? ' on' : ''}`} onClick={() => onSelect(c.id)}>
+          <div key={c.id} className={`cam${selected ? ' on' : ''}`} onClick={() => onSelect(c.id)} role="button" tabIndex={0}>
             <div className="title">
               <span className="idx">CAM {i + 1}</span>
               <span className="name">{c.name}</span>
               <span className="host">{c.host}</span>
             </div>
-            <div className="mini">
-              <span className={`led${s?.connected ? ' on' : s?.lastError ? ' warn' : ''}`} />
-              {s?.connected ? 'VISCA online · picture in M2' : s?.lastError ? 'no reply' : 'connecting…'}
-            </div>
+            {selected ? (
+              <div className="mini">
+                <span className={`led${s?.connected ? ' on' : s?.lastError ? ' warn' : ''}`} />
+                ON STAGE
+              </div>
+            ) : (
+              <Viewport camera={c} mini />
+            )}
             <div className="readout">
               <span>P {fmt(p?.panDeg)}</span>
               <span>T {fmt(p?.tiltDeg)}</span>
               <span>Z {p ? `${p.zoomRatio.toFixed(1)}×` : '—'}</span>
-              <span className="muted">{s?.latencyMs !== undefined ? `${s.latencyMs} ms` : '—'}</span>
+              <span className={s?.connected ? 'ok' : 'muted'}>{s?.connected ? 'VISCA' : s?.lastError ? 'no reply' : '…'}</span>
             </div>
-          </button>
+          </div>
         );
       })}
       <button className="b add" onClick={onAdd}>

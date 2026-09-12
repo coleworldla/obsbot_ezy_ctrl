@@ -14,10 +14,12 @@ Each milestone maps to GitHub issues (labelled by milestone). Order is the inten
 - [x] Position read-back (pan/tilt/zoom inquiries) shown on screen — polled every 500 ms
 - [ ] Verify against a Tail 2: inquiry payload type (0x0110 vs 0x0100), reply sequence echo, jog stop latency
 
-## M2 — See the picture
-- RTSP viewport: ffmpeg sidecar remuxes H.264 → fragmented MP4 → MediaSource in the renderer.
-- Connection health, reconnect, latency readout.
-- Fallback: embed the camera Web UI preview.
+## M2 — See the picture  (first cut 2026-09-11, v0.2.0, needs a real-camera test)
+- [x] RTSP viewport: ffmpeg sidecar remuxes H.264 → fragmented MP4 → MediaSource in the renderer — `src/main/video/`, `src/renderer/src/video/player.ts`
+- [x] Connection health, reconnect with backoff, buffer/latency readout, fps, dropped frames
+- [x] Fallback: embed the camera Web UI (webview)
+- [x] Demo test-pattern source for trying the app without a camera
+- [ ] Verify against a Tail 2: RTSP URL/auth, GOP/latency, H.264 vs H.265 output, SRT caller mode
 
 ## M3 — Unlimited presets
 - Preset = pan, tilt, zoom, (focus), thumbnail, recall speed. Stored in app data, no camera-slot cap.

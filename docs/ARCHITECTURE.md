@@ -36,10 +36,14 @@ Electron gives us Node in the main process for UDP (VISCA + OSC), the Web MIDI A
 - Command helpers generated from `docs/protocol/visca-over-ip.md` (pan/tilt drive, absolute position, zoom direct, focus, presets, AI tracking, record, orientation, image/exposure/WB).
 - Units: pan/tilt position is 0.075 deg per step, signed 16-bit spread across four nibbles. Zoom direct = ratio x 1000.
 
-### `video`
-- Spawn `ffmpeg -rtsp_transport tcp -i rtsp://ip:8554/live -c copy -f mp4 -movflags frag_keyframe+empty_moov+default_base_moof pipe:1`.
-- Ship fragments to the renderer over IPC / local WebSocket; renderer appends to a `SourceBuffer`.
-- Keep the buffer short (jump to live edge) to hold latency around 0.3-0.6 s.
+### `video` (as built in M2)
+- `ffmpeg-static` ships the binary; unpacked from asar in the packaged app (`asarUnpack`).
+- `ffmpeg -fflags nobuffer -flags low_delay -rtsp_transport tcp -i rtsp://ip:8554/live -an -c:v copy -f mp4 -movflags empty_moov+default_base_moof+frag_every_frame pipe:1`
+  One fragment per frame keeps buffering latency to a frame or two; no re-encode, so CPU stays near zero.
+- `mp4.ts` splits stdout into top-level boxes and groups them: `ftyp+moov` = init segment, `moof+mdat` = media segment. It also reads the codec string from `avcC` / `hvcC` so the renderer can open the right `SourceBuffer`.
+- `manager.ts` runs one `VideoStream` per camera, fans events out over IPC (`video:event`: start / segment / end), replays the init segment to late subscribers, and stops the process when nobody is watching.
+- Renderer `player.ts`: one `MediaSource` + detached `<video>` per camera, re-parented between stage and rack so switching cameras never restarts the stream. Appends serially, jumps to the live edge on first data, plays at 1.08x when more than 0.45 s behind, hard-resyncs past 1.2 s, trims the buffer behind the playhead.
+- Demo source: `-f lavfi -i testsrc2 ... -c:v libx264 -tune zerolatency` for trying the app without a camera.
 - Later: WebRTC via go2rtc for sub-200 ms, NDI via the NDI SDK.
 
 ### `presets`

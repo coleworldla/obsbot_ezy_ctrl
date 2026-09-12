@@ -73,7 +73,15 @@ input, select { font: inherit; }
 .stage { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 12px; min-width: 0; }
 .stage .top { display: flex; align-items: center; gap: 12px; }
 .stage .top h2 { margin: 0; font-size: 15px; font-weight: 700; }
-.viewport { flex: 1; position: relative; border-radius: 6px; overflow: hidden; background: #0f1215; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.stagewrap { flex: 1; position: relative; min-height: 0; display: flex; }
+.viewport { flex: 1; position: relative; border-radius: 6px; overflow: hidden; background: #0f1215; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); min-height: 0; }
+.viewport video, .mini video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+.cam .mini.live { border: none; padding: 0; overflow: hidden; }
+.cam .mini.live video { object-fit: cover; }
+.ov.center { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.ov.mini-lbl { left: 6px; top: 6px; font-size: 10px; padding: 2px 5px; }
+.readout .ok { color: var(--accent); }
+webview { display: inline-flex; border: none; background: #fff; }
 .viewport .hint { display: flex; flex-direction: column; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; }
 .viewport .hint strong { color: var(--text-2); font-weight: 500; }
 .ov { position: absolute; font-family: var(--mono); font-size: 11px; padding: 3px 7px; border-radius: 3px; background: rgba(20, 23, 27, 0.85); border: 1px solid var(--line-3); color: var(--text); }

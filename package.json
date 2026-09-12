@@ -1,6 +1,6 @@
 {
   "name": "obsbot-ezy-ctrl",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Easy MIDI/OSC-mappable controller with live viewport and unlimited presets for OBSBOT Tail 2 cameras",
   "main": "./out/main/index.js",
   "private": true,
@@ -37,13 +37,27 @@
       "output": "dist",
       "buildResources": "build"
     },
-    "files": ["out/**/*", "package.json"],
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
     "asar": true,
+    "asarUnpack": ["**/node_modules/ffmpeg-static/**"],
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
@@ -57,5 +71,8 @@
       "artifactName": "EZY-CTRL-${version}-portable.${ext}"
     },
     "publish": null
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0"
   }
 }

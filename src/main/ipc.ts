@@ -3,8 +3,9 @@ import type { CameraConfig, CameraInput, JogDir, ZoomDir } from '../shared/types
 import type { CameraManager } from './cameras';
 import { CameraManager as Manager } from './cameras';
 import type { CameraStore } from './store/cameras';
+import type { VideoManager } from './video/manager';
 
-export function registerIpc(store: CameraStore, manager: CameraManager): void {
+export function registerIpc(store: CameraStore, manager: CameraManager, video: VideoManager): void {
   // ---- camera list ----
   ipcMain.handle('cameras:list', () => store.list());
   ipcMain.handle('cameras:add', async (_e, input: CameraInput) => {
@@ -15,12 +16,21 @@ export function registerIpc(store: CameraStore, manager: CameraManager): void {
   ipcMain.handle('cameras:update', async (_e, cfg: CameraConfig) => {
     const cam = store.update(cfg);
     await manager.reconnect(cam);
+    video.update(cam);
     return cam;
   });
   ipcMain.handle('cameras:remove', (_e, id: string) => {
     manager.disconnect(id);
+    video.stop(id);
     store.remove(id);
   });
+
+  // ---- video ----
+  ipcMain.handle('video:subscribe', (e, id: string) => {
+    const cfg = store.get(id);
+    if (cfg) video.subscribe(cfg, e.sender);
+  });
+  ipcMain.handle('video:unsubscribe', (e, id: string) => video.unsubscribe(id, e.sender));
 
   // ---- connection ----
   ipcMain.handle('camera:test', (_e, host: string, port: number) => Manager.test(host, port));

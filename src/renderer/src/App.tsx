@@ -3,6 +3,7 @@ import type { CameraConfig, CameraStatus, JogDir } from '../../shared/types';
 import { AddCamera } from './components/AddCamera';
 import { Rack } from './components/Rack';
 import { Stage } from './components/Stage';
+import { dispatchVideoEvent, dropPlayer } from './video/player';
 
 export interface Speed {
   pan: number;
@@ -44,15 +45,21 @@ export default function App() {
     void window.ezy.camera.statuses().then((all) => {
       setStatus(Object.fromEntries(all.map((s) => [s.id, s])));
     });
-    return window.ezy.onStatus((s) => setStatus((m) => ({ ...m, [s.id]: s })));
+    const offStatus = window.ezy.onStatus((s) => setStatus((m) => ({ ...m, [s.id]: s })));
+    const offVideo = window.ezy.video.onEvent(dispatchVideoEvent);
+    return () => {
+      offStatus();
+      offVideo();
+    };
   }, [refresh]);
 
-  // Connect every configured camera once.
+  // Connect control and start video for every configured camera once.
   useEffect(() => {
     for (const c of cameras) {
       if (connectedOnce.current.has(c.id)) continue;
       connectedOnce.current.add(c.id);
       window.ezy.camera.connect(c.id).catch(() => undefined);
+      window.ezy.video.subscribe(c.id).catch(() => undefined);
     }
   }, [cameras]);
 
@@ -104,12 +111,13 @@ export default function App() {
   }, [cameras, selectedId, speed]);
 
   const selected = cameras.find((c) => c.id === selectedId) ?? null;
-  const connectedCount = Object.values(status).filter((s) => s.connected).length;
+  const connectedCount = cameras.filter((c) => status[c.id]?.connected).length;
 
   const removeCamera = async (id: string) => {
     if (!window.confirm('Remove this camera from the rack?')) return;
     await window.ezy.cameras.remove(id);
     connectedOnce.current.delete(id);
+    dropPlayer(id);
     await refresh();
   };
 

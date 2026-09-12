@@ -1,4 +1,10 @@
-export type VideoSource = 'rtsp' | 'ndi' | 'srt' | 'webui';
+export type VideoSource = 'rtsp' | 'ndi' | 'srt' | 'webui' | 'demo';
+
+/** Messages from the main-process video manager to the renderer (channel 'video:event'). */
+export type VideoEvent =
+  | { kind: 'start'; id: string; session: number; codec: string | null; init: Uint8Array }
+  | { kind: 'segment'; id: string; session: number; data: Uint8Array }
+  | { kind: 'end'; id: string; session: number; reason: string };
 
 export interface CameraConfig {
   id: string;
@@ -58,6 +64,7 @@ export function defaultVideoUrl(source: VideoSource, host: string): string {
     case 'webui':
       return `http://${host}/`;
     case 'ndi':
+    case 'demo':
       return '';
   }
 }

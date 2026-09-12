@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { CameraConfig, CameraInput, CameraStatus, JogDir, Position, TestResult, ZoomDir } from '../shared/types';
+import type { CameraConfig, CameraInput, CameraStatus, JogDir, Position, TestResult, VideoEvent, ZoomDir } from '../shared/types';
 
 const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(channel, ...args) as Promise<T>;
 
@@ -39,6 +39,15 @@ export const api = {
     const handler = (_e: IpcRendererEvent, s: CameraStatus) => cb(s);
     ipcRenderer.on('camera:status', handler);
     return () => ipcRenderer.off('camera:status', handler);
+  },
+  video: {
+    subscribe: (id: string) => invoke<void>('video:subscribe', id),
+    unsubscribe: (id: string) => invoke<void>('video:unsubscribe', id),
+    onEvent: (cb: (ev: VideoEvent) => void): (() => void) => {
+      const handler = (_e: IpcRendererEvent, ev: VideoEvent) => cb(ev);
+      ipcRenderer.on('video:event', handler);
+      return () => ipcRenderer.off('video:event', handler);
+    },
   },
 };
 
