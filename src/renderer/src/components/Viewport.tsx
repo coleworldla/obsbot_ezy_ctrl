@@ -31,7 +31,7 @@ export function Viewport({ camera, mini = false }: Props) {
 
   if (camera.videoSource === 'webui') {
     return (
-      <div className={mini ? 'mini live' : 'viewport'}>
+      <div className={mini ? 'mini' : 'viewport'}>
         {mini ? (
           <span>Web UI</span>
         ) : (

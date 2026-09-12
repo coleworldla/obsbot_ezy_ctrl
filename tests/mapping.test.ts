@@ -84,6 +84,16 @@ describe('built-in OSC scheme', () => {
     expect(parseBuiltinOsc({ type: 'osc', address: '/cam/x/home', args: [] })).toBeNull();
   });
 
+  it('parses tally addresses', () => {
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/2/tally', args: [1] })).toEqual({ actionId: 'tally.pgm', phase: 'press', camera: 2 });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/2/tally', args: [2] })).toEqual({ actionId: 'tally.pvw', phase: 'press', camera: 2 });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/2/tally', args: [0] })).toEqual({ actionId: 'tally.clear', phase: 'press', camera: 2 });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/2/tally', args: [] })).toBeNull();
+    expect(parseBuiltinOsc({ type: 'osc', address: '/tally/pgm', args: [3] })).toEqual({ actionId: 'tally.pgm', phase: 'press', camera: 3 });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/sel/tally/clear', args: [] })).toMatchObject({ actionId: 'tally.clear', phase: 'press', camera: null });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/app/panel', args: [] })).toEqual({ actionId: 'panel.toggle', phase: 'press' });
+  });
+
   it('builds addresses and the address list', () => {
     const recall = ACTIONS.find((a) => a.id === 'preset.recall')!;
     expect(oscAddress(recall, 2, 5)).toBe('/cam/2/preset/5');

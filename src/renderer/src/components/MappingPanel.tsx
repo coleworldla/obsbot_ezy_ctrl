@@ -13,7 +13,11 @@ export interface MonitorEntry {
 export interface LearnState {
   actionId: string;
   kind: 'midi' | 'key';
+  /** Camera scope for the new mapping: null = the selected camera, n = camera n. */
+  camera: number | null;
 }
+
+export const mappingId = (kind: 'midi' | 'key', actionId: string, camera: number | null) => `${kind}:${actionId}${camera ? `:${camera}` : ''}`;
 
 interface Props {
   mappings: Mapping[];
@@ -57,9 +61,13 @@ export function MappingPanel({
   const [fbHost, setFbHost] = useState(settings.osc.feedbackHost);
   const [fbPort, setFbPort] = useState(String(settings.osc.feedbackPort));
   const [copied, setCopied] = useState(false);
+  /** null = mappings that act on the selected camera; n = mappings pinned to camera n. */
+  const [scope, setScope] = useState<number | null>(null);
 
-  const trigger = (actionId: string, type: 'midi' | 'key') => mappings.find((m) => m.actionId === actionId && m.trigger.type === type);
-  const clear = (actionId: string, type: 'midi' | 'key') => onMappings(mappings.filter((m) => !(m.actionId === actionId && m.trigger.type === type)));
+  const inScope = (m: Mapping) => (m.camera ?? null) === scope;
+  const trigger = (actionId: string, type: 'midi' | 'key') => mappings.find((m) => m.actionId === actionId && m.trigger.type === type && inScope(m));
+  const clear = (actionId: string, type: 'midi' | 'key') => onMappings(mappings.filter((m) => !(m.actionId === actionId && m.trigger.type === type && inScope(m))));
+  const oscCam = scope ?? 'sel';
 
   const copyAddresses = async () => {
     try {
@@ -91,6 +99,16 @@ export function MappingPanel({
       <div className="maphead">
         <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>MAPPING</span>
         <span className="mono muted">MIDI · OSC · keyboard</span>
+        <div className="scopetabs">
+          <button className={`scopetab${scope === null ? ' on' : ''}`} onClick={() => setScope(null)} title="These bindings act on whichever camera is on stage">
+            Selected camera
+          </button>
+          {cameras.map((c, i) => (
+            <button key={c.id} className={`scopetab${scope === i + 1 ? ' on' : ''}`} onClick={() => setScope(i + 1)} title={`Bindings pinned to ${c.name}`}>
+              CAM {i + 1}
+            </button>
+          ))}
+        </div>
         <span className="spacer" />
         {learn && (
           <span className="learnhint mono">
@@ -122,9 +140,9 @@ export function MappingPanel({
               {ACTIONS.filter((a) => a.group === group).map((a) => {
                 const midi = trigger(a.id, 'midi');
                 const key = trigger(a.id, 'key');
-                const learningMidi = learn?.actionId === a.id && learn.kind === 'midi';
-                const learningKey = learn?.actionId === a.id && learn.kind === 'key';
-                const osc = a.arg === 'preset' ? `${oscAddress(a, 'sel')}/<n>` : a.arg === 'camera' ? `${a.osc} <n>` : a.kind === 'continuous' && a.range ? `${oscAddress(a, 'sel')} <${a.range[0]}..${a.range[1]}>` : oscAddress(a, 'sel');
+                const learningMidi = learn?.actionId === a.id && learn.kind === 'midi' && learn.camera === scope;
+                const learningKey = learn?.actionId === a.id && learn.kind === 'key' && learn.camera === scope;
+                const osc = a.arg === 'preset' ? `${oscAddress(a, oscCam)}/<n>` : a.arg === 'camera' ? `${a.osc} <n>` : a.kind === 'continuous' && a.range ? `${oscAddress(a, oscCam)} <${a.range[0]}..${a.range[1]}>` : oscAddress(a, oscCam);
                 return (
                   <div key={a.id} className={`maprow${learningMidi || learningKey ? ' learning' : ''}`}>
                     <span className="mapaction">
@@ -132,7 +150,7 @@ export function MappingPanel({
                       {a.arg && <span className="mono muted"> · {a.arg === 'preset' ? 'note range → preset 1…64' : 'note range → camera 1…9'}</span>}
                     </span>
                     <span className="mapcell">
-                      <button className={`chip midi${midi ? '' : ' empty'}${learningMidi ? ' pulse' : ''}`} onClick={() => onLearn(learningMidi ? null : { actionId: a.id, kind: 'midi' })} title="Click, then move a control on your MIDI device">
+                      <button className={`chip midi${midi ? '' : ' empty'}${learningMidi ? ' pulse' : ''}`} onClick={() => onLearn(learningMidi ? null : { actionId: a.id, kind: 'midi', camera: scope })} title="Click, then move a control on your MIDI device">
                         {learningMidi ? 'Waiting for MIDI…' : midi ? describeTrigger(midi.trigger) : 'Learn'}
                       </button>
                       {midi && (
@@ -145,7 +163,7 @@ export function MappingPanel({
                       {osc}
                     </span>
                     <span className="mapcell">
-                      <button className={`chip key${key ? '' : ' empty'}${learningKey ? ' pulse' : ''}`} onClick={() => onLearn(learningKey ? null : { actionId: a.id, kind: 'key' })} title="Click, then press a key">
+                      <button className={`chip key${key ? '' : ' empty'}${learningKey ? ' pulse' : ''}`} onClick={() => onLearn(learningKey ? null : { actionId: a.id, kind: 'key', camera: scope })} title="Click, then press a key">
                         {learningKey ? 'Press a key…' : key ? describeTrigger(key.trigger) : 'Set'}
                       </button>
                       {key && (
@@ -212,7 +230,7 @@ export function MappingPanel({
               <input className="input mono small" style={{ width: 130 }} placeholder="<ip address>" value={fbHost} onChange={(e) => setFbHost(e.target.value)} onBlur={applyFeedback} onKeyDown={(e) => e.key === 'Enter' && applyFeedback()} />
               <input className="input mono small" style={{ width: 64 }} value={fbPort} onChange={(e) => setFbPort(e.target.value)} onBlur={applyFeedback} onKeyDown={(e) => e.key === 'Enter' && applyFeedback()} />
             </div>
-            <div className="note">Feedback: /cam/select, /cam/&lt;i&gt;/preset/active, /cam/&lt;i&gt;/online, /cam/&lt;i&gt;/position (4 Hz).</div>
+            <div className="note">Feedback: /cam/select, /cam/&lt;i&gt;/preset/active, /cam/&lt;i&gt;/online, /cam/&lt;i&gt;/tally, /cam/&lt;i&gt;/position (4 Hz).</div>
             <button className="b sm" onClick={() => void copyAddresses()} style={{ marginTop: 6 }}>
               {copied ? 'Copied' : 'Copy address list'}
             </button>

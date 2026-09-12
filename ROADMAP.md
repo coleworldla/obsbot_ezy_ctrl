@@ -36,11 +36,12 @@ Each milestone maps to GitHub issues (labelled by milestone). Order is the inten
 - [x] Keyboard shortcuts in the same table, remappable
 - [ ] Verify with a physical MIDI controller (only Windows virtual MIDI ports were available here)
 
-## M5 — Production niceties
-- Multi-camera view and per-camera mappings.
-- AI tracking panel (on/off, single/group, speed, auto-zoom, only-me).
-- Record, landscape/portrait, focus and exposure/white-balance panels.
-- Tally / status readout.
+## M5 — Production niceties  (done 2026-09-11, v0.5.0)
+- [x] Multi-camera view and per-camera mappings (scope tabs in the Mapping panel)
+- [x] AI tracking panel (on/off, single/group, speed, auto-zoom, only-me) with state read-back
+- [x] Record, landscape/portrait, focus and exposure/white-balance/image panels — `CameraPanel.tsx`, `Tail2.set()` / `fullState()`
+- [x] Tally per camera (rack menu, mappings, OSC in + feedback)
+- [ ] Verify the settings inquiries against a real Tail 2 (some may answer differently from the spreadsheet)
 
 ## M6 — Ship
 - Windows installer, macOS build, auto-update.

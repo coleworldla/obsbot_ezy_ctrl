@@ -2,7 +2,9 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { Mapping } from '../shared/mapping';
 import type {
   CameraConfig,
+  CameraFullState,
   CameraInput,
+  CameraSet,
   CameraStatus,
   JogDir,
   LogEntry,
@@ -40,6 +42,8 @@ export const api = {
     disconnect: (id: string) => invoke<void>('camera:disconnect', id),
     statuses: () => invoke<CameraStatus[]>('camera:statuses'),
     position: (id: string) => invoke<Position>('camera:position', id),
+    set: (id: string, s: CameraSet) => invoke<void>('camera:set', id, s),
+    fullState: (id: string) => invoke<CameraFullState>('camera:fullState', id),
   },
   ptz: {
     drive: (id: string, dir: JogDir, pan: number, tilt: number) => invoke<void>('ptz:drive', id, dir, pan, tilt),

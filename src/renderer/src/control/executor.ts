@@ -1,9 +1,9 @@
 /**
  * Runs action invocations (from keyboard, MIDI or OSC) against the app: one place that knows
- * how to jog, zoom, recall presets, toggle tracking, and so on.
+ * how to jog, zoom, recall presets, toggle tracking, set tally, and so on.
  */
 import type { Invocation } from '../../../shared/mapping';
-import type { CameraConfig, CameraStatus, JogDir, Preset } from '../../../shared/types';
+import type { CameraConfig, CameraStatus, JogDir, Preset, Tally } from '../../../shared/types';
 
 export interface Speed {
   pan: number;
@@ -29,8 +29,10 @@ export interface ExecContext {
   clearActive: (cameraId: string) => void;
   camState: Record<string, CamState>;
   setCamState: (cameraId: string, patch: Partial<CamState>) => void;
+  setTally: (cameraId: string, tally: Tally) => void;
   toggleLog: () => void;
   toggleMapping: () => void;
+  togglePanel: () => void;
 }
 
 const DIRS: Record<string, JogDir> = {
@@ -86,6 +88,9 @@ export class ActionExecutor {
       case 'mapping.toggle':
         if (inv.phase === 'press') c.toggleMapping();
         return;
+      case 'panel.toggle':
+        if (inv.phase === 'press') c.togglePanel();
+        return;
     }
 
     const cam = inv.camera ? c.cameras[inv.camera - 1] : c.cameras.find((x) => x.id === c.selectedId);
@@ -101,6 +106,12 @@ export class ActionExecutor {
     }
 
     switch (inv.actionId) {
+      case 'tally.pgm':
+      case 'tally.pvw':
+      case 'tally.clear':
+        if (inv.phase !== 'press') return;
+        c.setTally(id, inv.actionId === 'tally.pgm' ? 1 : inv.actionId === 'tally.pvw' ? 2 : 0);
+        return;
       case 'ptz.home':
         if (inv.phase === 'press' && online) {
           c.clearActive(id);
@@ -160,9 +171,8 @@ export class ActionExecutor {
         const next = inv.value !== undefined ? inv.value > 0 : !cur;
         if (next === cur && inv.value !== undefined) return;
         c.setCamState(id, { [key]: next });
-        if (inv.actionId === 'ai.track') fire(window.ezy.track(id, next));
-        else if (inv.actionId === 'record') fire(window.ezy.record(id, next));
-        else fire(window.ezy.orientation(id, next));
+        const setKey = inv.actionId === 'ai.track' ? 'track' : inv.actionId === 'record' ? 'record' : 'portrait';
+        fire(window.ezy.camera.set(id, { key: setKey, value: next }));
         return;
       }
       case 'focus.push':

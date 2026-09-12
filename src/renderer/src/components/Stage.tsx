@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CameraConfig, CameraStatus, JogDir, ZoomDir } from '../../../shared/types';
+import type { CameraConfig, CameraStatus, JogDir, Tally, ZoomDir } from '../../../shared/types';
 import type { CamState, Speed } from '../control/executor';
+import { TallyBadge } from './Rack';
 import { Viewport } from './Viewport';
 
 interface Props {
@@ -15,6 +16,9 @@ interface Props {
   onManual: () => void;
   camState: CamState;
   onCamState: (patch: Partial<CamState>) => void;
+  tally: Tally;
+  panelOpen: boolean;
+  onTogglePanel: () => void;
 }
 
 const Arrow = ({ d }: { d: string }) => (
@@ -37,7 +41,7 @@ const JOG: { dir: JogDir; key: string; d: string }[] = [
 
 const fmt = (n: number | undefined) => (n === undefined ? '—' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}°`);
 
-export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetName, onManual, camState, onCamState }: Props) {
+export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetName, onManual, camState, onCamState, tally, panelOpen, onTogglePanel }: Props) {
   const id = camera.id;
   const [zoomSlider, setZoomSlider] = useState(1);
   const zoomTimer = useRef<number | null>(null);
@@ -82,16 +86,21 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
   const p = status?.position;
   const online = status?.connected ?? false;
   const { tracking, recording, portrait } = camState;
+  const live = status?.state;
 
   return (
     <div className="stage">
       <div className="top">
         <h2>{camera.name}</h2>
+        <TallyBadge tally={tally} />
         <span className="mono muted" style={{ fontSize: 11 }}>
           {camera.host}:{camera.viscaPort} · {camera.videoSource.toUpperCase()} {camera.videoUrl}
           {status?.latencyMs !== undefined ? ` · ${status.latencyMs} ms` : ''}
         </span>
         <span className="spacer" style={{ flex: 1 }} />
+        <button className={`b sm${panelOpen ? ' accent' : ''}`} onClick={onTogglePanel} title="Camera settings (I)">
+          Camera settings
+        </button>
         <button className="b sm" onClick={onRemove}>
           Remove
         </button>
@@ -103,8 +112,9 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
           {online ? 'VISCA ONLINE' : status?.lastError ? `OFFLINE · ${status.lastError}` : 'CONNECTING…'}
         </div>
         <div className="ov bl">
-          PAN {fmt(p?.panDeg)} &nbsp; TILT {fmt(p?.tiltDeg)} &nbsp; ZOOM {p ? `${p.zoomRatio.toFixed(1)}×` : '—'} &nbsp;·&nbsp; TRACK {tracking ? 'on' : 'off'} · REC{' '}
-          {recording ? 'on' : 'off'} · {portrait ? 'PORTRAIT' : 'LANDSCAPE'}
+          PAN {fmt(p?.panDeg)} &nbsp; TILT {fmt(p?.tiltDeg)} &nbsp; ZOOM {p ? `${p.zoomRatio.toFixed(1)}×` : '—'} &nbsp;·&nbsp; TRACK {tracking ? (live?.trackMode === 'group' ? 'group' : 'on') : 'off'}{' '}
+          · REC {recording ? 'on' : 'off'} · {portrait ? 'PORTRAIT' : 'LANDSCAPE'}
+          {live ? ` · ${live.focusAuto ? 'AF' : 'MF'} · ${live.exposureAuto ? 'AE' : 'ME'}` : ''}
         </div>
         {activePresetName && <div className="ov br preset">{activePresetName}</div>}
       </div>
@@ -127,7 +137,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
 
         <div className="sliders">
           <div className="row">
-            <label>ZOOM &nbsp;−&nbsp;/&nbsp;=</label>
+            <label>ZOOM − / =</label>
             <button className="b sm" disabled={!online} {...hold(() => zoom('wide'), () => zoom('stop'))}>
               W
             </button>
@@ -138,12 +148,12 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
             <output>{zoomSlider.toFixed(1)}×</output>
           </div>
           <div className="row">
-            <label>PAN SPEED &nbsp;[&nbsp;/&nbsp;]</label>
+            <label>PAN SPD [ / ]</label>
             <input type="range" min={1} max={24} value={speed.pan} onChange={(e) => onSpeed({ ...speed, pan: Number(e.target.value) })} />
             <output>{speed.pan} / 24</output>
           </div>
           <div className="row">
-            <label>TILT SPEED</label>
+            <label>TILT SPD</label>
             <input type="range" min={1} max={23} value={speed.tilt} onChange={(e) => onSpeed({ ...speed, tilt: Number(e.target.value) })} />
             <output>{speed.tilt} / 23</output>
           </div>
@@ -155,7 +165,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
             disabled={!online}
             onClick={() => {
               onCamState({ tracking: !tracking });
-              fire(window.ezy.track(id, !tracking));
+              fire(window.ezy.camera.set(id, { key: 'track', value: !tracking }));
             }}
           >
             TRACK · T
@@ -165,7 +175,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
             disabled={!online}
             onClick={() => {
               onCamState({ recording: !recording });
-              fire(window.ezy.record(id, !recording));
+              fire(window.ezy.camera.set(id, { key: 'record', value: !recording }));
             }}
           >
             REC · R
@@ -175,7 +185,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
             disabled={!online}
             onClick={() => {
               onCamState({ portrait: !portrait });
-              fire(window.ezy.orientation(id, !portrait));
+              fire(window.ezy.camera.set(id, { key: 'portrait', value: !portrait }));
             }}
           >
             ROTATE · O

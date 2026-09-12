@@ -105,6 +105,9 @@ const k = (key: string, extra: Partial<KeyTrigger> = {}): KeyTrigger => ({ type:
 
 export const ACTIONS: ActionDef[] = [
   { id: 'cam.select', label: 'Select camera', group: 'Cameras', kind: 'trigger', arg: 'camera', osc: '/cam/select', key: k('1', { ctrl: true, span: 9 }) },
+  { id: 'tally.pgm', label: 'Tally: program', group: 'Cameras', kind: 'trigger', osc: '/cam/{i}/tally/pgm' },
+  { id: 'tally.pvw', label: 'Tally: preview', group: 'Cameras', kind: 'trigger', osc: '/cam/{i}/tally/pvw' },
+  { id: 'tally.clear', label: 'Tally: clear', group: 'Cameras', kind: 'trigger', osc: '/cam/{i}/tally/clear' },
 
   { id: 'ptz.up', label: 'Jog up', group: 'Pan / Tilt', kind: 'momentary', osc: '/cam/{i}/ptz/up', key: k('w') },
   { id: 'ptz.down', label: 'Jog down', group: 'Pan / Tilt', kind: 'momentary', osc: '/cam/{i}/ptz/down', key: k('s') },
@@ -133,6 +136,7 @@ export const ACTIONS: ActionDef[] = [
   { id: 'orientation', label: 'Portrait / landscape', group: 'AI & recording', kind: 'toggle', osc: '/cam/{i}/rotate', key: k('o') },
   { id: 'focus.push', label: 'One-push autofocus', group: 'AI & recording', kind: 'trigger', osc: '/cam/{i}/focus/push', key: k('f') },
 
+  { id: 'panel.toggle', label: 'Show / hide camera settings', group: 'App', kind: 'trigger', osc: '/app/panel', key: k('i') },
   { id: 'log.toggle', label: 'Show / hide log', group: 'App', kind: 'trigger', osc: '/app/log', key: k('l') },
   { id: 'mapping.toggle', label: 'Show / hide mapping', group: 'App', kind: 'trigger', osc: '/app/mapping', key: k('m') },
 ];
@@ -253,8 +257,13 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
   const v = num(input.args[0]);
   const parts = input.address.split('/').filter(Boolean);
   if (parts[0] === 'app' && parts.length === 2) {
-    const id = parts[1] === 'log' ? 'log.toggle' : parts[1] === 'mapping' ? 'mapping.toggle' : null;
+    const id = parts[1] === 'log' ? 'log.toggle' : parts[1] === 'mapping' ? 'mapping.toggle' : parts[1] === 'panel' ? 'panel.toggle' : null;
     return id ? { actionId: id, phase: 'press' } : null;
+  }
+  // Switcher-style tally: /tally/pgm <i>, /tally/pvw <i>
+  if (parts[0] === 'tally' && parts.length === 2 && (parts[1] === 'pgm' || parts[1] === 'pvw')) {
+    const idx = num(input.args[0]);
+    return Number.isInteger(idx) && (idx as number) >= 1 ? { actionId: `tally.${parts[1]}`, phase: 'press', camera: idx as number } : null;
   }
   if (parts[0] !== 'cam') return null;
   if (parts[1] === 'select') {
@@ -288,6 +297,13 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
   if (rest === 'record') return press('record');
   if (rest === 'rotate') return press('orientation');
   if (rest === 'focus/push') return press('focus.push');
+  if (rest === 'tally') {
+    if (v === undefined) return null;
+    return { actionId: v === 1 ? 'tally.pgm' : v === 2 ? 'tally.pvw' : 'tally.clear', phase: 'press', camera };
+  }
+  if (rest === 'tally/pgm') return press('tally.pgm');
+  if (rest === 'tally/pvw') return press('tally.pvw');
+  if (rest === 'tally/clear') return press('tally.clear');
   return null;
 }
 
@@ -314,6 +330,6 @@ export function oscAddressList(count: number): string[] {
       else out.push(addr);
     }
   }
-  out.push('/app/log', '/app/mapping');
+  out.push('/cam/<i>/tally <0|1|2>', '/tally/pgm <i>', '/tally/pvw <i>', '/app/panel', '/app/log', '/app/mapping');
   return out;
 }

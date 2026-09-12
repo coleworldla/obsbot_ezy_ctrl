@@ -7,6 +7,7 @@ import type { CameraStore } from './store/cameras';
 import { Tail2 } from './visca/tail2';
 
 const POLL_MS = 500;
+const STATE_EVERY_POLLS = 4; // live state (tracking, record, focus mode …) every 2 s
 const FAILS_BEFORE_OFFLINE = 3;
 
 export class CameraManager {
@@ -15,6 +16,7 @@ export class CameraManager {
   private readonly failures = new Map<string, number>();
   private timer: NodeJS.Timeout | null = null;
   private polling = false;
+  private pollCount = 0;
 
   constructor(
     private readonly store: CameraStore,
@@ -92,14 +94,23 @@ export class CameraManager {
     return this.store.get(id)?.name ?? id;
   }
 
-  private async probe(id: string, cam: Tail2): Promise<CameraStatus> {
+  private async probe(id: string, cam: Tail2, withState = true): Promise<CameraStatus> {
     const t0 = Date.now();
     const prev = this.status.get(id);
     try {
       const position = await cam.position();
+      const latencyMs = Date.now() - t0;
       this.failures.set(id, 0);
-      if (!prev?.connected) logger.info('visca', `${this.label(id)}: online, ${Date.now() - t0} ms round trip`, id);
-      return this.push({ id, connected: true, latencyMs: Date.now() - t0, position, updatedAt: Date.now() });
+      if (!prev?.connected) logger.info('visca', `${this.label(id)}: online, ${latencyMs} ms round trip`, id);
+      let state = prev?.state;
+      if (withState || !state) {
+        try {
+          state = await cam.liveState();
+        } catch (e) {
+          if (!prev?.state) logger.warn('visca', `${this.label(id)}: state inquiry failed (${errMsg(e)})`, id);
+        }
+      }
+      return this.push({ id, connected: true, latencyMs, position, state, updatedAt: Date.now() });
     } catch (e) {
       const n = (this.failures.get(id) ?? 0) + 1;
       this.failures.set(id, n);
@@ -111,16 +122,24 @@ export class CameraManager {
         connected,
         lastError: errMsg(e),
         position: prev?.position,
+        state: prev?.state,
         updatedAt: Date.now(),
       });
     }
   }
 
+  /** Re-read the live state right away (after the panel changed something). */
+  async refreshState(id: string): Promise<CameraStatus> {
+    return this.probe(id, this.get(id), true);
+  }
+
   private async pollAll(): Promise<void> {
     if (this.polling) return;
     this.polling = true;
+    this.pollCount += 1;
+    const withState = this.pollCount % STATE_EVERY_POLLS === 0;
     try {
-      await Promise.all([...this.cams.entries()].map(([id, cam]) => (cam.isOpen ? this.probe(id, cam) : null)));
+      await Promise.all([...this.cams.entries()].map(([id, cam]) => (cam.isOpen ? this.probe(id, cam, withState) : null)));
     } finally {
       this.polling = false;
     }

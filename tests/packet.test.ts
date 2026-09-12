@@ -81,6 +81,27 @@ describe('commands', () => {
     expect(hex(cmd.orientation(true))).toBe('81 01 04 67 01 ff');
     expect(hex(cmd.home())).toBe('81 01 06 04 ff');
   });
+
+  it('image, exposure and white balance commands', () => {
+    expect(hex(cmd.aiTrackSpeed(2))).toBe('81 01 8e 02 02 01 05 01 05 ff');
+    expect(hex(cmd.aiTrackSpeed(5, 7, 3))).toBe('81 01 8e 02 05 00 07 00 03 ff');
+    expect(hex(cmd.aiAutoZoom(9))).toBe('81 01 8e 03 07 ff'); // clamped
+    expect(hex(cmd.colorTempDirect(5500))).toBe('81 01 04 20 01 05 07 0c ff'); // 0x157c
+    expect(hex(cmd.expCompDirect(18))).toBe('81 01 04 4e 00 00 01 02 ff');
+    expect(hex(cmd.brightDirect(100))).toBe('81 01 04 4d 00 00 06 04 ff');
+    expect(hex(cmd.exposureAuto(false))).toBe('81 01 04 39 03 ff');
+    expect(hex(cmd.wbMode(6))).toBe('81 01 04 35 06 ff');
+    expect(hex(cmd.focusDirect(100))).toBe('81 01 04 48 00 00 06 04 ff');
+  });
+});
+
+describe('state parsers', () => {
+  it('reads two-nibble and four-nibble values and track speed', () => {
+    expect(parse.nib2(Buffer.from([0, 0, 0x06, 0x04]))).toBe(100);
+    expect(parse.nib4(Buffer.from([0x01, 0x05, 0x07, 0x0c]))).toBe(5500);
+    expect(parse.byte(Buffer.from([0x03]))).toBe(3);
+    expect(parse.trackSpeed(Buffer.from([4, 1, 5, 1, 5]))).toEqual({ preset: 4, panAuto: true, panSpeed: 5, tiltAuto: true, tiltSpeed: 5 });
+  });
 });
 
 describe('replies', () => {

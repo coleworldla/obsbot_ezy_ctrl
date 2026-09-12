@@ -23,12 +23,57 @@ export interface Position {
   zoomRatio: number;
 }
 
+/** State polled every couple of seconds so the UI mirrors what the camera is really doing. */
+export interface CameraLiveState {
+  track: boolean;
+  trackMode: 'single' | 'group';
+  record: boolean;
+  portrait: boolean;
+  focusAuto: boolean;
+  exposureAuto: boolean;
+  wbMode: number;
+}
+
+/** Everything else, fetched when the camera panel opens and after each change. */
+export interface CameraImageState {
+  trackSpeed: number; // 0 super lazy … 4 crazy, 5 custom
+  autoZoom: number; // 0 none, 1 close-up … 7 long shot 2
+  onlyMe: boolean;
+  focusPos: number; // 0-100
+  expComp: number; // index 0-18 (-3 … +3 EV)
+  backlight: boolean;
+  flicker: number; // 0 off, 1 50 Hz, 2 60 Hz
+  shutter: number; // shutter index (see SHUTTER_LABELS)
+  gain: number; // ISO / 100
+  colorTemp: number; // K
+  rGain: number;
+  bGain: number;
+  style: number; // 0 standard, 1 outdoor, 2 pastel, 3 custom
+  bright: number;
+  contrast: number;
+  saturation: number;
+  sharpness: number;
+  hue: number;
+}
+
+export type CameraFullState = CameraLiveState & CameraImageState;
+
+export type CameraSet =
+  | { key: 'track' | 'onlyMe' | 'focusAuto' | 'exposureAuto' | 'backlight' | 'record' | 'portrait'; value: boolean }
+  | { key: 'trackMode'; value: 'single' | 'group' }
+  | { key: 'trackSpeed' | 'autoZoom' | 'flicker' | 'wbMode' | 'style' | 'expComp' | 'focusPos' | 'colorTemp' | 'bright' | 'contrast' | 'saturation' | 'sharpness' | 'hue'; value: number }
+  | { key: 'focusPush' | 'wbPush' | 'shutterUp' | 'shutterDown' | 'gainUp' | 'gainDown' | 'rGainUp' | 'rGainDown' | 'bGainUp' | 'bGainDown' | 'expCompReset' | 'colorTempReset' };
+
+/** 0 = off, 1 = program (red), 2 = preview (green). */
+export type Tally = 0 | 1 | 2;
+
 export interface CameraStatus {
   id: string;
   connected: boolean;
   lastError?: string;
   latencyMs?: number;
   position?: Position;
+  state?: CameraLiveState;
   updatedAt: number;
 }
 

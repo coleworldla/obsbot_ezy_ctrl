@@ -2,6 +2,20 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.5.0] - 2026-09-11
+
+Milestone 5: production niceties.
+
+### Added
+- Camera state read-back: tracking, tracking mode, record, orientation, focus mode, exposure mode and white-balance mode are polled every 2 s, so the stage and the TRACK / REC buttons mirror what the camera is really doing (including changes made by gestures or another controller).
+- Camera settings drawer (header button, stage button, or `I`): AI tracking (on/off, single/group, speed, auto-zoom framing, only-me), focus (auto/manual, one-push, position), exposure (auto/manual, compensation, shutter and gain steps, backlight, anti-flicker), white balance (mode, one-push, colour temperature, R/B gain) and image (style, brightness, contrast, saturation, sharpness, hue). Every control is one VISCA command, read back after each change.
+- Tally per camera: program (red) and preview (green) badges on the rack and the stage. Set from the rack's right-click menu, from mappings (`Tally: program / preview / clear` actions), or over OSC: `/cam/<i>/tally <0|1|2>`, `/tally/pgm <i>`, `/tally/pvw <i>`. One program and one preview at a time. Fed back as `/cam/<i>/tally`.
+- Per-camera scope in the Mapping panel: bindings under "Selected camera" follow whatever is on stage; bindings under a CAM tab are pinned to that camera.
+- Fake camera answers every settings inquiry and command, for testing without hardware.
+
+### Changed
+- Rack cards show TRK while the camera reports tracking on.
+
 ## [0.4.0] - 2026-09-11
 
 Milestone 4: map anything.

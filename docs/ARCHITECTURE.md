@@ -73,6 +73,12 @@ interface Preset {
 - `renderer/control/executor.ts` runs invocations against the app (jog + stop, axes with dead zone → 8-way drive with proportional speed, zoom fader coalesced to 80 ms, toggles with explicit 0/1 from OSC, preset recall by index, camera select).
 - Keyboard, MIDI and OSC all go through the same path; the on-screen buttons call the IPC directly.
 
+### camera state and settings (as built in M5)
+- `Tail2.liveState()` (track, track mode, record, orientation, focus mode, exposure mode, WB mode) runs on every 4th position poll (2 s) and rides along in `CameraStatus.state`; the renderer treats it as the truth for the TRACK / REC / ROTATE toggles.
+- `Tail2.fullState()` adds tracking speed, auto-zoom, only-me, focus position, exposure comp, backlight, flicker, shutter, gain, colour temperature, R/B gain, style and the five image sliders; each inquiry is tolerant so one unsupported answer does not sink the rest. Fetched when the camera panel opens and ~500 ms after each change.
+- `Tail2.set(CameraSet)` maps one `{key, value}` onto its VISCA command (`camera:set` over IPC); live-state keys trigger an immediate re-read.
+- Tally is app state only (the Tail 2 exposes no VISCA tally command); it is fed back over OSC for external displays.
+
 ### `midi`
 - `renderer/control/midi.ts`: Web MIDI API (Electron permission handler allows `midi`), hot-plug via `onstatechange`, per-device enable list persisted in settings.
 - Notes: velocity > 0 = press, 0 / note-off = release. CC: continuous actions get value / 127, button actions press at ≥ 64.

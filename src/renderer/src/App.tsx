@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { keyInputFrom, matchMappings, parseBuiltinOsc, type Input, type Invocation, type Mapping } from '../../shared/mapping';
-import type { CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings } from '../../shared/types';
+import type { CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, Tally } from '../../shared/types';
 import { AddCamera } from './components/AddCamera';
+import { CameraPanel } from './components/CameraPanel';
 import { LogPanel } from './components/LogPanel';
-import { MappingPanel, type LearnState, type MonitorEntry } from './components/MappingPanel';
+import { MappingPanel, mappingId, type LearnState, type MonitorEntry } from './components/MappingPanel';
 import { Presets } from './components/Presets';
 import { Rack } from './components/Rack';
 import { Stage } from './components/Stage';
@@ -42,6 +43,8 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [showMapping, setShowMapping] = useState(false);
+  const [showPanel, setShowPanel] = useState(false);
+  const [tally, setTallyMap] = useState<Record<string, Tally>>({});
   const [speed, setSpeed] = useState<Speed>({ pan: 12, tilt: 10 });
   const [presets, setPresets] = useState<Preset[]>([]);
   const [active, setActive] = useState<Record<string, string | null>>({});
@@ -148,6 +151,33 @@ export default function App() {
     setCamStateMap((m) => ({ ...m, [cameraId]: { ...(m[cameraId] ?? { tracking: false, recording: false, portrait: false }), ...patch } }));
   }, []);
 
+  // The camera's polled state is the source of truth for the toggles.
+  useEffect(() => {
+    setCamStateMap((m) => {
+      let changed = false;
+      const next = { ...m };
+      for (const [id, s] of Object.entries(status)) {
+        if (!s.state) continue;
+        const cur = m[id];
+        if (!cur || cur.tracking !== s.state.track || cur.recording !== s.state.record || cur.portrait !== s.state.portrait) {
+          next[id] = { tracking: s.state.track, recording: s.state.record, portrait: s.state.portrait };
+          changed = true;
+        }
+      }
+      return changed ? next : m;
+    });
+  }, [status]);
+
+  /** One program and one preview at a time. */
+  const setTally = useCallback((cameraId: string, t: Tally) => {
+    setTallyMap((m) => {
+      const next: Record<string, Tally> = { ...m };
+      if (t !== 0) for (const id of Object.keys(next)) if (next[id] === t) next[id] = 0;
+      next[cameraId] = t;
+      return next;
+    });
+  }, []);
+
   // Drop the "active" mark once the camera has visibly left the preset (after the move had time to finish).
   useEffect(() => {
     for (const [cameraId, presetId] of Object.entries(active)) {
@@ -178,8 +208,10 @@ export default function App() {
     clearActive,
     camState,
     setCamState,
+    setTally,
     toggleLog: () => setShowLog((v) => !v),
     toggleMapping: () => setShowMapping((v) => !v),
+    togglePanel: () => setShowPanel((v) => !v),
   };
   const executor = useMemo(() => new ActionExecutor(() => ctxRef.current), []);
   const mappingsRef = useRef(mappings);
@@ -212,8 +244,9 @@ export default function App() {
         const action = mappingsRef.current;
         const span = l.actionId === 'preset.recall' ? 64 : l.actionId === 'cam.select' ? 9 : undefined;
         const mapping: Mapping = {
-          id: `midi:${l.actionId}`,
+          id: mappingId('midi', l.actionId, l.camera),
           actionId: l.actionId,
+          camera: l.camera,
           trigger: { type: 'midi', channel: m.channel, kind: m.kind, number: m.number, span: m.kind === 'note' ? span : undefined },
         };
         saveMappings([...action.filter((x) => x.id !== mapping.id), mapping]);
@@ -248,8 +281,9 @@ export default function App() {
         }
         const span = l.actionId === 'preset.recall' || l.actionId === 'cam.select' ? (/^[0-9]$/.test(input.key) ? 9 : undefined) : undefined;
         const mapping: Mapping = {
-          id: `key:${l.actionId}`,
+          id: mappingId('key', l.actionId, l.camera),
           actionId: l.actionId,
+          camera: l.camera,
           trigger: { type: 'key', key: input.key, ctrl: input.ctrl || undefined, shift: input.shift || undefined, alt: input.alt || undefined, span },
         };
         saveMappings([...mappingsRef.current.filter((x) => x.id !== mapping.id), mapping]);
@@ -294,6 +328,16 @@ export default function App() {
       sendFeedback(`/cam/${i}/preset/active`, [presetId ? list.findIndex((p) => p.id === presetId) + 1 : 0]);
     }
   }, [active, cameras, presets, sendFeedback]);
+  const lastTally = useRef<Record<string, Tally>>({});
+  useEffect(() => {
+    cameras.forEach((c, idx) => {
+      const t = tally[c.id] ?? 0;
+      if ((lastTally.current[c.id] ?? 0) !== t) {
+        lastTally.current[c.id] = t;
+        sendFeedback(`/cam/${idx + 1}/tally`, [t]);
+      }
+    });
+  }, [tally, cameras, sendFeedback]);
   const lastOnline = useRef<Record<string, boolean>>({});
   const lastPos = useRef<Record<string, number>>({});
   useEffect(() => {
@@ -329,6 +373,15 @@ export default function App() {
     }
     if (steps.includes('log')) timers.push(window.setTimeout(() => setShowLog(true), 3000));
     if (steps.includes('mapping')) timers.push(window.setTimeout(() => setShowMapping(true), 3000));
+    if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
+    if (steps.includes('tally'))
+      timers.push(
+        window.setTimeout(() => {
+          const c = ctxRef.current;
+          if (c.cameras[0]) c.setTally(c.cameras[0].id, 1);
+          if (c.cameras[1]) c.setTally(c.cameras[1].id, 2);
+        }, 4000),
+      );
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, []);
 
@@ -363,6 +416,9 @@ export default function App() {
         <span className="info" title={oscStatus?.error ?? ''}>
           OSC <span className={`led${oscStatus?.listening ? ' on' : oscStatus?.error ? ' warn' : ''}`} /> {oscStatus?.listening ? `:${oscStatus.port}` : 'off'}
         </span>
+        <button className={`hb${showPanel ? ' active' : ''}`} onClick={() => setShowPanel((v) => !v)} title="Camera settings (I)" disabled={!selected}>
+          Camera
+        </button>
         <button className={`hb${showMapping ? ' active' : ''}`} onClick={() => setShowMapping((v) => !v)} title="Mapping (M)">
           Mapping
         </button>
@@ -377,7 +433,7 @@ export default function App() {
       </header>
 
       <div className="body">
-        <Rack cameras={cameras} status={status} selectedId={selectedId} onSelect={setSelectedId} onAdd={() => setShowAdd(true)} />
+        <Rack cameras={cameras} status={status} selectedId={selectedId} tally={tally} onSelect={setSelectedId} onTally={setTally} onAdd={() => setShowAdd(true)} />
 
         {selected ? (
           <Stage
@@ -390,6 +446,9 @@ export default function App() {
             onManual={() => clearActive(selected.id)}
             camState={camState[selected.id] ?? { tracking: false, recording: false, portrait: false }}
             onCamState={(patch) => setCamState(selected.id, patch)}
+            tally={tally[selected.id] ?? 0}
+            panelOpen={showPanel}
+            onTogglePanel={() => setShowPanel((v) => !v)}
           />
         ) : (
           <div className="stage">
@@ -443,6 +502,8 @@ export default function App() {
           />
         )}
       </div>
+
+      {showPanel && selected && <CameraPanel camera={selected} status={status[selected.id]} onClose={() => setShowPanel(false)} />}
 
       {showLog && (
         <LogPanel

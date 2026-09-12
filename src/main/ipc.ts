@@ -2,7 +2,7 @@ import { BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from '
 import fs from 'node:fs';
 import os from 'node:os';
 import type { Mapping } from '../shared/mapping';
-import type { CameraConfig, CameraInput, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir } from '../shared/types';
+import type { CameraConfig, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir } from '../shared/types';
 import type { CameraManager } from './cameras';
 import { CameraManager as Manager } from './cameras';
 import { errMsg, logger } from './log';
@@ -97,6 +97,15 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
   );
   handle('zoom:drive', (_e, id: string, dir: ZoomDir, speed: number) => manager.get(id).zoom(dir, speed));
   handle('zoom:direct', (_e, id: string, ratio: number) => manager.get(id).zoomTo(ratio));
+
+  // ---- camera settings (tracking / focus / exposure / white balance / image) ----
+  handle('camera:set', async (_e, id: string, s: CameraSet) => {
+    await manager.get(id).set(s);
+    logger.info('visca', `${store.get(id)?.name ?? id}: set ${s.key}${'value' in s ? ` = ${String(s.value)}` : ''}`, id);
+    // Live-state keys are re-read right away so the UI mirrors the camera.
+    if (['track', 'trackMode', 'record', 'portrait', 'focusAuto', 'exposureAuto', 'wbMode'].includes(s.key)) await manager.refreshState(id).catch(() => undefined);
+  });
+  handle('camera:fullState', (_e, id: string) => manager.get(id).fullState());
 
   // ---- other actions ----
   handle('focus:push', (_e, id: string) => manager.get(id).focusOnePush());

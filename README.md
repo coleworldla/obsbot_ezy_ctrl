@@ -29,6 +29,7 @@ Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× 
 - M2 see the picture: first cut in. Live RTSP / SRT video for every camera via a bundled ffmpeg (no re-encode), reconnect, latency readout, Web UI fallback, and a built-in demo test pattern. RTSP path not yet verified against a real Tail 2.
 - M3 unlimited presets: done. Save with thumbnail, recall by click or `1-9`, reorder, rename, import/export, store into camera slots. Plus an in-app Log drawer backed by a log file.
 - M4 map anything: done. Mapping panel with MIDI learn, OSC in (built-in address scheme + custom triggers) and OSC feedback, remappable keyboard. Not yet tried with a physical MIDI controller.
+- M5 production niceties: done. Camera state read-back, camera settings drawer (AI tracking, focus, exposure, white balance, image), program / preview tally, per-camera mapping scope.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and the GitHub issues for individual features.
 
@@ -57,7 +58,11 @@ No camera at all? `npm run fake-camera` starts a fake Tail 2 that answers VISCA 
 
 Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits; `EZY_AUTOTEST=presets,log` runs a scripted interaction for those screenshots.
 
-Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `L` log · `M` mapping.
+Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `I` camera settings · `L` log · `M` mapping.
+
+**Camera settings** (`I`): AI tracking mode, speed and auto-zoom framing, only-me; focus auto/manual with position; exposure auto/manual with compensation, shutter, gain, backlight and anti-flicker; white balance modes with colour temperature and R/B gain; image style, brightness, contrast, saturation, sharpness, hue. The drawer reads the camera's real values and re-reads after each change.
+
+**Tally**: right-click a camera in the rack to mark it program (red) or preview (green), or drive it from a switcher over OSC (`/tally/pgm <i>`, `/tally/pvw <i>`, or `/cam/<i>/tally <0|1|2>`).
 
 ## MIDI and OSC
 
@@ -72,6 +77,7 @@ Open **Mapping** (top right or `M`). Every control is a row.
   /cam/<i>/ptz/speed <1..24>   /cam/<i>/home              /cam/<i>/zoom <1..12>
   /cam/<i>/zoom/tele [0|1]     /cam/<i>/zoom/wide [0|1]   /cam/<i>/track [0|1]
   /cam/<i>/record [0|1]        /cam/<i>/rotate [0|1]      /cam/<i>/focus/push
+  /cam/<i>/tally <0|1|2>       /tally/pgm <i>             /tally/pvw <i>
   ```
 
   `<i>` is the camera number in the rack (1, 2, …) or `sel` for the selected one; `<dir>` is up, down, left, right, upleft, upright, downleft, downright. *Copy address list* in the panel gives you the full expanded list for TouchOSC or Bitfocus Companion (generic OSC module).
