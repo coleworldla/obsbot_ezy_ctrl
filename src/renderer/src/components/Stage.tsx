@@ -9,6 +9,10 @@ interface Props {
   speed: Speed;
   onSpeed: (s: Speed) => void;
   onRemove: () => void;
+  /** "P4 · Podium" while the camera sits on a recalled preset. */
+  activePresetName?: string;
+  /** Called on any manual move so the active-preset mark is dropped. */
+  onManual: () => void;
 }
 
 const Arrow = ({ d }: { d: string }) => (
@@ -31,7 +35,7 @@ const JOG: { dir: JogDir; key: string; d: string }[] = [
 
 const fmt = (n: number | undefined) => (n === undefined ? '—' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}°`);
 
-export function Stage({ camera, status, speed, onSpeed, onRemove }: Props) {
+export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetName, onManual }: Props) {
   const id = camera.id;
   const [tracking, setTracking] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -46,11 +50,18 @@ export function Stage({ camera, status, speed, onSpeed, onRemove }: Props) {
   }, [status?.position]);
 
   const fire = (p: Promise<unknown>) => p.catch(() => undefined);
-  const jog = (dir: JogDir) => fire(window.ezy.ptz.drive(id, dir, speed.pan, speed.tilt));
-  const zoom = (dir: ZoomDir) => fire(window.ezy.zoom.drive(id, dir, 3));
+  const jog = (dir: JogDir) => {
+    if (dir !== 'stop') onManual();
+    return fire(window.ezy.ptz.drive(id, dir, speed.pan, speed.tilt));
+  };
+  const zoom = (dir: ZoomDir) => {
+    if (dir !== 'stop') onManual();
+    return fire(window.ezy.zoom.drive(id, dir, 3));
+  };
 
   const onZoomInput = (v: number) => {
     setZoomSlider(v);
+    onManual();
     draggingZoom.current = true;
     if (zoomTimer.current) window.clearTimeout(zoomTimer.current);
     zoomTimer.current = window.setTimeout(() => {
@@ -92,18 +103,17 @@ export function Stage({ camera, status, speed, onSpeed, onRemove }: Props) {
           {online ? 'VISCA ONLINE' : status?.lastError ? `OFFLINE · ${status.lastError}` : 'CONNECTING…'}
         </div>
         <div className="ov bl">
-          PAN {fmt(p?.panDeg)} &nbsp; TILT {fmt(p?.tiltDeg)} &nbsp; ZOOM {p ? `${p.zoomRatio.toFixed(1)}×` : '—'}
+          PAN {fmt(p?.panDeg)} &nbsp; TILT {fmt(p?.tiltDeg)} &nbsp; ZOOM {p ? `${p.zoomRatio.toFixed(1)}×` : '—'} &nbsp;·&nbsp; TRACK {tracking ? 'on' : 'off'} · REC{' '}
+          {recording ? 'on' : 'off'} · {portrait ? 'PORTRAIT' : 'LANDSCAPE'}
         </div>
-        <div className="ov br">
-          TRACK {tracking ? 'on' : 'off'} · REC {recording ? 'on' : 'off'} · {portrait ? 'PORTRAIT' : 'LANDSCAPE'}
-        </div>
+        {activePresetName && <div className="ov br preset">{activePresetName}</div>}
       </div>
 
       <div className="transport">
         <div className="jog">
           {JOG.map((j) =>
             j.dir === 'stop' ? (
-              <button key="home" className="b accent" disabled={!online} onClick={() => fire(window.ezy.ptz.home(id))}>
+              <button key="home" className="b accent" disabled={!online} onClick={() => { onManual(); fire(window.ezy.ptz.home(id)); }}>
                 HOME
               </button>
             ) : (

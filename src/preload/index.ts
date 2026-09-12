@@ -1,7 +1,27 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { CameraConfig, CameraInput, CameraStatus, JogDir, Position, TestResult, VideoEvent, ZoomDir } from '../shared/types';
+import type {
+  CameraConfig,
+  CameraInput,
+  CameraStatus,
+  JogDir,
+  LogEntry,
+  LogLevel,
+  Position,
+  Preset,
+  PresetPatch,
+  RecallSpeed,
+  TestResult,
+  VideoEvent,
+  ZoomDir,
+} from '../shared/types';
 
 const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> => ipcRenderer.invoke(channel, ...args) as Promise<T>;
+
+const on = <T>(channel: string, cb: (payload: T) => void): (() => void) => {
+  const handler = (_e: IpcRendererEvent, payload: T) => cb(payload);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.off(channel, handler);
+};
 
 export const api = {
   cameras: {
@@ -31,23 +51,39 @@ export const api = {
   track: (id: string, on: boolean) => invoke<void>('ai:track', id, on),
   record: (id: string, on: boolean) => invoke<void>('record', id, on),
   orientation: (id: string, vertical: boolean) => invoke<void>('orientation', id, vertical),
-  preset: {
+  /** The camera's own VISCA preset slots (0-255). */
+  cameraPreset: {
     recall: (id: string, n: number) => invoke<void>('preset:recall', id, n),
     set: (id: string, n: number) => invoke<void>('preset:set', id, n),
   },
-  onStatus: (cb: (s: CameraStatus) => void): (() => void) => {
-    const handler = (_e: IpcRendererEvent, s: CameraStatus) => cb(s);
-    ipcRenderer.on('camera:status', handler);
-    return () => ipcRenderer.off('camera:status', handler);
+  /** App-side presets: unlimited, recalled with absolute moves. */
+  presets: {
+    list: (cameraId?: string) => invoke<Preset[]>('presets:list', cameraId),
+    save: (cameraId: string, name: string, thumbnail?: string) => invoke<Preset>('presets:save', cameraId, name, thumbnail),
+    recall: (id: string, speed: RecallSpeed) => invoke<void>('presets:recall', id, speed),
+    update: (id: string, patch: PresetPatch) => invoke<Preset>('presets:update', id, patch),
+    updatePosition: (id: string) => invoke<Preset>('presets:updatePosition', id),
+    remove: (id: string) => invoke<void>('presets:remove', id),
+    reorder: (cameraId: string, ids: string[]) => invoke<Preset[]>('presets:reorder', cameraId, ids),
+    mirror: (id: string, slot: number) => invoke<Preset>('presets:mirror', id, slot),
+    export: (cameraId?: string) => invoke<string | null>('presets:export', cameraId),
+    import: (cameraId: string) => invoke<number>('presets:import', cameraId),
   },
+  log: {
+    list: () => invoke<LogEntry[]>('log:list'),
+    clear: () => invoke<void>('log:clear'),
+    reveal: () => invoke<string | null>('log:reveal'),
+    report: (level: LogLevel, message: string) => invoke<void>('log:report', level, message),
+    onEntry: (cb: (e: LogEntry) => void) => on<LogEntry>('log:entry', cb),
+  },
+  onStatus: (cb: (s: CameraStatus) => void) => on<CameraStatus>('camera:status', cb),
   video: {
     subscribe: (id: string) => invoke<void>('video:subscribe', id),
     unsubscribe: (id: string) => invoke<void>('video:unsubscribe', id),
-    onEvent: (cb: (ev: VideoEvent) => void): (() => void) => {
-      const handler = (_e: IpcRendererEvent, ev: VideoEvent) => cb(ev);
-      ipcRenderer.on('video:event', handler);
-      return () => ipcRenderer.off('video:event', handler);
-    },
+    onEvent: (cb: (ev: VideoEvent) => void) => on<VideoEvent>('video:event', cb),
+  },
+  env: {
+    autotest: process.env.EZY_AUTOTEST ?? '',
   },
 };
 

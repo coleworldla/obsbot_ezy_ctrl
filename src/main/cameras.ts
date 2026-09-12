@@ -2,6 +2,7 @@
  * Owns one Tail2 connection per configured camera and polls position for the UI.
  */
 import type { CameraConfig, CameraStatus, TestResult } from '../shared/types';
+import { errMsg, logger } from './log';
 import type { CameraStore } from './store/cameras';
 import { Tail2 } from './visca/tail2';
 
@@ -39,15 +40,18 @@ export class CameraManager {
     if (!cam) {
       cam = new Tail2(cfg.host, cfg.viscaPort);
       this.cams.set(id, cam);
+      logger.info('visca', `${cfg.name}: connecting to ${cfg.host}:${cfg.viscaPort}`, id);
     }
     if (!cam.isOpen) await cam.open();
     return this.probe(id, cam);
   }
 
   disconnect(id: string): void {
+    const had = this.cams.has(id);
     this.cams.get(id)?.close();
     this.cams.delete(id);
     this.failures.delete(id);
+    if (had) logger.info('visca', `${this.label(id)}: disconnected`, id);
     this.push({ id, connected: false, updatedAt: Date.now() });
   }
 
@@ -74,29 +78,38 @@ export class CameraManager {
       await cam.open();
       const t0 = Date.now();
       const position = await cam.position();
+      logger.info('visca', `test ${host}:${port}: reply in ${Date.now() - t0} ms`);
       return { ok: true, latencyMs: Date.now() - t0, position };
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      logger.warn('visca', `test ${host}:${port}: ${errMsg(e)}`);
+      return { ok: false, error: errMsg(e) };
     } finally {
       cam.close();
     }
   }
 
+  private label(id: string): string {
+    return this.store.get(id)?.name ?? id;
+  }
+
   private async probe(id: string, cam: Tail2): Promise<CameraStatus> {
     const t0 = Date.now();
+    const prev = this.status.get(id);
     try {
       const position = await cam.position();
       this.failures.set(id, 0);
+      if (!prev?.connected) logger.info('visca', `${this.label(id)}: online, ${Date.now() - t0} ms round trip`, id);
       return this.push({ id, connected: true, latencyMs: Date.now() - t0, position, updatedAt: Date.now() });
     } catch (e) {
       const n = (this.failures.get(id) ?? 0) + 1;
       this.failures.set(id, n);
-      const prev = this.status.get(id);
       const connected = n < FAILS_BEFORE_OFFLINE && (prev?.connected ?? false);
+      if (n === 1 && prev?.connected) logger.warn('visca', `${this.label(id)}: ${errMsg(e)}`, id);
+      if (n === FAILS_BEFORE_OFFLINE) logger.error('visca', `${this.label(id)}: offline after ${n} failed polls (${errMsg(e)})`, id);
       return this.push({
         id,
         connected,
-        lastError: e instanceof Error ? e.message : String(e),
+        lastError: errMsg(e),
         position: prev?.position,
         updatedAt: Date.now(),
       });

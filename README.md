@@ -27,6 +27,7 @@ Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× 
 - M0 research + UI design: done. Direction chosen: **Rack** (multi-camera first).
 - M1 talk to the camera: first cut in. VISCA-over-IP client with tests, add camera by IP, jog / zoom / home, live position read-back. Not yet verified against a real Tail 2.
 - M2 see the picture: first cut in. Live RTSP / SRT video for every camera via a bundled ffmpeg (no re-encode), reconnect, latency readout, Web UI fallback, and a built-in demo test pattern. RTSP path not yet verified against a real Tail 2.
+- M3 unlimited presets: done. Save with thumbnail, recall by click or `1-9`, reorder, rename, import/export, store into camera slots. Plus an in-app Log drawer backed by a log file.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and the GitHub issues for individual features.
 
@@ -51,9 +52,13 @@ npm run build      # bundles to out/
 
 On the camera: put the Tail 2 on the same LAN, find its IP (OBSBOT Center → Device Management, or the Web UI), turn on **RTSP mode** (OBSBOT Center → More → Output → RTSP), and in the app press **Add camera**, type the IP, then **Test connection**. No camera handy? Pick the **Demo** video source to see the whole thing run on a test pattern.
 
-Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits.
+No camera at all? `npm run fake-camera` starts a fake Tail 2 that answers VISCA on `127.0.0.1:52381`; add a Demo camera with that IP and you get picture, position read-back and presets.
 
-Keyboard: `1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed.
+Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits; `EZY_AUTOTEST=presets,log` runs a scripted interaction for those screenshots.
+
+Keyboard: `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `L` log.
+
+When something misbehaves, open **Log** (top right). It lists VISCA connection changes, ffmpeg errors, failed commands and app errors; "Open log file" reveals `logs/ezy-ctrl.log` in the config folder (`%APPDATA%\EZY CTRL` for the installed app).
 
 ## Repo layout
 
@@ -62,13 +67,16 @@ src/
   main/                  # Electron main process
     visca/               #   packet.ts (framing, nibbles) · commands.ts (Tail 2 command set) · client.ts (UDP) · tail2.ts (friendly API)
     store/cameras.ts     #   cameras.json persistence
+    store/presets.ts     #   presets.json persistence (unlimited app-side presets)
+    log.ts               #   ring buffer + log file behind the in-app Log drawer
     cameras.ts           #   one connection per camera + position polling
     video/               #   ffmpeg.ts (args, binary path) · stream.ts (process + restart) · mp4.ts (box splitter, codec) · manager.ts (fan-out over IPC)
     ipc.ts               #   IPC handlers
   preload/               # window.ezy bridge
   renderer/              # React UI (rack, stage, viewport, add-camera dialog); video/player.ts = MediaSource player per camera
   shared/types.ts
-tests/                   # vitest: framing + fake camera over loopback
+scripts/fake-tail2.mjs   # fake camera for development (npm run fake-camera)
+tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store
 docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit
   protocol/

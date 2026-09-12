@@ -46,17 +46,26 @@ Electron gives us Node in the main process for UDP (VISCA + OSC), the Web MIDI A
 - Demo source: `-f lavfi -i testsrc2 ... -c:v libx264 -tune zerolatency` for trying the app without a camera.
 - Later: WebRTC via go2rtc for sub-200 ms, NDI via the NDI SDK.
 
-### `presets`
+### `presets` (as built in M3)
 ```ts
 interface Preset {
   id: string; cameraId: string; name: string;
-  pan: number; tilt: number; zoom: number; focus?: number;   // native VISCA units
-  speed: { pan: number; tilt: number };                        // 1-24 / 1-23
-  thumbnail?: string;                                          // JPEG data URL from the viewport
-  order: number; color?: string;
+  panDeg: number; tiltDeg: number; zoomRatio: number;   // degrees / ratio, converted to VISCA units on recall
+  thumbnail?: string;                                   // 240 px JPEG data URL captured from the live <video>
+  order: number; cameraSlot?: number;                   // cameraSlot: mirrored into the camera's own slot 0-255
+  createdAt: number; updatedAt: number;
 }
 ```
-Recall = `PAN TILT ABS` + `ZOOM DIRECT` (+ `FOCUS DIRECT` if stored). Unlimited count.
+- `store/presets.ts`: `presets.json`, cached in memory, atomic write-through. Import/export as `{version, app, presets}`.
+- Save = fresh pan/tilt + zoom inquiry in main, thumbnail from the renderer's player.
+- Recall = `PAN TILT ABS` (recall speed from the rail footer) + `ZOOM DIRECT`, fired together.
+- Active preset lives in the renderer: set on recall/save, cleared by any manual move or when the polled position drifts > 1 deg / 0.15x after a 5 s grace.
+- Mirror = recall at full speed, wait 400 ms, `PRESET SET slot`.
+
+### `log`
+- `log.ts`: ring buffer of 2000 entries + `logs/ezy-ctrl.log` (5 MB rotation) under userData, mirrored to the console.
+- Sources: `visca` (connect / online / offline transitions, test probes), `video` (stream start, codec, ffmpeg errors, exits), `preset`, `ipc` (any failed handler), `ui` (renderer exceptions, player errors), `app`.
+- Renderer gets the buffer on start and live entries over `log:entry`; the Log drawer filters by level and text.
 
 ### `actions`
 Every control is an `Action { id, label, run(ctx, value?) }`. UI buttons, keyboard, MIDI and OSC all call the same registry, so a mapping is just `{ trigger, actionId, args }`.

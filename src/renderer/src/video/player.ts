@@ -218,6 +218,7 @@ export class VideoPlayer {
   private setState(state: PlayerState, reason?: string): void {
     if (this.stats.state === state && this.stats.reason === reason) return;
     this.stats = { ...this.stats, state, reason };
+    if (state === 'error') void window.ezy?.log.report('error', `video player ${this.id}: ${reason ?? 'error'}`);
     this.notify();
   }
 

@@ -2,6 +2,23 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.3.0] - 2026-09-11
+
+Milestone 3: unlimited presets, plus an in-app log.
+
+### Added
+- Presets rail (right side): Save captures the camera's exact pan / tilt / zoom and a thumbnail from the live picture. No limit on the count; they live in the app, not in the camera's slots.
+- Click a preset to recall it with an absolute move at the recall speed set in the footer. Number keys `1-9` recall the first nine; `Ctrl+S` saves.
+- Active preset is highlighted and shown on the viewport ("P1 · Wide stage"); any manual move or a drift away from the position clears it.
+- Drag to reorder, double-click to rename, right-click (or the ⋯ button) for Update to current position, Update thumbnail, Store in camera slot (0-255, so other VISCA controllers can recall it), Delete.
+- Import / Export presets as JSON.
+- Log drawer (header button or `L`): VISCA connection changes, ffmpeg / video errors, failed commands, preset actions and renderer exceptions, with level filter and text search. Backed by `logs/ezy-ctrl.log` in the config folder ("Open log file").
+- Fake Tail 2 for development: `npm run fake-camera` answers VISCA on 127.0.0.1:52381 with moving pan / tilt / zoom.
+
+### Changed
+- Camera selection moved to `Ctrl+1-9` (plain digits now recall presets).
+- Removing a camera also removes its presets.
+
 ## [0.2.0] - 2026-09-11
 
 Milestone 2: see the picture.

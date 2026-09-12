@@ -20,7 +20,10 @@ interface Entry {
 export class VideoManager {
   private readonly entries = new Map<string, Entry>();
 
-  constructor(private readonly log: (line: string) => void = () => undefined) {}
+  constructor(
+    private readonly log: (line: string) => void = () => undefined,
+    private readonly logError: (line: string) => void = log,
+  ) {}
 
   /** Start (or keep) streaming a camera and deliver frames to `wc`. */
   subscribe(cfg: CameraConfig, wc: WebContents): void {
@@ -80,11 +83,11 @@ export class VideoManager {
       this.broadcast(cfg.id, { kind: 'segment', id: cfg.id, session: stream.session, data });
     });
     stream.on('exit', (reason: string) => {
-      this.log(`[${cfg.name}] stream ${stream.session} ended: ${reason}`);
+      this.logError(`[${cfg.name}] stream ${stream.session} ended: ${reason}`);
       this.broadcast(cfg.id, { kind: 'end', id: cfg.id, session: stream.session, reason });
     });
     stream.on('log', (line: string) => {
-      if (/error|fail|refused|timed out|unauthorized|invalid/i.test(line)) this.log(`[${cfg.name}] ${line}`);
+      if (/error|fail|refused|timed out|unauthorized|invalid|not found|denied/i.test(line)) this.logError(`[${cfg.name}] ffmpeg: ${line}`);
     });
     return stream;
   }

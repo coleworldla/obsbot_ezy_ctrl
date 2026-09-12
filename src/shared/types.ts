@@ -52,6 +52,50 @@ export interface TestResult {
   error?: string;
 }
 
+/** An app-side preset: exact pan/tilt/zoom, recalled with an absolute move. No count limit. */
+export interface Preset {
+  id: string;
+  cameraId: string;
+  name: string;
+  panDeg: number;
+  tiltDeg: number;
+  zoomRatio: number;
+  /** JPEG data URL captured from the viewport when saved. */
+  thumbnail?: string;
+  order: number;
+  /** Set when the preset has also been stored into one of the camera's own VISCA slots (0-255). */
+  cameraSlot?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type PresetInput = Pick<Preset, 'cameraId' | 'name' | 'panDeg' | 'tiltDeg' | 'zoomRatio' | 'thumbnail'>;
+export type PresetPatch = Partial<Pick<Preset, 'name' | 'panDeg' | 'tiltDeg' | 'zoomRatio' | 'thumbnail' | 'cameraSlot'>>;
+
+export interface RecallSpeed {
+  pan: number;
+  tilt: number;
+}
+
+export interface PresetExport {
+  version: 1;
+  app: 'obsbot-ezy-ctrl';
+  exportedAt: string;
+  presets: Preset[];
+}
+
+export type LogLevel = 'info' | 'warn' | 'error';
+
+export interface LogEntry {
+  id: number;
+  ts: number;
+  level: LogLevel;
+  /** Where it came from: visca, video, preset, ipc, ui, app. */
+  source: string;
+  message: string;
+  cameraId?: string;
+}
+
 export const DEFAULT_VISCA_PORT = 52381;
 export const DEFAULT_RTSP_PORT = 8554;
 

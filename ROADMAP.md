@@ -21,10 +21,13 @@ Each milestone maps to GitHub issues (labelled by milestone). Order is the inten
 - [x] Demo test-pattern source for trying the app without a camera
 - [ ] Verify against a Tail 2: RTSP URL/auth, GOP/latency, H.264 vs H.265 output, SRT caller mode
 
-## M3 — Unlimited presets
-- Preset = pan, tilt, zoom, (focus), thumbnail, recall speed. Stored in app data, no camera-slot cap.
-- Save from current position, recall with absolute move, rename, reorder, delete, import/export JSON.
-- Optional: mirror a preset into one of the camera's 256 VISCA slots for other controllers.
+## M3 — Unlimited presets  (done 2026-09-11, v0.3.0)
+- [x] Preset = pan, tilt, zoom, thumbnail. Stored in `presets.json`, no camera-slot cap — `src/main/store/presets.ts`
+- [x] Save from current position, recall with absolute move at a chosen speed, rename, drag-reorder, delete, import/export JSON
+- [x] Mirror a preset into one of the camera's 256 VISCA slots for other controllers
+- [x] Active-preset highlight on the rail and the viewport; `1-9` recall, `Ctrl+S` save
+- [x] In-app Log drawer + log file (added on request), fake Tail 2 for development
+- [ ] Focus position in presets (needs manual-focus handling)
 
 ## M4 — Map anything
 - Action registry: every control is an action with a stable id.
