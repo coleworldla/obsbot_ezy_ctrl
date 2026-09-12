@@ -78,7 +78,9 @@ export function LogPanel({ entries, cameraNames, onClear, onClose }: Props) {
             <span className="lt">{time(e.ts)}</span>
             <span className={`ll ${e.level}`}>{e.level.toUpperCase()}</span>
             <span className="ls">{e.source}</span>
-            {e.cameraId && cameraNames[e.cameraId] && <span className="lc">{cameraNames[e.cameraId]}</span>}
+            {e.cameraId && cameraNames[e.cameraId] && !e.message.startsWith(cameraNames[e.cameraId]) && (
+              <span className="lc">{cameraNames[e.cameraId]}</span>
+            )}
             <span className="lm">{e.message}</span>
           </div>
         ))}
