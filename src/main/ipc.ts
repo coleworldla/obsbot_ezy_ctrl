@@ -1,23 +1,45 @@
 import { BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron';
 import fs from 'node:fs';
-import type { CameraConfig, CameraInput, JogDir, LogLevel, PresetPatch, RecallSpeed, ZoomDir } from '../shared/types';
+import os from 'node:os';
+import type { Mapping } from '../shared/mapping';
+import type { CameraConfig, CameraInput, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir } from '../shared/types';
 import type { CameraManager } from './cameras';
 import { CameraManager as Manager } from './cameras';
 import { errMsg, logger } from './log';
+import type { OscServer } from './osc/server';
 import type { CameraStore } from './store/cameras';
+import type { MappingStore } from './store/mappings';
 import type { PresetStore } from './store/presets';
+import type { SettingsStore } from './store/settings';
 import type { VideoManager } from './video/manager';
 
 export interface IpcDeps {
   store: CameraStore;
   presets: PresetStore;
+  settings: SettingsStore;
+  mappings: MappingStore;
   manager: CameraManager;
   video: VideoManager;
+  osc: OscServer;
+  /** Re-apply OSC settings (start/stop/rebind the listener). */
+  applyOsc: () => Promise<void>;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export function registerIpc({ store, presets, manager, video }: IpcDeps): void {
+export function localAddresses(): string[] {
+  const out: string[] = [];
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const i of list ?? []) if (i.family === 'IPv4' && !i.internal) out.push(i.address);
+  }
+  return out;
+}
+
+export function oscStatusOf(osc: OscServer): OscStatus {
+  return { listening: osc.listening, port: osc.port, error: osc.lastError, addresses: localAddresses() };
+}
+
+export function registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc }: IpcDeps): void {
   /** Register a handler whose failures are logged (and still rejected to the renderer). */
   const handle = <A extends unknown[], R>(channel: string, fn: (e: IpcMainInvokeEvent, ...args: A) => R | Promise<R>) => {
     ipcMain.handle(channel, async (e, ...args) => {
@@ -148,6 +170,28 @@ export function registerIpc({ store, presets, manager, video }: IpcDeps): void {
     const n = presets.import(JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')), cameraId);
     logger.info('preset', `imported ${n} presets from ${r.filePaths[0]}`, cameraId);
     return n;
+  });
+
+  // ---- settings, mappings, OSC ----
+  handle('settings:get', () => settings.get());
+  handle('settings:set', async (_e, patch: Partial<Settings>) => {
+    const s = settings.set(patch);
+    await applyOsc();
+    return s;
+  });
+  handle('mappings:list', () => mappings.list());
+  handle('mappings:save', (_e, list: Mapping[]) => {
+    const saved = mappings.save(list);
+    logger.info('app', `saved ${saved.length} mappings`);
+    return saved;
+  });
+  handle('mappings:reset', () => mappings.resetToDefaults());
+  handle('osc:status', () => oscStatusOf(osc));
+  handle('osc:send', (_e, address: string, args: (number | string | boolean)[]) => {
+    const s = settings.get().osc;
+    if (!s.feedbackEnabled || !s.feedbackHost) return false;
+    osc.send(s.feedbackHost, s.feedbackPort, address, args);
+    return true;
   });
 
   // ---- log ----

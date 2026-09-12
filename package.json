@@ -1,6 +1,6 @@
 {
   "name": "obsbot-ezy-ctrl",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Easy MIDI/OSC-mappable controller with live viewport and unlimited presets for OBSBOT Tail 2 cameras",
   "main": "./out/main/index.js",
   "private": true,
@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "dist": "electron-vite build && electron-builder --win --publish never",
     "dist:dir": "electron-vite build && electron-builder --win --dir",
-    "fake-camera": "node scripts/fake-tail2.mjs"
+    "fake-camera": "node scripts/fake-tail2.mjs",
+    "osc-send": "node scripts/osc-send.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

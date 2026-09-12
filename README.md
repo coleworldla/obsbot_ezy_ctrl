@@ -28,6 +28,7 @@ Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× 
 - M1 talk to the camera: first cut in. VISCA-over-IP client with tests, add camera by IP, jog / zoom / home, live position read-back. Not yet verified against a real Tail 2.
 - M2 see the picture: first cut in. Live RTSP / SRT video for every camera via a bundled ffmpeg (no re-encode), reconnect, latency readout, Web UI fallback, and a built-in demo test pattern. RTSP path not yet verified against a real Tail 2.
 - M3 unlimited presets: done. Save with thumbnail, recall by click or `1-9`, reorder, rename, import/export, store into camera slots. Plus an in-app Log drawer backed by a log file.
+- M4 map anything: done. Mapping panel with MIDI learn, OSC in (built-in address scheme + custom triggers) and OSC feedback, remappable keyboard. Not yet tried with a physical MIDI controller.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and the GitHub issues for individual features.
 
@@ -56,7 +57,26 @@ No camera at all? `npm run fake-camera` starts a fake Tail 2 that answers VISCA 
 
 Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits; `EZY_AUTOTEST=presets,log` runs a scripted interaction for those screenshots.
 
-Keyboard: `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `L` log.
+Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `L` log · `M` mapping.
+
+## MIDI and OSC
+
+Open **Mapping** (top right or `M`). Every control is a row.
+
+- **MIDI**: click *Learn* on a row, then press a button or move a knob on your controller. Buttons work with notes or CC (≥ 64 = press). Knobs and faders drive zoom level, jog speed, and the pan / tilt axes (centre = stop). For *Recall preset* the learned note becomes preset 1 and the next 63 notes follow; for *Select camera* the next 8 notes follow. Devices can be switched off individually.
+- **OSC in**: the app listens on UDP 9000 (change it in the panel). The address scheme is always on, no mapping needed:
+
+  ```
+  /cam/select <n>              /cam/<i>/preset/<n>        /cam/<i>/preset/save
+  /cam/<i>/ptz/<dir> [0|1]     /cam/<i>/ptz/pan <-1..1>   /cam/<i>/ptz/tilt <-1..1>
+  /cam/<i>/ptz/speed <1..24>   /cam/<i>/home              /cam/<i>/zoom <1..12>
+  /cam/<i>/zoom/tele [0|1]     /cam/<i>/zoom/wide [0|1]   /cam/<i>/track [0|1]
+  /cam/<i>/record [0|1]        /cam/<i>/rotate [0|1]      /cam/<i>/focus/push
+  ```
+
+  `<i>` is the camera number in the rack (1, 2, …) or `sel` for the selected one; `<dir>` is up, down, left, right, upleft, upright, downleft, downright. *Copy address list* in the panel gives you the full expanded list for TouchOSC or Bitfocus Companion (generic OSC module).
+- **OSC feedback**: switch it on and point it at a host:port to receive `/cam/select`, `/cam/<i>/preset/active <n>`, `/cam/<i>/online <0|1>` and `/cam/<i>/position <pan> <tilt> <zoom>` (4 Hz).
+- Test from a terminal: `npm run osc-send -- /cam/1/preset/2` (add `host:port` first to target another machine).
 
 When something misbehaves, open **Log** (top right). It lists VISCA connection changes, ffmpeg errors, failed commands and app errors; "Open log file" reveals `logs/ezy-ctrl.log` in the config folder (`%APPDATA%\EZY CTRL` for the installed app).
 
@@ -69,14 +89,20 @@ src/
     store/cameras.ts     #   cameras.json persistence
     store/presets.ts     #   presets.json persistence (unlimited app-side presets)
     log.ts               #   ring buffer + log file behind the in-app Log drawer
+    osc/                 #   codec.ts (OSC 1.0) · server.ts (UDP in/out)
+    store/settings.ts    #   settings.json (OSC ports, feedback target, disabled MIDI devices)
+    store/mappings.ts    #   mappings.json (the mapping table)
     cameras.ts           #   one connection per camera + position polling
     video/               #   ffmpeg.ts (args, binary path) · stream.ts (process + restart) · mp4.ts (box splitter, codec) · manager.ts (fan-out over IPC)
     ipc.ts               #   IPC handlers
   preload/               # window.ezy bridge
-  renderer/              # React UI (rack, stage, viewport, add-camera dialog); video/player.ts = MediaSource player per camera
+  renderer/              # React UI (rack, stage, viewport, presets, mapping panel, log); video/player.ts = MediaSource player per camera
+    src/control/         #   midi.ts (Web MIDI inputs) · executor.ts (runs actions against the app)
   shared/types.ts
+  shared/mapping.ts      # action registry, mapping model, MIDI/key/OSC matching, built-in OSC scheme
 scripts/fake-tail2.mjs   # fake camera for development (npm run fake-camera)
-tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store
+scripts/osc-send.mjs     # send a test OSC message (npm run osc-send -- /cam/1/home)
+tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store, mapping logic, OSC codec
 docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit
   protocol/

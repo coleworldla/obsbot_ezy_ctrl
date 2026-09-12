@@ -67,19 +67,22 @@ interface Preset {
 - Sources: `visca` (connect / online / offline transitions, test probes), `video` (stream start, codec, ffmpeg errors, exits), `preset`, `ipc` (any failed handler), `ui` (renderer exceptions, player errors), `app`.
 - Renderer gets the buffer on start and live entries over `log:entry`; the Log drawer filters by level and text.
 
-### `actions`
-Every control is an `Action { id, label, run(ctx, value?) }`. UI buttons, keyboard, MIDI and OSC all call the same registry, so a mapping is just `{ trigger, actionId, args }`.
-
-Examples: `ptz.jog` (dx, dy, speed), `ptz.home`, `zoom.set` (1-12), `zoom.tele`, `zoom.wide`, `preset.recall` (presetId), `preset.save`, `ai.track.toggle`, `record.toggle`, `orientation.toggle`, `camera.select`.
-
-### `osc`
-- Listen on UDP 9000 (configurable), send feedback on 9001.
-- Address scheme: `/cam/<index|name>/preset/<n>`, `/cam/<i>/ptz/jog <dx> <dy>`, `/cam/<i>/zoom <1..12>`, `/cam/<i>/track <0|1>`, `/cam/<i>/home`.
-- Works with TouchOSC, Bitfocus Companion (generic OSC), QLab, etc.
+### `actions` (as built in M4)
+- `shared/mapping.ts` holds the registry: `ActionDef { id, label, group, kind: trigger | momentary | toggle | continuous, arg?: preset | camera, osc, range?, key? }` and the mapping model `Mapping { id, actionId, arg?, camera?, trigger }` with `Trigger = midi | osc | key`.
+- Pure matching: `matchMappings(mappings, input)` turns a key / MIDI / OSC input into `Invocation { actionId, phase: press | release | value, arg?, camera?, value?, unit }`. Spans map a note or digit range onto preset / camera numbers.
+- `renderer/control/executor.ts` runs invocations against the app (jog + stop, axes with dead zone → 8-way drive with proportional speed, zoom fader coalesced to 80 ms, toggles with explicit 0/1 from OSC, preset recall by index, camera select).
+- Keyboard, MIDI and OSC all go through the same path; the on-screen buttons call the IPC directly.
 
 ### `midi`
-- Web MIDI API in the renderer; note-on -> momentary/toggle actions, CC -> continuous (zoom level, jog speed).
-- Learn mode: click a control, move a MIDI control, done.
+- `renderer/control/midi.ts`: Web MIDI API (Electron permission handler allows `midi`), hot-plug via `onstatechange`, per-device enable list persisted in settings.
+- Notes: velocity > 0 = press, 0 / note-off = release. CC: continuous actions get value / 127, button actions press at ≥ 64.
+- Learn: the panel sets `learn = { actionId, kind }`; the next message becomes `Mapping { id: 'midi:<actionId>', trigger }` (channel-specific, any device). Preset / camera rows get a span (64 / 9).
+
+### `osc`
+- `main/osc/codec.ts`: OSC 1.0 (i f s b T F N, bundles). `main/osc/server.ts`: UDP listener (default 9000) + sender; messages are forwarded to the renderer over IPC `osc:message`.
+- Built-in scheme (`parseBuiltinOsc`) is always active; custom OSC triggers from the mapping table match exact addresses on top.
+- Feedback (optional, `settings.osc.feedback*`): `/cam/select`, `/cam/<i>/preset/active`, `/cam/<i>/online`, `/cam/<i>/position` (4 Hz), sent from the renderer via `osc:send`.
 
 ## Data on disk
-`%APPDATA%/obsbot-ezy-ctrl/` - `cameras.json`, `presets.json`, `mappings.json`. Import/export from the UI.
+`%APPDATA%/EZY CTRL/` (installed) or `%APPDATA%/obsbot-ezy-ctrl/` (dev) — `cameras.json`, `presets.json`, `settings.json`, `mappings.json`, `logs/ezy-ctrl.log`. Presets import/export from the UI.
+

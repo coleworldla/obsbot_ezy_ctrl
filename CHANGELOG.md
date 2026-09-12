@@ -2,6 +2,22 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.4.0] - 2026-09-11
+
+Milestone 4: map anything.
+
+### Added
+- Action registry: every control (camera select, 8-way jog, pan/tilt axes, jog speed, home, zoom level / tele / wide, preset recall / save, tracking, record, rotate, AF push, log, mapping) is a named action that keyboard, MIDI and OSC all drive the same way.
+- Mapping panel (header button or `M`): one row per action with MIDI, OSC address and Keyboard columns. Click **Learn**, move a control on your MIDI device, done. Click **Set** to capture a key. Reset to defaults restores the keyboard layout.
+- MIDI in via Web MIDI: notes and CC buttons (≥ 64 press, < 64 release), CC faders / knobs for zoom level, jog speed, pan and tilt axes (centre = stop, dead zone, speed follows deflection). A note range maps onto presets (base note + 63) or cameras (base + 8). Per-device enable switches, hot-plug.
+- OSC in on UDP 9000 (configurable) with a built-in address scheme that is always on: `/cam/<i>/preset/<n>`, `/cam/<i>/ptz/<dir>`, `/cam/<i>/ptz/pan`, `/cam/<i>/zoom`, `/cam/<i>/track`, `/cam/select` and more; `<i>` is the camera number or `sel`. Copy the full list from the panel.
+- OSC feedback (optional) to a host:port: `/cam/select`, `/cam/<i>/preset/active`, `/cam/<i>/online`, `/cam/<i>/position` at 4 Hz, for TouchOSC or Companion displays.
+- Monitor of the last MIDI / OSC / feedback messages in the panel; header shows the live MIDI device and OSC port.
+- `npm run osc-send /cam/1/preset/2` sends a test OSC message.
+
+### Changed
+- Keyboard shortcuts now come from the mapping table (same defaults as before) and can be changed.
+
 ## [0.3.0] - 2026-09-11
 
 Milestone 3: unlimited presets, plus an in-app log.

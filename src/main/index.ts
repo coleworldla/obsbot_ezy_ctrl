@@ -1,22 +1,26 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, session, shell } from 'electron';
 import fs from 'node:fs';
 import { join } from 'node:path';
 import { CameraManager } from './cameras';
-import { registerIpc } from './ipc';
+import { oscStatusOf, registerIpc } from './ipc';
 import { errMsg, logger } from './log';
+import { OscServer, type OscIncoming } from './osc/server';
 import { CameraStore } from './store/cameras';
+import { MappingStore } from './store/mappings';
 import { PresetStore } from './store/presets';
+import { SettingsStore } from './store/settings';
 import { VideoManager } from './video/manager';
 
 // Dev / test hooks (harmless when unset):
 //   EZY_USER_DATA=<dir>     use a different config directory (keeps test runs away from real presets)
 //   EZY_CAPTURE=<file.png>  screenshot the window after EZY_CAPTURE_DELAY ms (default 8000) and quit
-//   EZY_AUTOTEST=<name>     let the renderer run a scripted interaction (see renderer App.tsx)
+//   EZY_AUTOTEST=<steps>    let the renderer run scripted interactions (see renderer App.tsx)
 if (process.env.EZY_USER_DATA) app.setPath('userData', process.env.EZY_USER_DATA);
 
 let win: BrowserWindow | null = null;
 let manager: CameraManager | null = null;
 let video: VideoManager | null = null;
+let osc: OscServer | null = null;
 
 function createWindow(): BrowserWindow {
   const w = new BrowserWindow({
@@ -74,8 +78,15 @@ app.whenReady().then(() => {
   logger.info('app', `config folder ${userData}`);
   logger.on('entry', (entry) => win?.webContents.send('log:entry', entry));
 
+  // Web MIDI (and clipboard for "copy address list") need explicit permission in Electron.
+  const allowed = new Set(['midi', 'midiSysex', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen']);
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)));
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
+
   const store = new CameraStore(join(userData, 'cameras.json'));
   const presets = new PresetStore(join(userData, 'presets.json'));
+  const settings = new SettingsStore(join(userData, 'settings.json'));
+  const mappings = new MappingStore(join(userData, 'mappings.json'));
   manager = new CameraManager(store, (status) => {
     win?.webContents.send('camera:status', status);
   });
@@ -83,8 +94,29 @@ app.whenReady().then(() => {
     (line) => logger.info('video', line),
     (line) => logger.error('video', line),
   );
-  registerIpc({ store, presets, manager, video });
+
+  osc = new OscServer();
+  osc.on('message', (m: OscIncoming) => win?.webContents.send('osc:message', m));
+  osc.on('error', (e: Error) => logger.warn('osc', e.message));
+  osc.on('listening', (port: number) => logger.info('osc', `listening on udp port ${port}`));
+  const applyOsc = async () => {
+    const s = settings.get().osc;
+    if (s.enabled) {
+      try {
+        if (!osc!.listening || osc!.port !== s.listenPort) await osc!.start(s.listenPort);
+      } catch (e) {
+        logger.error('osc', `cannot listen on udp port ${s.listenPort}: ${errMsg(e)}`);
+      }
+    } else if (osc!.listening) {
+      osc!.stop();
+      logger.info('osc', 'listener stopped');
+    }
+    win?.webContents.send('osc:status', oscStatusOf(osc!));
+  };
+
+  registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc });
   manager.startPolling();
+  void applyOsc();
 
   win = createWindow();
   installCaptureHook(win);
@@ -97,6 +129,7 @@ app.whenReady().then(() => {
 function shutdown(): void {
   manager?.stopAll();
   video?.stopAll();
+  osc?.close();
 }
 
 app.on('window-all-closed', () => {

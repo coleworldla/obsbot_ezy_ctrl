@@ -84,6 +84,34 @@ export interface PresetExport {
   presets: Preset[];
 }
 
+export interface Settings {
+  osc: {
+    enabled: boolean;
+    listenPort: number;
+    feedbackEnabled: boolean;
+    feedbackHost: string;
+    feedbackPort: number;
+  };
+  midi: {
+    /** Input device names the user switched off. */
+    disabledDevices: string[];
+  };
+}
+
+export interface OscStatus {
+  listening: boolean;
+  port: number;
+  error: string | null;
+  /** This machine's IPv4 addresses, for pointing controllers at it. */
+  addresses: string[];
+}
+
+export interface OscIncomingMessage {
+  address: string;
+  args: (number | string | boolean)[];
+  from: string;
+}
+
 export type LogLevel = 'info' | 'warn' | 'error';
 
 export interface LogEntry {

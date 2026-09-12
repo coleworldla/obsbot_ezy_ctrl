@@ -29,11 +29,12 @@ Each milestone maps to GitHub issues (labelled by milestone). Order is the inten
 - [x] In-app Log drawer + log file (added on request), fake Tail 2 for development
 - [ ] Focus position in presets (needs manual-focus handling)
 
-## M4 — Map anything
-- Action registry: every control is an action with a stable id.
-- MIDI in: note / CC → action, learn mode, CC as continuous (zoom, jog speed).
-- OSC in/out: `/cam/<id>/...` address scheme, feedback for TouchOSC / Companion.
-- Keyboard shortcuts.
+## M4 — Map anything  (done 2026-09-11, v0.4.0)
+- [x] Action registry: every control is an action with a stable id — `src/shared/mapping.ts`
+- [x] MIDI in: note / CC → action, learn mode, CC as continuous (zoom, jog speed, pan/tilt axes) — `src/renderer/src/control/midi.ts`
+- [x] OSC in/out: `/cam/<i>/...` scheme always on, custom OSC triggers, feedback for TouchOSC / Companion — `src/main/osc/`
+- [x] Keyboard shortcuts in the same table, remappable
+- [ ] Verify with a physical MIDI controller (only Windows virtual MIDI ports were available here)
 
 ## M5 — Production niceties
 - Multi-camera view and per-camera mappings.

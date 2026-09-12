@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CameraConfig, CameraStatus, JogDir, ZoomDir } from '../../../shared/types';
-import type { Speed } from '../App';
+import type { CamState, Speed } from '../control/executor';
 import { Viewport } from './Viewport';
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   activePresetName?: string;
   /** Called on any manual move so the active-preset mark is dropped. */
   onManual: () => void;
+  camState: CamState;
+  onCamState: (patch: Partial<CamState>) => void;
 }
 
 const Arrow = ({ d }: { d: string }) => (
@@ -35,11 +37,8 @@ const JOG: { dir: JogDir; key: string; d: string }[] = [
 
 const fmt = (n: number | undefined) => (n === undefined ? '—' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}°`);
 
-export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetName, onManual }: Props) {
+export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetName, onManual, camState, onCamState }: Props) {
   const id = camera.id;
-  const [tracking, setTracking] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [portrait, setPortrait] = useState(false);
   const [zoomSlider, setZoomSlider] = useState(1);
   const zoomTimer = useRef<number | null>(null);
   const draggingZoom = useRef(false);
@@ -82,6 +81,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
 
   const p = status?.position;
   const online = status?.connected ?? false;
+  const { tracking, recording, portrait } = camState;
 
   return (
     <div className="stage">
@@ -154,9 +154,8 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
             className={`b${tracking ? ' down' : ''}`}
             disabled={!online}
             onClick={() => {
-              const next = !tracking;
-              setTracking(next);
-              fire(window.ezy.track(id, next));
+              onCamState({ tracking: !tracking });
+              fire(window.ezy.track(id, !tracking));
             }}
           >
             TRACK · T
@@ -165,9 +164,8 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
             className={`b rec${recording ? ' on' : ''}`}
             disabled={!online}
             onClick={() => {
-              const next = !recording;
-              setRecording(next);
-              fire(window.ezy.record(id, next));
+              onCamState({ recording: !recording });
+              fire(window.ezy.record(id, !recording));
             }}
           >
             REC · R
@@ -176,9 +174,8 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
             className="b"
             disabled={!online}
             onClick={() => {
-              const next = !portrait;
-              setPortrait(next);
-              fire(window.ezy.orientation(id, next));
+              onCamState({ portrait: !portrait });
+              fire(window.ezy.orientation(id, !portrait));
             }}
           >
             ROTATE · O

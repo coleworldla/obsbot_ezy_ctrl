@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type { Mapping } from '../shared/mapping';
 import type {
   CameraConfig,
   CameraInput,
@@ -6,10 +7,13 @@ import type {
   JogDir,
   LogEntry,
   LogLevel,
+  OscIncomingMessage,
+  OscStatus,
   Position,
   Preset,
   PresetPatch,
   RecallSpeed,
+  Settings,
   TestResult,
   VideoEvent,
   ZoomDir,
@@ -75,6 +79,22 @@ export const api = {
     reveal: () => invoke<string | null>('log:reveal'),
     report: (level: LogLevel, message: string) => invoke<void>('log:report', level, message),
     onEntry: (cb: (e: LogEntry) => void) => on<LogEntry>('log:entry', cb),
+  },
+  settings: {
+    get: () => invoke<Settings>('settings:get'),
+    set: (patch: Partial<Settings>) => invoke<Settings>('settings:set', patch),
+  },
+  mappings: {
+    list: () => invoke<Mapping[]>('mappings:list'),
+    save: (list: Mapping[]) => invoke<Mapping[]>('mappings:save', list),
+    reset: () => invoke<Mapping[]>('mappings:reset'),
+  },
+  osc: {
+    status: () => invoke<OscStatus>('osc:status'),
+    /** Sends to the configured feedback target; resolves false when feedback is off. */
+    send: (address: string, args: (number | string | boolean)[]) => invoke<boolean>('osc:send', address, args),
+    onMessage: (cb: (m: OscIncomingMessage) => void) => on<OscIncomingMessage>('osc:message', cb),
+    onStatus: (cb: (s: OscStatus) => void) => on<OscStatus>('osc:status', cb),
   },
   onStatus: (cb: (s: CameraStatus) => void) => on<CameraStatus>('camera:status', cb),
   video: {

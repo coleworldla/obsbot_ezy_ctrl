@@ -1,31 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CameraConfig, CameraStatus, JogDir, LogEntry, Preset, RecallSpeed } from '../../shared/types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { keyInputFrom, matchMappings, parseBuiltinOsc, type Input, type Invocation, type Mapping } from '../../shared/mapping';
+import type { CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings } from '../../shared/types';
 import { AddCamera } from './components/AddCamera';
 import { LogPanel } from './components/LogPanel';
+import { MappingPanel, type LearnState, type MonitorEntry } from './components/MappingPanel';
 import { Presets } from './components/Presets';
 import { Rack } from './components/Rack';
 import { Stage } from './components/Stage';
+import { ActionExecutor, type CamState, type ExecContext, type Speed } from './control/executor';
+import { MidiManager, type MidiDeviceInfo } from './control/midi';
 import { dispatchVideoEvent, dropPlayer, getPlayer } from './video/player';
 
-export interface Speed {
-  pan: number;
-  tilt: number;
-}
-
-const KEY_DIR: Record<string, JogDir> = {
-  w: 'up',
-  s: 'down',
-  a: 'left',
-  d: 'right',
-  q: 'upleft',
-  e: 'upright',
-  z: 'downleft',
-  c: 'downright',
-};
+export type { Speed } from './control/executor';
 
 const RECALL_KEY = 'ezy.recallSpeed';
 const PRESET_TOLERANCE = { deg: 1.0, zoom: 0.15 };
 const DRIFT_GRACE_MS = 5000;
+const MONITOR_MAX = 80;
 
 function isTyping(e: KeyboardEvent): boolean {
   const t = e.target as HTMLElement | null;
@@ -42,19 +33,30 @@ function loadRecallSpeed(): RecallSpeed {
   return { pan: 18, tilt: 17 };
 }
 
+const midi = new MidiManager();
+
 export default function App() {
   const [cameras, setCameras] = useState<CameraConfig[]>([]);
   const [status, setStatus] = useState<Record<string, CameraStatus>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  const [showMapping, setShowMapping] = useState(false);
   const [speed, setSpeed] = useState<Speed>({ pan: 12, tilt: 10 });
   const [presets, setPresets] = useState<Preset[]>([]);
   const [active, setActive] = useState<Record<string, string | null>>({});
   const [recallSpeed, setRecallSpeed] = useState<RecallSpeed>(loadRecallSpeed);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [camState, setCamStateMap] = useState<Record<string, CamState>>({});
+  const [mappings, setMappings] = useState<Mapping[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [oscStatus, setOscStatus] = useState<OscStatus | null>(null);
+  const [midiDevices, setMidiDevices] = useState<MidiDeviceInfo[]>([]);
+  const [monitor, setMonitor] = useState<MonitorEntry[]>([]);
+  const [learn, setLearn] = useState<LearnState | null>(null);
   const connectedOnce = useRef(new Set<string>());
   const recalledAt = useRef<Record<string, number>>({});
+  const monitorId = useRef(0);
 
   const refresh = useCallback(async () => {
     const list = await window.ezy.cameras.list();
@@ -64,19 +66,31 @@ export default function App() {
 
   const loadPresets = useCallback(async () => setPresets(await window.ezy.presets.list()), []);
 
+  const addMonitor = useCallback((kind: MonitorEntry['kind'], text: string) => {
+    setMonitor((m) => [...m.slice(-(MONITOR_MAX - 1)), { id: ++monitorId.current, ts: Date.now(), kind, text }]);
+  }, []);
+
+  // ---- startup: cameras, presets, statuses, log, settings, mappings, OSC status, MIDI ----
   useEffect(() => {
     void refresh();
     void loadPresets();
     void window.ezy.camera.statuses().then((all) => setStatus(Object.fromEntries(all.map((s) => [s.id, s]))));
     void window.ezy.log.list().then(setLogs);
-    const offStatus = window.ezy.onStatus((s) => setStatus((m) => ({ ...m, [s.id]: s })));
-    const offVideo = window.ezy.video.onEvent(dispatchVideoEvent);
-    const offLog = window.ezy.log.onEntry((e) => setLogs((l) => (l.length >= 2000 ? [...l.slice(-1999), e] : [...l, e])));
-    return () => {
-      offStatus();
-      offVideo();
-      offLog();
-    };
+    void window.ezy.mappings.list().then(setMappings);
+    void window.ezy.osc.status().then(setOscStatus);
+    void window.ezy.settings.get().then(async (s) => {
+      setSettings(s);
+      await midi.init(s.midi.disabledDevices);
+      setMidiDevices(midi.devices());
+    });
+    const offs = [
+      window.ezy.onStatus((s) => setStatus((m) => ({ ...m, [s.id]: s }))),
+      window.ezy.video.onEvent(dispatchVideoEvent),
+      window.ezy.log.onEntry((e) => setLogs((l) => (l.length >= 2000 ? [...l.slice(-1999), e] : [...l, e]))),
+      window.ezy.osc.onStatus(setOscStatus),
+      midi.onDevices(setMidiDevices),
+    ];
+    return () => offs.forEach((off) => off());
   }, [refresh, loadPresets]);
 
   useEffect(() => {
@@ -95,7 +109,7 @@ export default function App() {
 
   const selected = cameras.find((c) => c.id === selectedId) ?? null;
   const selectedOnline = selected ? (status[selected.id]?.connected ?? false) : false;
-  const camPresets = selected ? presets.filter((p) => p.cameraId === selected.id) : [];
+  const camPresets = useMemo(() => (selected ? presets.filter((p) => p.cameraId === selected.id) : []), [presets, selected]);
   const activePreset = selected ? (camPresets.find((p) => p.id === active[selected.id]) ?? null) : null;
 
   const clearActive = useCallback((cameraId: string) => {
@@ -111,20 +125,28 @@ export default function App() {
     [recallSpeed],
   );
 
-  const savePreset = useCallback(async (): Promise<Preset | null> => {
-    if (!selected) return null;
-    const thumbnail = getPlayer(selected.id).snapshot(240) ?? undefined;
-    const n = presets.filter((p) => p.cameraId === selected.id).length + 1;
-    try {
-      const p = await window.ezy.presets.save(selected.id, `Preset ${n}`, thumbnail);
-      await loadPresets();
-      setActive((a) => ({ ...a, [selected.id]: p.id }));
-      recalledAt.current[selected.id] = Date.now();
-      return p;
-    } catch {
-      return null;
-    }
-  }, [selected, presets, loadPresets]);
+  const savePresetFor = useCallback(
+    async (cameraId: string): Promise<Preset | null> => {
+      const thumbnail = getPlayer(cameraId).snapshot(240) ?? undefined;
+      const n = presets.filter((p) => p.cameraId === cameraId).length + 1;
+      try {
+        const p = await window.ezy.presets.save(cameraId, `Preset ${n}`, thumbnail);
+        await loadPresets();
+        setActive((a) => ({ ...a, [cameraId]: p.id }));
+        recalledAt.current[cameraId] = Date.now();
+        return p;
+      } catch {
+        return null;
+      }
+    },
+    [presets, loadPresets],
+  );
+
+  const savePreset = useCallback(() => (selected ? savePresetFor(selected.id) : Promise.resolve(null)), [selected, savePresetFor]);
+
+  const setCamState = useCallback((cameraId: string, patch: Partial<CamState>) => {
+    setCamStateMap((m) => ({ ...m, [cameraId]: { ...(m[cameraId] ?? { tracking: false, recording: false, portrait: false }), ...patch } }));
+  }, []);
 
   // Drop the "active" mark once the camera has visibly left the preset (after the move had time to finish).
   useEffect(() => {
@@ -141,66 +163,106 @@ export default function App() {
     }
   }, [status, active, presets, clearActive]);
 
-  // Keyboard: 1-9 recall presets, Ctrl+1-9 select camera, Ctrl+S save preset,
-  // QWEASDZC jog, H home, -/= zoom, [ ] jog speed, L log.
-  const keyDeps = useRef({ cameras, selectedId, speed, camPresets, recall, savePreset, selectedOnline });
-  keyDeps.current = { cameras, selectedId, speed, camPresets, recall, savePreset, selectedOnline };
+  // ---- action executor with a ref to the latest app state ----
+  const ctxRef = useRef<ExecContext>(null as unknown as ExecContext);
+  ctxRef.current = {
+    cameras,
+    selectedId,
+    status,
+    presets,
+    speed,
+    setSpeed,
+    selectCamera: setSelectedId,
+    recall,
+    savePreset: savePresetFor,
+    clearActive,
+    camState,
+    setCamState,
+    toggleLog: () => setShowLog((v) => !v),
+    toggleMapping: () => setShowMapping((v) => !v),
+  };
+  const executor = useMemo(() => new ActionExecutor(() => ctxRef.current), []);
+  const mappingsRef = useRef(mappings);
+  mappingsRef.current = mappings;
+  const learnRef = useRef(learn);
+  learnRef.current = learn;
+
+  const saveMappings = useCallback((list: Mapping[]) => {
+    setMappings(list);
+    void window.ezy.mappings.save(list);
+  }, []);
+
+  const runInput = useCallback(
+    (input: Input, extra: Invocation[] = []) => {
+      const invs = [...extra, ...matchMappings(mappingsRef.current, input)];
+      for (const inv of invs) executor.run(inv);
+      return invs.length;
+    },
+    [executor],
+  );
+
+  // ---- MIDI ----
   useEffect(() => {
-    let activeDir: JogDir | null = null;
-    let zooming = false;
+    return midi.onMessage((m) => {
+      const label = m.kind === 'cc' ? `ch${m.channel} CC ${m.number} = ${m.value}` : `ch${m.channel} note ${m.number} ${m.value > 0 ? 'on' : 'off'}`;
+      addMonitor('midi', `${m.device}: ${label}`);
+      const l = learnRef.current;
+      if (l?.kind === 'midi') {
+        if (m.kind === 'note' && m.value === 0) return; // wait for the press, not the release
+        const action = mappingsRef.current;
+        const span = l.actionId === 'preset.recall' ? 64 : l.actionId === 'cam.select' ? 9 : undefined;
+        const mapping: Mapping = {
+          id: `midi:${l.actionId}`,
+          actionId: l.actionId,
+          trigger: { type: 'midi', channel: m.channel, kind: m.kind, number: m.number, span: m.kind === 'note' ? span : undefined },
+        };
+        saveMappings([...action.filter((x) => x.id !== mapping.id), mapping]);
+        setLearn(null);
+        return;
+      }
+      runInput(m);
+    });
+  }, [addMonitor, runInput, saveMappings]);
+
+  // ---- OSC ----
+  useEffect(() => {
+    return window.ezy.osc.onMessage((m) => {
+      addMonitor('osc', `${m.address} ${m.args.join(' ')}  ← ${m.from}`);
+      const input: Input = { type: 'osc', address: m.address, args: m.args };
+      const builtin = parseBuiltinOsc(input);
+      runInput(input, builtin ? [builtin] : []);
+    });
+  }, [addMonitor, runInput]);
+
+  // ---- keyboard ----
+  useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      const d = keyDeps.current;
-      if (isTyping(e) || e.repeat || e.altKey || e.metaKey) return;
-      const k = e.key.toLowerCase();
-      if (e.ctrlKey) {
-        if (/^[1-9]$/.test(k)) {
-          const cam = d.cameras[Number(k) - 1];
-          if (cam) setSelectedId(cam.id);
-          e.preventDefault();
-        } else if (k === 's') {
-          e.preventDefault();
-          if (d.selectedOnline) void d.savePreset();
+      if (isTyping(e) || e.repeat || e.metaKey) return;
+      const input = keyInputFrom(e, 'press');
+      if (!input) return;
+      const l = learnRef.current;
+      if (l?.kind === 'key') {
+        if (input.key === 'escape') {
+          setLearn(null);
+          return;
         }
+        const span = l.actionId === 'preset.recall' || l.actionId === 'cam.select' ? (/^[0-9]$/.test(input.key) ? 9 : undefined) : undefined;
+        const mapping: Mapping = {
+          id: `key:${l.actionId}`,
+          actionId: l.actionId,
+          trigger: { type: 'key', key: input.key, ctrl: input.ctrl || undefined, shift: input.shift || undefined, alt: input.alt || undefined, span },
+        };
+        saveMappings([...mappingsRef.current.filter((x) => x.id !== mapping.id), mapping]);
+        setLearn(null);
+        e.preventDefault();
         return;
       }
-      if (/^[1-9]$/.test(k)) {
-        const p = d.camPresets[Number(k) - 1];
-        if (p && d.selectedOnline) d.recall(p);
-        return;
-      }
-      if (k === 'l') return setShowLog((v) => !v);
-      if (k === '[') return setSpeed((s) => ({ pan: Math.max(1, s.pan - 1), tilt: Math.max(1, s.tilt - 1) }));
-      if (k === ']') return setSpeed((s) => ({ pan: Math.min(24, s.pan + 1), tilt: Math.min(23, s.tilt + 1) }));
-      if (!d.selectedId) return;
-      const id = d.selectedId;
-      if (KEY_DIR[k]) {
-        activeDir = KEY_DIR[k];
-        clearActive(id);
-        window.ezy.ptz.drive(id, activeDir, d.speed.pan, d.speed.tilt).catch(() => undefined);
-      } else if (k === 'h') {
-        clearActive(id);
-        window.ezy.ptz.home(id).catch(() => undefined);
-      } else if (k === '=' || k === '+') {
-        zooming = true;
-        clearActive(id);
-        window.ezy.zoom.drive(id, 'tele', 3).catch(() => undefined);
-      } else if (k === '-') {
-        zooming = true;
-        clearActive(id);
-        window.ezy.zoom.drive(id, 'wide', 3).catch(() => undefined);
-      }
+      if (runInput(input) > 0) e.preventDefault();
     };
     const up = (e: KeyboardEvent) => {
-      const d = keyDeps.current;
-      if (!d.selectedId) return;
-      const k = e.key.toLowerCase();
-      if (KEY_DIR[k] && activeDir) {
-        activeDir = null;
-        window.ezy.ptz.drive(d.selectedId, 'stop', d.speed.pan, d.speed.tilt).catch(() => undefined);
-      } else if ((k === '=' || k === '+' || k === '-') && zooming) {
-        zooming = false;
-        window.ezy.zoom.drive(d.selectedId, 'stop', 0).catch(() => undefined);
-      }
+      if (isTyping(e)) return;
+      const input = keyInputFrom(e, 'release');
+      if (input) runInput(input);
     };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
@@ -208,23 +270,65 @@ export default function App() {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
     };
-  }, [clearActive]);
+  }, [runInput, saveMappings]);
 
-  // Scripted interactions for screenshot-based checks (EZY_AUTOTEST=presets,log).
+  // ---- OSC feedback ----
+  const feedbackOn = !!settings?.osc.feedbackEnabled && !!settings.osc.feedbackHost;
+  const sendFeedback = useCallback(
+    (address: string, args: (number | string | boolean)[]) => {
+      if (!feedbackOn) return;
+      addMonitor('out', `${address} ${args.join(' ')}`);
+      void window.ezy.osc.send(address, args);
+    },
+    [feedbackOn, addMonitor],
+  );
+  useEffect(() => {
+    if (!selected) return;
+    sendFeedback('/cam/select', [cameras.indexOf(selected) + 1]);
+  }, [selected, cameras, sendFeedback]);
+  useEffect(() => {
+    for (const [cameraId, presetId] of Object.entries(active)) {
+      const i = cameras.findIndex((c) => c.id === cameraId) + 1;
+      if (i === 0) continue;
+      const list = presets.filter((p) => p.cameraId === cameraId);
+      sendFeedback(`/cam/${i}/preset/active`, [presetId ? list.findIndex((p) => p.id === presetId) + 1 : 0]);
+    }
+  }, [active, cameras, presets, sendFeedback]);
+  const lastOnline = useRef<Record<string, boolean>>({});
+  const lastPos = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!feedbackOn) return;
+    cameras.forEach((c, idx) => {
+      const s = status[c.id];
+      if (!s) return;
+      if (lastOnline.current[c.id] !== s.connected) {
+        lastOnline.current[c.id] = s.connected;
+        sendFeedback(`/cam/${idx + 1}/online`, [s.connected ? 1 : 0]);
+      }
+      if (s.position && Date.now() - (lastPos.current[c.id] ?? 0) >= 250) {
+        lastPos.current[c.id] = Date.now();
+        sendFeedback(`/cam/${idx + 1}/position`, [s.position.panDeg, s.position.tiltDeg, s.position.zoomRatio]);
+      }
+    });
+  }, [status, cameras, feedbackOn, sendFeedback]);
+
+  // ---- scripted interactions for screenshot-based checks (EZY_AUTOTEST=presets,log,mapping) ----
   useEffect(() => {
     const steps = window.ezy.env.autotest.split(',').filter(Boolean);
     if (steps.length === 0) return;
     const timers: number[] = [];
     if (steps.includes('presets')) {
-      timers.push(window.setTimeout(() => void keyDeps.current.savePreset(), 6000));
+      timers.push(window.setTimeout(() => void ctxRef.current.savePreset(ctxRef.current.selectedId ?? ''), 6000));
       timers.push(
         window.setTimeout(() => {
-          const first = keyDeps.current.camPresets[0];
-          if (first) keyDeps.current.recall(first);
+          const c = ctxRef.current;
+          const first = c.presets.filter((p) => p.cameraId === c.selectedId)[0];
+          if (first) c.recall(first);
         }, 8500),
       );
     }
     if (steps.includes('log')) timers.push(window.setTimeout(() => setShowLog(true), 3000));
+    if (steps.includes('mapping')) timers.push(window.setTimeout(() => setShowMapping(true), 3000));
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, []);
 
@@ -237,10 +341,13 @@ export default function App() {
     await loadPresets();
   };
 
+  const updateSettings = async (patch: Partial<Settings>) => setSettings(await window.ezy.settings.set(patch));
+
   const connectedCount = cameras.filter((c) => status[c.id]?.connected).length;
   const errorCount = logs.filter((e) => e.level === 'error').length;
   const warnCount = logs.filter((e) => e.level === 'warn').length;
   const cameraNames = Object.fromEntries(cameras.map((c) => [c.id, c.name]));
+  const midiActive = midiDevices.filter((d) => d.connected && d.enabled);
 
   return (
     <div className="app">
@@ -250,12 +357,15 @@ export default function App() {
           {cameras.length} camera{cameras.length === 1 ? '' : 's'} · {connectedCount} online · {presets.length} presets
         </span>
         <span className="spacer" />
-        <span className="info">
-          MIDI <span className="led" /> not yet
+        <span className="info" title={midiActive.map((d) => d.name).join(', ') || midi.error || 'no MIDI device'}>
+          MIDI <span className={`led${midiActive.length ? ' on' : ''}`} /> {midiActive.length ? midiActive[0].name + (midiActive.length > 1 ? ` +${midiActive.length - 1}` : '') : 'none'}
         </span>
-        <span className="info">
-          OSC <span className="led" /> not yet
+        <span className="info" title={oscStatus?.error ?? ''}>
+          OSC <span className={`led${oscStatus?.listening ? ' on' : oscStatus?.error ? ' warn' : ''}`} /> {oscStatus?.listening ? `:${oscStatus.port}` : 'off'}
         </span>
+        <button className={`hb${showMapping ? ' active' : ''}`} onClick={() => setShowMapping((v) => !v)} title="Mapping (M)">
+          Mapping
+        </button>
         <button className={`hb${errorCount ? ' has-err' : warnCount ? ' has-warn' : ''}`} onClick={() => setShowLog((v) => !v)} title="Log (L)">
           Log
           {errorCount > 0 && <span className="badge err">{errorCount}</span>}
@@ -278,6 +388,8 @@ export default function App() {
             onRemove={() => void removeCamera(selected.id)}
             activePresetName={activePreset ? `P${camPresets.indexOf(activePreset) + 1} · ${activePreset.name}` : undefined}
             onManual={() => clearActive(selected.id)}
+            camState={camState[selected.id] ?? { tracking: false, recording: false, portrait: false }}
+            onCamState={(patch) => setCamState(selected.id, patch)}
           />
         ) : (
           <div className="stage">
@@ -305,6 +417,31 @@ export default function App() {
           onChanged={loadPresets}
           onSnapshot={() => (selected ? (getPlayer(selected.id).snapshot(240) ?? undefined) : undefined)}
         />
+
+        {showMapping && settings && (
+          <MappingPanel
+            mappings={mappings}
+            onMappings={saveMappings}
+            onResetMappings={() => void window.ezy.mappings.reset().then(setMappings)}
+            midiDevices={midiDevices}
+            midiError={midi.error}
+            onMidiEnabled={(name, on) => {
+              const disabledDevices = midi.setEnabled(name, on);
+              void updateSettings({ midi: { disabledDevices } });
+            }}
+            settings={settings}
+            onSettings={(patch) => void updateSettings(patch)}
+            oscStatus={oscStatus}
+            cameras={cameras}
+            monitor={monitor}
+            learn={learn}
+            onLearn={setLearn}
+            onClose={() => {
+              setShowMapping(false);
+              setLearn(null);
+            }}
+          />
+        )}
       </div>
 
       {showLog && (
