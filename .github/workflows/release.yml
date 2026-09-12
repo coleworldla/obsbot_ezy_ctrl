@@ -48,10 +48,17 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Configure code signing (only when secrets exist)
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.WIN_CSC_LINK }}" ]; then
+            echo "CSC_LINK=${{ secrets.WIN_CSC_LINK }}" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=${{ secrets.WIN_CSC_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "signing: certificate configured"
+          else
+            echo "signing: no certificate, unsigned build"
+          fi
       - run: npx electron-builder --win --publish never
-        env:
-          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
       - uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
@@ -73,13 +80,24 @@ jobs:
       - run: npm run build
       - name: Fetch ffmpeg for both architectures
         run: node scripts/fetch-ffmpeg.mjs mac arm64 x64
-      - run: npx electron-builder --mac --arm64 --x64 --publish never
-        env:
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Configure code signing (only when secrets exist)
+        run: |
+          if [ -n "${{ secrets.MAC_CSC_LINK }}" ]; then
+            echo "CSC_LINK=${{ secrets.MAC_CSC_LINK }}" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=${{ secrets.MAC_CSC_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "signing: Developer ID configured"
+          else
+            # No Developer ID: ad-hoc sign (identity "-") so the app still launches on Apple Silicon.
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            echo "MAC_EB_ARGS=-c.mac.identity=-" >> "$GITHUB_ENV"
+            echo "signing: no Developer ID, ad-hoc signed build"
+          fi
+          if [ -n "${{ secrets.APPLE_ID }}" ]; then
+            echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> "$GITHUB_ENV"
+            echo "APPLE_APP_SPECIFIC_PASSWORD=${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> "$GITHUB_ENV"
+          fi
+      - run: npx electron-builder --mac --arm64 --x64 --publish never ${MAC_EB_ARGS:-}
       - uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}

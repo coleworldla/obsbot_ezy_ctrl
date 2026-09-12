@@ -2,6 +2,11 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.6.1] - 2026-09-11
+
+### Fixed
+- macOS packages are now actually produced: the release workflow no longer hands electron-builder an empty signing certificate path when no certificate secret is configured (that made the v0.6.0 macOS job fail; v0.6.0 only has Windows files). Without a Developer ID the app is ad-hoc signed so it launches on Apple Silicon (right-click → Open the first time).
+
 ## [0.6.0] - 2026-09-11
 
 Milestone 6: ship.
