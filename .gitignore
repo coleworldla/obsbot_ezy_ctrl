@@ -17,3 +17,6 @@ Thumbs.db
 
 # Local app data (never commit real camera IPs or presets)
 *.local.json
+
+# TypeScript incremental build info
+*.tsbuildinfo
