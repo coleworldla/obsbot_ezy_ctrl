@@ -20,3 +20,6 @@ Thumbs.db
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# ffmpeg binaries fetched for cross-arch packaging
+build/ffmpeg/

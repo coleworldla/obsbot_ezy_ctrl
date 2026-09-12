@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { Mapping } from '../shared/mapping';
 import type {
+  AppInfo,
   CameraConfig,
   CameraFullState,
   CameraInput,
@@ -17,6 +18,7 @@ import type {
   RecallSpeed,
   Settings,
   TestResult,
+  UpdateStatus,
   VideoEvent,
   ZoomDir,
 } from '../shared/types';
@@ -105,6 +107,15 @@ export const api = {
     subscribe: (id: string) => invoke<void>('video:subscribe', id),
     unsubscribe: (id: string) => invoke<void>('video:unsubscribe', id),
     onEvent: (cb: (ev: VideoEvent) => void) => on<VideoEvent>('video:event', cb),
+  },
+  app: {
+    info: () => invoke<AppInfo>('app:info'),
+  },
+  update: {
+    status: () => invoke<UpdateStatus>('update:status'),
+    check: () => invoke<UpdateStatus>('update:check'),
+    install: () => invoke<void>('update:install'),
+    onStatus: (cb: (s: UpdateStatus) => void) => on<UpdateStatus>('update:status', cb),
   },
   env: {
     autotest: process.env.EZY_AUTOTEST ?? '',

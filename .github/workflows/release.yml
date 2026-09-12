@@ -1,7 +1,13 @@
 name: Release
 
-# Push a tag like v0.2.0 and this builds the Windows installer + portable exe
-# and attaches them to a GitHub Release with the matching CHANGELOG section.
+# Push a tag like v0.7.0: the release is created from the matching CHANGELOG section, then the
+# Windows installer + portable exe and the macOS (Apple Silicon + Intel) dmg/zip are attached,
+# together with the latest*.yml files the in-app updater reads.
+#
+# Optional signing secrets (unsigned builds are produced when they are absent):
+#   WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD     base64 .pfx + password for Windows Authenticode
+#   MAC_CSC_LINK / MAC_CSC_KEY_PASSWORD     base64 .p12 + password (Developer ID Application)
+#   APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID   for notarization
 
 on:
   push:
@@ -11,20 +17,11 @@ permissions:
   contents: write
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  release:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - run: npx electron-builder --win --publish never
       - name: Extract release notes from CHANGELOG.md
-        shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           awk -v v="$VERSION" '
@@ -38,5 +35,56 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body_path: release-notes.md
+
+  windows:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx electron-builder --win --publish never
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
           files: |
             dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+
+  macos:
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Fetch ffmpeg for both architectures
+        run: node scripts/fetch-ffmpeg.mjs mac arm64 x64
+      - run: npx electron-builder --mac --arm64 --x64 --publish never
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+            dist/latest-mac.yml

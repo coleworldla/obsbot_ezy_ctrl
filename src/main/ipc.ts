@@ -1,8 +1,9 @@
-import { BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron';
 import fs from 'node:fs';
 import os from 'node:os';
 import type { Mapping } from '../shared/mapping';
-import type { CameraConfig, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir } from '../shared/types';
+import type { AppInfo, CameraConfig, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir } from '../shared/types';
+import type { Updater } from './updater';
 import type { CameraManager } from './cameras';
 import { CameraManager as Manager } from './cameras';
 import { errMsg, logger } from './log';
@@ -23,6 +24,7 @@ export interface IpcDeps {
   osc: OscServer;
   /** Re-apply OSC settings (start/stop/rebind the listener). */
   applyOsc: () => Promise<void>;
+  updater: Updater;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -39,7 +41,7 @@ export function oscStatusOf(osc: OscServer): OscStatus {
   return { listening: osc.listening, port: osc.port, error: osc.lastError, addresses: localAddresses() };
 }
 
-export function registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc }: IpcDeps): void {
+export function registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater }: IpcDeps): void {
   /** Register a handler whose failures are logged (and still rejected to the renderer). */
   const handle = <A extends unknown[], R>(channel: string, fn: (e: IpcMainInvokeEvent, ...args: A) => R | Promise<R>) => {
     ipcMain.handle(channel, async (e, ...args) => {
@@ -202,6 +204,12 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
     osc.send(s.feedbackHost, s.feedbackPort, address, args);
     return true;
   });
+
+  // ---- app info, updates ----
+  handle('app:info', (): AppInfo => ({ version: app.getVersion(), platform: process.platform, packaged: app.isPackaged, electron: process.versions.electron }));
+  handle('update:status', () => updater.status);
+  handle('update:check', () => updater.check());
+  handle('update:install', () => updater.install());
 
   // ---- log ----
   handle('log:list', () => logger.list());

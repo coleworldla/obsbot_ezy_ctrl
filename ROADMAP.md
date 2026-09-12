@@ -43,9 +43,14 @@ Each milestone maps to GitHub issues (labelled by milestone). Order is the inten
 - [x] Tally per camera (rack menu, mappings, OSC in + feedback)
 - [ ] Verify the settings inquiries against a real Tail 2 (some may answer differently from the spreadsheet)
 
-## M6 — Ship
-- Windows installer, macOS build, auto-update.
-- First-run guide (enable RTSP on the camera, find its IP).
+## M6 — Ship  (done 2026-09-11, v0.6.0)
+- [x] Windows installer + portable (since v0.1.0)
+- [x] macOS dmg/zip for Apple Silicon and Intel — release workflow, `scripts/fetch-ffmpeg.mjs`
+- [x] Auto-update via GitHub Releases (electron-updater) with in-app restart prompt
+- [x] First-run guide + Help page (`?`)
+- [x] Signing hooks in the workflow (secrets: WIN_CSC_LINK, MAC_CSC_LINK, APPLE_ID …)
+- [ ] Actually sign: needs a Windows code-signing certificate and an Apple Developer ID
+- [ ] Make the repository (or its releases) public so the updater can see new versions
 
 ## Later / research
 - NDI viewport (needs NDI SDK + licence on the camera).

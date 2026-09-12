@@ -30,17 +30,29 @@ Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× 
 - M3 unlimited presets: done. Save with thumbnail, recall by click or `1-9`, reorder, rename, import/export, store into camera slots. Plus an in-app Log drawer backed by a log file.
 - M4 map anything: done. Mapping panel with MIDI learn, OSC in (built-in address scheme + custom triggers) and OSC feedback, remappable keyboard. Not yet tried with a physical MIDI controller.
 - M5 production niceties: done. Camera state read-back, camera settings drawer (AI tracking, focus, exposure, white balance, image), program / preview tally, per-camera mapping scope.
+- M6 ship: done. macOS builds, auto-update, first-run guide, signing hooks. Certificates and a public release feed are the two things still needed from outside the code.
 
 See [ROADMAP.md](ROADMAP.md) for what comes next and the GitHub issues for individual features.
 
-## Install (Windows)
+## Install
 
 Grab the latest build from [Releases](https://github.com/coleworldla/obsbot_ezy_ctrl/releases):
 
-- `EZY-CTRL-Setup-<version>.exe` — one-click installer, adds a desktop shortcut, installs per user (no admin).
-- `EZY-CTRL-<version>-portable.exe` — no install, just run it.
+| Platform | File | Notes |
+|---|---|---|
+| Windows | `EZY-CTRL-Setup-<version>.exe` | one-click installer, per user (no admin), desktop shortcut |
+| Windows | `EZY-CTRL-<version>-portable.exe` | no install, just run it |
+| macOS Apple Silicon | `EZY-CTRL-<version>-arm64.dmg` | drag to Applications |
+| macOS Intel | `EZY-CTRL-<version>-x64.dmg` | drag to Applications |
 
-The builds are not code-signed yet, so Windows SmartScreen will show "Windows protected your PC" the first time: click **More info → Run anyway**.
+The builds are not code-signed yet:
+
+- Windows SmartScreen shows "Windows protected your PC" the first time: click **More info → Run anyway**.
+- macOS says the app "cannot be opened because the developer cannot be verified" or "is damaged": right-click the app → **Open**, or run `xattr -cr "/Applications/EZY CTRL.app"` once.
+
+**Updates.** The installed app checks GitHub Releases on startup (switch it off under `?` → Updates), downloads the next version in the background and shows *Restart to update* in the header. This only works while the repository's releases are publicly readable; on a private repository the check logs "no public release feed" and you install new versions by hand.
+
+**Signing (when certificates are available).** Add these repository secrets and the release workflow signs automatically: `WIN_CSC_LINK` + `WIN_CSC_KEY_PASSWORD` (base64 `.pfx`), `MAC_CSC_LINK` + `MAC_CSC_KEY_PASSWORD` (base64 Developer ID `.p12`), and `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` for notarization (also set `"notarize": true` under `build.mac` in `package.json`).
 
 ## Running it from source
 
@@ -50,7 +62,11 @@ npm run dev        # Electron + hot reload
 npm test           # unit tests (VISCA framing + a fake camera on loopback)
 npm run typecheck
 npm run build      # bundles to out/
+npm run dist       # Windows installer + portable into dist/
+npm run dist:mac   # on a Mac: arm64 + x64 dmg/zip (downloads both ffmpeg builds first)
 ```
+
+Releasing: add a `## [x.y.z]` section to `CHANGELOG.md`, bump `version` in `package.json`, then `git tag vx.y.z && git push origin main --tags`. GitHub Actions creates the release with those notes and attaches the Windows and macOS builds plus the update feed files.
 
 On the camera: put the Tail 2 on the same LAN, find its IP (OBSBOT Center → Device Management, or the Web UI), turn on **RTSP mode** (OBSBOT Center → More → Output → RTSP), and in the app press **Add camera**, type the IP, then **Test connection**. No camera handy? Pick the **Demo** video source to see the whole thing run on a test pattern.
 
@@ -95,6 +111,7 @@ src/
     store/cameras.ts     #   cameras.json persistence
     store/presets.ts     #   presets.json persistence (unlimited app-side presets)
     log.ts               #   ring buffer + log file behind the in-app Log drawer
+    updater.ts           #   electron-updater against GitHub Releases
     osc/                 #   codec.ts (OSC 1.0) · server.ts (UDP in/out)
     store/settings.ts    #   settings.json (OSC ports, feedback target, disabled MIDI devices)
     store/mappings.ts    #   mappings.json (the mapping table)
@@ -108,6 +125,7 @@ src/
   shared/mapping.ts      # action registry, mapping model, MIDI/key/OSC matching, built-in OSC scheme
 scripts/fake-tail2.mjs   # fake camera for development (npm run fake-camera)
 scripts/osc-send.mjs     # send a test OSC message (npm run osc-send -- /cam/1/home)
+scripts/fetch-ffmpeg.mjs # download ffmpeg per architecture for packaging (used by the macOS build)
 tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store, mapping logic, OSC codec
 docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit

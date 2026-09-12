@@ -2,8 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { VideoSource } from '../../shared/types';
 
-/** Path to the bundled ffmpeg binary, in dev (node_modules) and packaged (asar.unpacked). */
+/**
+ * Path to the bundled ffmpeg binary:
+ *  1. <resources>/ffmpeg/ffmpeg[.exe] — shipped via electron-builder extraResources (macOS builds)
+ *  2. node_modules/ffmpeg-static (dev) or app.asar.unpacked (Windows builds)
+ */
 export function ffmpegPath(): string {
+  const resources = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  if (resources) {
+    const shipped = path.join(resources, 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+    if (fs.existsSync(shipped)) return shipped;
+  }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const p = require('ffmpeg-static') as string | null;
   if (!p) throw new Error('ffmpeg-static did not provide a binary for this platform');

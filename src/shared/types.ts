@@ -141,6 +141,25 @@ export interface Settings {
     /** Input device names the user switched off. */
     disabledDevices: string[];
   };
+  updates: {
+    /** Check GitHub Releases on startup and download in the background. */
+    autoCheck: boolean;
+  };
+}
+
+export interface UpdateStatus {
+  state: 'unsupported' | 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'downloaded' | 'error';
+  version?: string;
+  percent?: number;
+  message?: string;
+  checkedAt?: number;
+}
+
+export interface AppInfo {
+  version: string;
+  platform: NodeJS.Platform;
+  packaged: boolean;
+  electron: string;
 }
 
 export interface OscStatus {

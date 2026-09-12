@@ -2,6 +2,17 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.6.0] - 2026-09-11
+
+Milestone 6: ship.
+
+### Added
+- macOS builds: `EZY-CTRL-<version>-arm64.dmg` (Apple Silicon) and `EZY-CTRL-<version>-x64.dmg` (Intel), plus zip archives, built by the release workflow with the right ffmpeg for each architecture.
+- Auto-update: the installed app checks GitHub Releases on startup (switchable in Help), downloads in the background and offers "Restart to update" in the header. Needs the repository's releases to be publicly readable.
+- First-run guide: with no camera configured the stage shows the steps to get a Tail 2 on screen (network, IP, RTSP mode, add camera), a "Try the demo" button that adds a demo camera, the keyboard cheat sheet and the update controls. The same page is behind the `?` button later.
+- Release workflow accepts optional code-signing secrets (Windows Authenticode, Apple Developer ID + notarization); unsigned builds are produced without them.
+- App version and platform shown in Help; `npm run dist:mac` builds the macOS packages locally on a Mac.
+
 ## [0.5.0] - 2026-09-11
 
 Milestone 5: production niceties.

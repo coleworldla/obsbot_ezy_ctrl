@@ -216,6 +216,26 @@ input[type='range'] { flex: 1; min-width: 40px; accent-color: var(--accent); hei
 .input.sel { width: 140px; }
 select.input { padding: 0 6px; appearance: auto; }
 
+/* help / first run */
+.help { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--bg); }
+.help.inline { position: static; flex: 1; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-rail); min-height: 0; }
+.helphead { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--bg-deep); flex: none; }
+.help.inline .helphead { background: transparent; }
+.helphead .spacer { flex: 1; }
+.helpbody { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 16px; overflow-y: auto; min-height: 0; }
+.helpcol { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line-2); min-width: 0; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.helpcol .note { overflow-wrap: anywhere; }
+.help.inline .helpbody { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--text); }
+.steps li::marker { color: var(--accent); font-family: var(--mono); }
+.helpbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.keys { border-collapse: collapse; font-size: 11px; }
+.keys td { padding: 3px 10px 3px 0; color: var(--text-2); vertical-align: top; }
+.keys td:first-child { color: var(--accent-text); white-space: nowrap; }
+.help a { color: var(--accent-text); text-decoration: none; }
+.help a:hover { text-decoration: underline; }
+.hb.update { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+
 /* log drawer */
 .logpanel { height: 240px; flex: none; display: flex; flex-direction: column; border-top: 1px solid var(--line-3); background: var(--bg-deep); }
 .loghead { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-bottom: 1px solid var(--line); flex: none; }

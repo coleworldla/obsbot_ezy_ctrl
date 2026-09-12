@@ -89,6 +89,12 @@ interface Preset {
 - Built-in scheme (`parseBuiltinOsc`) is always active; custom OSC triggers from the mapping table match exact addresses on top.
 - Feedback (optional, `settings.osc.feedback*`): `/cam/select`, `/cam/<i>/preset/active`, `/cam/<i>/online`, `/cam/<i>/position` (4 Hz), sent from the renderer via `osc:send`.
 
+### packaging and updates (as built in M6)
+- Windows: electron-builder NSIS (one-click, per user) + portable; ffmpeg comes from `ffmpeg-static` in `app.asar.unpacked`.
+- macOS: dmg + zip for arm64 and x64 in one electron-builder run. `ffmpeg-static` only downloads the host's architecture, so `scripts/fetch-ffmpeg.mjs` pulls both binaries from the same release into `build/ffmpeg/mac-<arch>/` and `extraResources` ships the right one at `<resources>/ffmpeg/ffmpeg`; `ffmpegPath()` prefers that location. Ad-hoc signed unless a Developer ID is configured.
+- Updates: `electron-updater` with the GitHub provider (`build.publish`); the release workflow attaches `latest.yml` / `latest-mac.yml` and the blockmaps. `main/updater.ts` checks 8 s after start when `settings.updates.autoCheck` is on, downloads silently, and the renderer shows "Restart to update". Anonymous checks need a public release feed.
+- Release workflow: `release` job creates the GitHub release from the CHANGELOG section, then `windows` and `macos` jobs build and upload their files; signing/notarization secrets are optional.
+
 ## Data on disk
 `%APPDATA%/EZY CTRL/` (installed) or `%APPDATA%/obsbot-ezy-ctrl/` (dev) — `cameras.json`, `presets.json`, `settings.json`, `mappings.json`, `logs/ezy-ctrl.log`. Presets import/export from the UI.
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { keyInputFrom, matchMappings, parseBuiltinOsc, type Input, type Invocation, type Mapping } from '../../shared/mapping';
-import type { CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, Tally } from '../../shared/types';
+import type { AppInfo, CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, Tally, UpdateStatus } from '../../shared/types';
 import { AddCamera } from './components/AddCamera';
 import { CameraPanel } from './components/CameraPanel';
+import { Help } from './components/Help';
 import { LogPanel } from './components/LogPanel';
 import { MappingPanel, mappingId, type LearnState, type MonitorEntry } from './components/MappingPanel';
 import { Presets } from './components/Presets';
@@ -44,6 +45,9 @@ export default function App() {
   const [showLog, setShowLog] = useState(false);
   const [showMapping, setShowMapping] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [info, setInfo] = useState<AppInfo | null>(null);
+  const [update, setUpdate] = useState<UpdateStatus | null>(null);
   const [tally, setTallyMap] = useState<Record<string, Tally>>({});
   const [speed, setSpeed] = useState<Speed>({ pan: 12, tilt: 10 });
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -81,6 +85,8 @@ export default function App() {
     void window.ezy.log.list().then(setLogs);
     void window.ezy.mappings.list().then(setMappings);
     void window.ezy.osc.status().then(setOscStatus);
+    void window.ezy.app.info().then(setInfo);
+    void window.ezy.update.status().then(setUpdate);
     void window.ezy.settings.get().then(async (s) => {
       setSettings(s);
       await midi.init(s.midi.disabledDevices);
@@ -91,6 +97,7 @@ export default function App() {
       window.ezy.video.onEvent(dispatchVideoEvent),
       window.ezy.log.onEntry((e) => setLogs((l) => (l.length >= 2000 ? [...l.slice(-1999), e] : [...l, e]))),
       window.ezy.osc.onStatus(setOscStatus),
+      window.ezy.update.onStatus(setUpdate),
       midi.onDevices(setMidiDevices),
     ];
     return () => offs.forEach((off) => off());
@@ -374,6 +381,7 @@ export default function App() {
     if (steps.includes('log')) timers.push(window.setTimeout(() => setShowLog(true), 3000));
     if (steps.includes('mapping')) timers.push(window.setTimeout(() => setShowMapping(true), 3000));
     if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
+    if (steps.includes('help')) timers.push(window.setTimeout(() => setShowHelp(true), 3000));
     if (steps.includes('tally'))
       timers.push(
         window.setTimeout(() => {
@@ -396,6 +404,27 @@ export default function App() {
 
   const updateSettings = async (patch: Partial<Settings>) => setSettings(await window.ezy.settings.set(patch));
 
+  const addDemoCamera = async () => {
+    const cam = await window.ezy.cameras.add({ name: 'Demo pattern', host: '127.0.0.1', viscaPort: 52381, videoSource: 'demo', videoUrl: '' });
+    await refresh();
+    setSelectedId(cam.id);
+    setShowHelp(false);
+  };
+
+  const helpProps = {
+    info,
+    update,
+    autoCheck: settings?.updates.autoCheck ?? true,
+    onAutoCheck: (on: boolean) => void updateSettings({ updates: { autoCheck: on } }),
+    onCheck: () => void window.ezy.update.check().then(setUpdate),
+    onInstall: () => void window.ezy.update.install(),
+    onAddCamera: () => {
+      setShowHelp(false);
+      setShowAdd(true);
+    },
+    onDemo: () => void addDemoCamera(),
+  };
+
   const connectedCount = cameras.filter((c) => status[c.id]?.connected).length;
   const errorCount = logs.filter((e) => e.level === 'error').length;
   const warnCount = logs.filter((e) => e.level === 'warn').length;
@@ -416,6 +445,16 @@ export default function App() {
         <span className="info" title={oscStatus?.error ?? ''}>
           OSC <span className={`led${oscStatus?.listening ? ' on' : oscStatus?.error ? ' warn' : ''}`} /> {oscStatus?.listening ? `:${oscStatus.port}` : 'off'}
         </span>
+        {update?.state === 'downloaded' && (
+          <button className="hb update" onClick={() => void window.ezy.update.install()} title="An update has been downloaded">
+            Restart to update to v{update.version}
+          </button>
+        )}
+        {(update?.state === 'available' || update?.state === 'downloading') && (
+          <span className="info" title="Downloading in the background">
+            update {update.percent ?? 0}%
+          </span>
+        )}
         <button className={`hb${showPanel ? ' active' : ''}`} onClick={() => setShowPanel((v) => !v)} title="Camera settings (I)" disabled={!selected}>
           Camera
         </button>
@@ -429,6 +468,9 @@ export default function App() {
         </button>
         <button className="hb" onClick={() => setShowAdd(true)}>
           Add camera
+        </button>
+        <button className={`hb${showHelp ? ' active' : ''}`} onClick={() => setShowHelp((v) => !v)} title="Help, first steps and updates">
+          ?
         </button>
       </header>
 
@@ -452,17 +494,11 @@ export default function App() {
           />
         ) : (
           <div className="stage">
-            <div className="viewport">
-              <div className="hint">
-                <strong>No cameras yet</strong>
-                <span>Add a Tail 2 by its IP address to get started.</span>
-                <button className="b primary" onClick={() => setShowAdd(true)}>
-                  Add camera
-                </button>
-              </div>
-            </div>
+            <Help {...helpProps} inline />
           </div>
         )}
+
+        {showHelp && cameras.length > 0 && <Help {...helpProps} onClose={() => setShowHelp(false)} />}
 
         <Presets
           camera={selected}

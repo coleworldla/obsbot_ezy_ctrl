@@ -9,6 +9,7 @@ import { CameraStore } from './store/cameras';
 import { MappingStore } from './store/mappings';
 import { PresetStore } from './store/presets';
 import { SettingsStore } from './store/settings';
+import { Updater } from './updater';
 import { VideoManager } from './video/manager';
 
 // Dev / test hooks (harmless when unset):
@@ -114,12 +115,19 @@ app.whenReady().then(() => {
     win?.webContents.send('osc:status', oscStatusOf(osc!));
   };
 
-  registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc });
+  const updater = new Updater();
+  updater.on('status', (s) => win?.webContents.send('update:status', s));
+
+  registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater });
   manager.startPolling();
   void applyOsc();
 
   win = createWindow();
   installCaptureHook(win);
+
+  if (app.isPackaged && settings.get().updates.autoCheck) {
+    setTimeout(() => void updater.check(), 8000);
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) win = createWindow();
