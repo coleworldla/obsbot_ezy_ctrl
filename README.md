@@ -2,6 +2,8 @@
 
 A lightweight desktop controller for one or more **OBSBOT Tail 2** cameras on the local network.
 
+> Independent, open-source project (MIT). Not affiliated with, endorsed by or supported by OBSBOT. OBSBOT and Tail 2 are trademarks of their owner; NDI is a trademark of Vizrt NDI AB.
+
 Goals:
 
 - **Connect by IP** — type the camera's IP address, see the live picture, start driving.
@@ -53,7 +55,7 @@ The builds are not code-signed yet:
 - Windows SmartScreen shows "Windows protected your PC" the first time: click **More info → Run anyway**.
 - macOS says the app "cannot be opened because the developer cannot be verified" or "is damaged": right-click the app → **Open**, or run `xattr -cr "/Applications/EZY CTRL.app"` once.
 
-**Updates.** The installed app checks GitHub Releases on startup (switch it off under `?` → Updates), downloads the next version in the background and shows *Restart to update* in the header. This only works while the repository's releases are publicly readable; on a private repository the check logs "no public release feed" and you install new versions by hand.
+**Updates.** The installed app checks GitHub Releases on startup (switch it off under `?` → Updates), downloads the next version in the background and shows *Restart to update* in the header. The releases are public, so this works out of the box.
 
 **Signing (when certificates are available).** Add these repository secrets and the release workflow signs automatically: `WIN_CSC_LINK` + `WIN_CSC_KEY_PASSWORD` (base64 `.pfx`), `MAC_CSC_LINK` + `MAC_CSC_KEY_PASSWORD` (base64 Developer ID `.p12`), and `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` for notarization (also set `"notarize": true` under `build.mac` in `package.json`).
 
@@ -144,7 +146,6 @@ docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit
   protocol/
     visca-over-ip.md     # command reference derived from OBSBOT's official spreadsheet
-  reference/             # OBSBOT's original VISCA spreadsheets (IP + UART)
 mockups/                 # UI mockup source (design-canvas artboards) + canvas.json layout
 ROADMAP.md               # milestones
 ```
@@ -152,6 +153,11 @@ ROADMAP.md               # milestones
 ## Sources
 
 - OBSBOT Tail 2 User Manual v1.0 and Quick Start Guide (OBSBOT)
+- OBSBOT's VISCA over IP / UART command spreadsheets for the Tail 2 (download them from OBSBOT; `docs/protocol/visca-over-ip.md` is our own summary of them)
 - OBSBOT Tail series VISCA over IP guide: https://www.obsbot.com/explore/obsbot-tail-air/visca-over-ip
 - Web UI guide: https://www.obsbot.com/explore/obsbot-tail-2/web-ui-user-guide
 - SRT guide: https://www.obsbot.com/explore/obsbot-tail-2/srt-protocol
+
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, change it, ship it; keep the notice.

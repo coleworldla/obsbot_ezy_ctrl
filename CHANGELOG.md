@@ -2,6 +2,12 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Changed
+- The project is open source under the MIT licence and the repository is public, which also switches on the in-app updater.
+- README states that EZY CTRL is independent of OBSBOT. OBSBOT's original VISCA spreadsheets are no longer redistributed in the repository; `docs/protocol/visca-over-ip.md` remains as our own summary.
+
 ## [0.8.3] - 2026-09-15
 
 ### Added

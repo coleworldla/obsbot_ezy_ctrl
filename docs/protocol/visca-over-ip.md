@@ -1,6 +1,6 @@
 # OBSBOT Tail 2 — VISCA over IP command reference
 
-Source: OBSBOT official spreadsheet `obsbot_tail_2_visca_over_ip.xlsx` (see `docs/reference/`), downloaded 2026-09-11 from https://www.obsbot.com/explore/obsbot-tail-air/visca-over-ip
+Source: OBSBOT's official spreadsheet `obsbot_tail_2_visca_over_ip.xlsx` (download it from OBSBOT; not redistributed here), downloaded 2026-09-11 from https://www.obsbot.com/explore/obsbot-tail-air/visca-over-ip
 
 Transport: **IPv4 / UDP / port 52381**, "Compatible with Sony VISCA over IP Protocol" (Sony 8-byte header: `01 00` + 2-byte payload length + 4-byte sequence number, then the raw VISCA packet `81 ... FF`).
 
