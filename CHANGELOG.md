@@ -2,7 +2,7 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.1] - 2026-09-15
 
 ### Changed
 - Adding a device whose NDI name is not a Tail 2 switches Type to Video only and says so; the offline pill and a failed Test connection now point at Type → Video only for devices that never answer VISCA.
