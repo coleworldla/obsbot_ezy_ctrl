@@ -4,7 +4,7 @@
  * from the first Tail 2 (or the one at --ip). Useful when the app's NDI source stays on "searching".
  *
  *   npm run ndi-probe                       # auto-detect the runtime (NDI Tools / NDI Runtime)
- *   npm run ndi-probe -- --ip <ip address>
+ *   npm run ndi-probe -- --ip 10.0.0.42
  *   npm run ndi-probe -- "C:/Program Files/NDI/NDI 6 Tools/Runtime/Processing.NDI.Lib.x64.dll"
  */
 import koffi from 'koffi';

@@ -300,3 +300,14 @@ select.input { padding: 0 6px; appearance: auto; }
 .oscrow.fb .desc { color: var(--muted); }
 .oscmap .mono, .oscrow .addr, .oscrow .args { font-variant-ligatures: none; }
 .oscmap .maphead > span:first-child, .oscmap .maphead .b { white-space: nowrap; }
+.oscsec.names .oscsec-head { background: var(--accent-soft); }
+.namerow { grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.8fr) minmax(220px, 1.4fr); }
+.namerow .nm { font-weight: 700; cursor: copy; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: text; }
+.namerow.preset .nm { font-weight: 500; padding-left: 18px; }
+.namerow .args { cursor: copy; user-select: text; }
+.hdr .info.click { cursor: pointer; }
+.hdr .info.click:hover { color: var(--text); }
+.b.xs { height: 24px; padding: 0 8px; font-size: 11px; }
+.oscrow { grid-template-columns: minmax(220px, 1fr) 150px minmax(240px, 2fr) 64px; }
+.namerow { grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.8fr) minmax(220px, 1.4fr) 64px; }
+.oscrow .b.xs { justify-self: end; }

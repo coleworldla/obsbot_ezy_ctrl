@@ -3,7 +3,7 @@
  * Send one OSC message over UDP, for testing the app's OSC input.
  *
  *   node scripts/osc-send.mjs /cam/1/preset/2
- *   node scripts/osc-send.mjs <ip address>:9000 /cam/sel/zoom 4.5
+ *   node scripts/osc-send.mjs 10.0.0.10:9000 /cam/sel/zoom 4.5
  *   node scripts/osc-send.mjs /cam/1/track 1
  *
  * Numeric arguments are sent as int32 when whole, float32 otherwise; anything else as a string.

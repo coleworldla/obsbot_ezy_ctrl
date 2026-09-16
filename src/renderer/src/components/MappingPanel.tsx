@@ -229,7 +229,7 @@ export function MappingPanel({
             </div>
             <div className="devrow">
               <span className="devname">Feedback to</span>
-              <input className="input mono small" style={{ width: 130 }} placeholder="<ip address>" value={fbHost} onChange={(e) => setFbHost(e.target.value)} onBlur={applyFeedback} onKeyDown={(e) => e.key === 'Enter' && applyFeedback()} />
+              <input className="input mono small" style={{ width: 130 }} placeholder="10.0.0.20" value={fbHost} onChange={(e) => setFbHost(e.target.value)} onBlur={applyFeedback} onKeyDown={(e) => e.key === 'Enter' && applyFeedback()} />
               <input className="input mono small" style={{ width: 64 }} value={fbPort} onChange={(e) => setFbPort(e.target.value)} onBlur={applyFeedback} onKeyDown={(e) => e.key === 'Enter' && applyFeedback()} />
             </div>
             <div className="note">Feedback: /cam/select, /cam/&lt;i&gt;/preset/active, /cam/&lt;i&gt;/online, /cam/&lt;i&gt;/tally, /cam/&lt;i&gt;/position (4 Hz).</div>

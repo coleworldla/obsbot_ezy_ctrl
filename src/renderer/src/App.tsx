@@ -478,8 +478,7 @@ export default function App() {
         <span className="info" title={midiActive.map((d) => d.name).join(', ') || midi.error || 'no MIDI device'}>
           MIDI <span className={`led${midiActive.length ? ' on' : ''}`} /> {midiActive.length ? midiActive[0].name + (midiActive.length > 1 ? ` +${midiActive.length - 1}` : '') : 'none'}
         </span>
-        <span className="info" title={oscStatus?.error ?? ''}>
-          OSC <span className={`led${oscStatus?.listening ? ' on' : oscStatus?.error ? ' warn' : ''}`} /> {oscStatus?.listening ? `:${oscStatus.port}` : 'off'}
+        <span className="info click" onClick={() => setShowOscMap(true)} title="OSC map: every address and name, ready to copy">OSC <span className={`led${oscStatus?.listening ? ' on' : oscStatus?.error ? ' warn' : ''}`} /> {oscStatus?.listening ? `:${oscStatus.port}` : 'off'}
         </span>
         {update?.state === 'downloaded' && (
           <button className="hb update" onClick={() => void window.ezy.update.install()} title="An update has been downloaded">
@@ -549,6 +548,7 @@ export default function App() {
           onRecall={recall}
           onChanged={loadPresets}
           onSnapshot={() => (selected ? (snapshotFor(selected.id, 240) ?? undefined) : undefined)}
+          onNames={() => setShowOscMap(true)}
         />
 
         {showMapping && settings && (

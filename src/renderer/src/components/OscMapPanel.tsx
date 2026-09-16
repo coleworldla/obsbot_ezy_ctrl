@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { oscMapRows, oscMapText, type OscMapFormat, type OscMapRow, type OscNaming } from '../../../shared/mapping';
+import { namesList, namesText, oscMapRows, oscMapText, type NamesFormat, type OscMapFormat, type OscMapRow, type OscNaming } from '../../../shared/mapping';
 import type { CameraConfig, OscStatus, Preset, Settings } from '../../../shared/types';
 
 interface Props {
@@ -12,19 +12,40 @@ interface Props {
 }
 
 const FORMATS: { id: OscMapFormat; label: string; hint: string }[] = [
-  { id: 'text', label: 'Text', hint: 'address, argument and what it does on one line each' },
-  { id: 'addresses', label: 'Addresses only', hint: 'one address per line, for pasting into TouchOSC or an OSC monitor' },
+  { id: 'addresses', label: 'Addresses', hint: 'one address per line — paste straight into TouchOSC, Companion, Resolume, TouchDesigner…' },
+  { id: 'text', label: 'With notes', hint: 'address, argument and what it does on one line each' },
   { id: 'csv', label: 'CSV', hint: 'section,address,argument,description,direction — for spreadsheets and Companion imports' },
   { id: 'markdown', label: 'Markdown', hint: 'a table for show notes or a wiki' },
 ];
 
 export function OscMapPanel({ cameras, presets, settings, oscStatus, onSettings, onClose }: Props) {
-  const [format, setFormat] = useState<OscMapFormat>('text');
+  const [format, setFormat] = useState<OscMapFormat>('addresses');
+  const [copiedRow, setCopiedRow] = useState<string | null>(null);
+  const copyOne = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedRow(key);
+      window.setTimeout(() => setCopiedRow((c) => (c === key ? null : c)), 1200);
+    } catch {
+      /* clipboard blocked */
+    }
+  };
   const [copied, setCopied] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const naming: OscNaming = settings.osc.naming ?? 'name';
 
   const rows = useMemo(() => oscMapRows(cameras, presets, naming), [cameras, presets, naming]);
+  const names = useMemo(() => namesList(cameras, presets, naming), [cameras, presets, naming]);
+  const [copiedNames, setCopiedNames] = useState<NamesFormat | null>(null);
+  const copyNames = async (f: NamesFormat) => {
+    try {
+      await navigator.clipboard.writeText(namesText(names, f));
+      setCopiedNames(f);
+      window.setTimeout(() => setCopiedNames((c) => (c === f ? null : c)), 1600);
+    } catch {
+      /* clipboard blocked */
+    }
+  };
   const sections = useMemo(() => {
     const out: { title: string; rows: OscMapRow[] }[] = [];
     for (const r of rows) {
@@ -103,6 +124,48 @@ export function OscMapPanel({ cameras, presets, settings, oscStatus, onSettings,
           )}{' '}
           Buttons: send 1 to press and 0 to release, or just the address. Toggles: 1 on, 0 off, no argument flips.
         </div>
+        {!q && (
+          <div className="oscsec names" id="osc-names">
+            <div className="oscsec-head">
+              <span>Names</span>
+              <span className="mono muted" style={{ fontWeight: 400 }}>
+                what you typed → how it appears in OSC
+              </span>
+              <span className="spacer" />
+              <button className="b sm" onClick={() => void copyNames('names')} title="Camera and preset names, one per line">
+                {copiedNames === 'names' ? 'Copied' : 'Copy names'}
+              </button>
+              <button className="b sm" onClick={() => void copyNames('osc')} title="The OSC form of each name, one per line">
+                {copiedNames === 'osc' ? 'Copied' : 'Copy OSC names'}
+              </button>
+              <button className="b sm" onClick={() => void copyNames('both')} title="Name and address side by side">
+                {copiedNames === 'both' ? 'Copied' : 'Copy both'}
+              </button>
+              <button className="b sm" onClick={() => void copyNames('csv')} title="kind, number, name, osc_name, address, camera">
+                {copiedNames === 'csv' ? 'Copied' : 'CSV'}
+              </button>
+            </div>
+            {names.length === 0 && <div className="oscrow"><span className="desc">No cameras yet.</span></div>}
+            {names.map((r, i) => (
+              <div key={`${r.kind}-${i}`} className={`oscrow namerow${r.kind === 'preset' ? ' preset' : ''}`}>
+                <span className="nm" title="Click to copy the name" onClick={() => void navigator.clipboard.writeText(r.name).catch(() => undefined)}>
+                  {r.kind === 'camera' ? <span className="mono muted">CAM {r.index} </span> : <span className="mono muted">P{r.index} </span>}
+                  {r.name}
+                  {r.monitor ? <span className="muted"> (video only)</span> : null}
+                </span>
+                <span className="mono args" title="Click to copy the OSC name" onClick={() => void navigator.clipboard.writeText(r.slug).catch(() => undefined)}>
+                  {r.slug || '—'}
+                </span>
+                <span className="mono addr" title="Click to copy this address" onClick={() => void navigator.clipboard.writeText(r.address).catch(() => undefined)}>
+                  {r.address}
+                </span>
+                <button className="b xs" onClick={() => void copyOne(r.address, `name/${i}`)} title="Copy this address">
+                  {copiedRow === `name/${i}` ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         {sections.map((s) => {
           const shown = s.rows.filter(matches);
           if (shown.length === 0) return null;
@@ -122,6 +185,9 @@ export function OscMapPanel({ cameras, presets, settings, oscStatus, onSettings,
                   </span>
                   <span className="mono args">{r.args}</span>
                   <span className="desc">{r.desc}</span>
+                  <button className="b xs" onClick={() => void copyOne(r.address, `${s.title}/${i}`)} title="Copy this address">
+                    {copiedRow === `${s.title}/${i}` ? 'Copied' : 'Copy'}
+                  </button>
                 </div>
               ))}
             </div>

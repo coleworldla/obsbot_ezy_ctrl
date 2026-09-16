@@ -3,9 +3,9 @@
  * Talk to a real Tail 2 and report what it answers: every VISCA inquiry the app uses, plus a
  * short pull of the video stream with the bundled ffmpeg.
  *
- *   npm run diagnose -- <ip address>
- *   npm run diagnose -- <ip address> --video srt://<ip address>:5000
- *   npm run diagnose -- <ip address> --no-video
+ *   npm run diagnose -- 10.0.0.42
+ *   npm run diagnose -- 10.0.0.42 --video srt://10.0.0.42:5000
+ *   npm run diagnose -- 10.0.0.42 --no-video
  */
 import { spawn } from 'node:child_process';
 import dgram from 'node:dgram';

@@ -15,6 +15,8 @@ interface Props {
   onRecall: (p: Preset) => void;
   onChanged: () => Promise<void>;
   onSnapshot: () => string | undefined;
+  /** Open the names / OSC list. */
+  onNames: () => void;
 }
 
 const deg = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}`;
@@ -24,7 +26,7 @@ const isTyping = (t: EventTarget | null) => {
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 };
 
-export function Presets({ camera, online, monitor = false, presets, activeId, recallSpeed, onRecallSpeed, onSave, onRecall, onChanged, onSnapshot }: Props) {
+export function Presets({ camera, online, monitor = false, presets, activeId, recallSpeed, onRecallSpeed, onSave, onRecall, onChanged, onSnapshot, onNames }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [menu, setMenu] = useState<{ x: number; y: number; preset: Preset } | null>(null);
@@ -353,6 +355,9 @@ export function Presets({ camera, online, monitor = false, presets, activeId, re
           <span className="mono muted" style={{ flex: 1 }}>
             {selecting ? 'click select · shift range · Del delete · Esc done' : 'click recall · drag reorder · dbl-click rename · ctrl-click select'}
           </span>
+          <button className="b sm" onClick={onNames} title="Every camera and preset name with its OSC address, ready to copy">
+            Names
+          </button>
           <button className="b sm" disabled={!camera} onClick={() => camera && void window.ezy.presets.import(camera.id).then(onChanged)}>
             Import
           </button>

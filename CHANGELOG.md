@@ -2,6 +2,14 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.8.3] - 2026-09-15
+
+### Added
+- Names list: the OSC map starts with a **Names** section showing every camera and preset name next to its OSC form and address, with Copy names / Copy OSC names / Copy both / CSV, and click-to-copy on each cell. Reach it from the presets footer (**Names**), the OSC pill in the header, or Mapping → OSC map.
+
+### Changed
+- Example addresses in the app, scripts and mockups use a 10.0.0.x range. No real network address is kept in the repository or its history.
+
 ## [0.8.2] - 2026-09-15
 
 ### Added

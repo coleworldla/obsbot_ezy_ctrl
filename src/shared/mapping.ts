@@ -526,3 +526,46 @@ export function oscMapText(rows: OscMapRow[], format: OscMapFormat): string {
     }
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Names list: every camera and preset name with its OSC slug, for pasting into other software.
+// ---------------------------------------------------------------------------------------------
+
+export interface NameRow {
+  kind: 'camera' | 'preset';
+  /** Rack number for cameras, rail position for presets (1-based). */
+  index: number;
+  name: string;
+  slug: string;
+  /** OSC address prefix (camera) or full recall address (preset). */
+  address: string;
+  /** For presets: the camera they belong to. */
+  camera?: string;
+  monitor?: boolean;
+}
+
+export function namesList(cameras: { id: string; name: string; kind?: string }[], presets: { cameraId: string; name: string }[], naming: OscNaming = 'name'): NameRow[] {
+  const out: NameRow[] = [];
+  cameras.forEach((c, i) => {
+    const key = oscCameraKey(c, i, naming);
+    out.push({ kind: 'camera', index: i + 1, name: c.name, slug: oscSlug(c.name), address: `/cam/${key}`, monitor: c.kind === 'monitor' });
+    presets
+      .filter((p) => p.cameraId === c.id)
+      .forEach((p, j) => {
+        const slug = oscSlug(p.name);
+        const usable = naming === 'name' && slug && !/^\d+$/.test(slug);
+        out.push({ kind: 'preset', index: j + 1, name: p.name, slug, address: `/cam/${key}/preset/${usable ? slug : j + 1}`, camera: c.name });
+      });
+  });
+  return out;
+}
+
+export type NamesFormat = 'names' | 'osc' | 'both' | 'csv';
+
+export function namesText(rows: NameRow[], format: NamesFormat): string {
+  if (format === 'names') return rows.map((r) => (r.kind === 'camera' ? r.name : `  ${r.name}`)).join('\n');
+  if (format === 'osc') return rows.map((r) => r.slug || String(r.index)).join('\n');
+  if (format === 'csv') return ['kind,number,name,osc_name,address,camera', ...rows.map((r) => [r.kind, String(r.index), r.name, r.slug, r.address, r.camera ?? ''].map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(','))].join('\n');
+  const w = Math.max(8, ...rows.map((r) => r.name.length + (r.kind === 'preset' ? 4 : 0)));
+  return rows.map((r) => (r.kind === 'camera' ? `CAM ${r.index}  ${r.name.padEnd(w)}  ${r.address}${r.monitor ? '  (video only)' : ''}` : `  P${String(r.index).padEnd(3)} ${r.name.padEnd(w)}  ${r.address}`)).join('\n');
+}
