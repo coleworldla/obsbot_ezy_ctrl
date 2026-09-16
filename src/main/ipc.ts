@@ -104,6 +104,22 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
 
   // ---- NDI ----
   handle('ndi:status', () => ndi.status());
+  handle('ndi:locate', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender) ?? undefined;
+    const ext = process.platform === 'win32' ? ['dll'] : process.platform === 'darwin' ? ['dylib'] : ['so'];
+    const defaultPath = process.platform === 'win32' ? 'C:\\Program Files\\NDI' : '/usr/local/lib';
+    const r = await dialog.showOpenDialog(win as BrowserWindow, {
+      title: 'Pick the NDI runtime library',
+      message: process.platform === 'darwin' ? 'Usually /usr/local/lib/libndi.dylib (press Cmd+Shift+G and type the path)' : 'Usually Processing.NDI.Lib.x64.dll in the NDI Runtime or NDI Tools folder',
+      defaultPath,
+      properties: ['openFile', 'showHiddenFiles'],
+      filters: [{ name: 'NDI runtime', extensions: ext }],
+    });
+    if (r.canceled || !r.filePaths[0]) return ndi.status();
+    settings.set({ ndi: { runtimePath: r.filePaths[0] } });
+    logger.info('ndi', `runtime path set by the user: ${r.filePaths[0]}`);
+    return ndi.setRuntimeOverride(r.filePaths[0]);
+  });
   handle('ndi:sources', (_e, extraIp?: string) => ndi.sources(1500, extraIp || undefined));
   handle('ndi:subscribe', (e, id: string) => {
     const cfg = store.get(id);

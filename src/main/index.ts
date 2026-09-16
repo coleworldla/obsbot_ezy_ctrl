@@ -121,7 +121,7 @@ app.whenReady().then(() => {
   const updater = new Updater();
   updater.on('status', (s) => win?.webContents.send('update:status', s));
 
-  ndi = new NdiManager(process.env.EZY_NDI_RUNTIME);
+  ndi = new NdiManager(process.env.EZY_NDI_RUNTIME ?? settings.get().ndi.runtimePath);
 
   registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater, ndi });
   manager.startPolling();

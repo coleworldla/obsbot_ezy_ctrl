@@ -2,6 +2,13 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.8.5] - 2026-09-15
+
+### Fixed
+- **macOS: NDI said "unavailable" with NDI Tools installed.** On macOS, NDI Tools does not install the runtime library. The message now explains that, links the NDI Runtime for Apple (and the Homebrew cask), lists the folders searched, and **Locate runtime…** lets you point the app at a `libndi.dylib` (or `Processing.NDI.Lib.x64.dll`) anywhere. **Refresh** re-checks without restarting; receivers that were waiting start on their own once the runtime loads.
+- macOS: the app now declares local-network and Bonjour (`_ndi._tcp`) usage, which macOS 14/15 require before an app may browse for NDI sources, plus the camera / microphone texts the Webcam source needs.
+- More runtime search locations on macOS: Homebrew, the NDI SDK folder, versioned `libndi.N.dylib` files and the NDI Tools app bundles.
+
 ## [0.8.4] - 2026-09-15
 
 ### Fixed

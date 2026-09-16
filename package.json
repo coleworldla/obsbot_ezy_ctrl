@@ -1,6 +1,6 @@
 {
   "name": "obsbot-ezy-ctrl",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "license": "MIT",
   "description": "Easy MIDI/OSC-mappable controller with live viewport and unlimited presets for OBSBOT Tail 2 cameras",
   "main": "./out/main/index.js",
@@ -126,7 +126,15 @@
             "**/*"
           ]
         }
-      ]
+      ],
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "EZY CTRL controls your cameras over VISCA and receives NDI video on the local network.",
+        "NSBonjourServices": [
+          "_ndi._tcp"
+        ],
+        "NSCameraUsageDescription": "Only used when you pick the Webcam video source.",
+        "NSMicrophoneUsageDescription": "Not used; macOS requires this text for the webcam picker."
+      }
     },
     "dmg": {
       "artifactName": "EZY-CTRL-${version}-${arch}.${ext}"

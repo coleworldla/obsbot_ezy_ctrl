@@ -7,7 +7,7 @@ import type { WebContents } from 'electron';
 import type { CameraConfig, NdiFrame, NdiSource, NdiStateMessage, NdiStatus } from '../../shared/types';
 import { errMsg, logger } from '../log';
 import { BANDWIDTH_HIGHEST, BANDWIDTH_LOWEST, COLOR_RGBX_RGBA, NDI_FRAME_ERROR, NDI_FRAME_VIDEO, NdiLib, type RawSource } from './lib';
-import { findNdiRuntime, NDI_RUNTIME_DOWNLOAD } from './runtime';
+import { findNdiRuntime, ndiNotFoundMessage, ndiRuntimeDownloadUrl } from './runtime';
 
 const CAPTURE_TIMEOUT_MS = 500;
 const STOP_TIMEOUT_MS = 2500; // how long quitting waits for receivers to be destroyed
@@ -41,7 +41,16 @@ export class NdiManager {
   private finderBusy: Promise<unknown> = Promise.resolve();
   private focusedId: string | null = null;
 
-  constructor(private readonly runtimeOverride?: string) {}
+  private lastLogged: string | null = null;
+
+  constructor(private runtimeOverride?: string) {}
+
+  /** The user pointed the app at a runtime library (settings). Takes effect now if nothing is loaded yet. */
+  setRuntimeOverride(p: string | undefined): NdiStatus {
+    this.runtimeOverride = p;
+    if (!this.lib) this.libError = null;
+    return this.status();
+  }
 
   /** The camera currently on stage gets full frame rate; the others are throttled. */
   focus(id: string | null): void {
@@ -53,23 +62,30 @@ export class NdiManager {
     if (this.lib || this.libError) return this.lib;
     const found = findNdiRuntime(this.runtimeOverride);
     if (!found) {
-      this.libError = `NDI runtime not found. Install NDI Tools or the NDI Runtime from ${NDI_RUNTIME_DOWNLOAD} and restart the app.`;
-      logger.warn('ndi', this.libError);
+      this.libError = ndiNotFoundMessage(this.runtimeOverride);
+      if (this.lastLogged !== this.libError) logger.warn('ndi', this.libError);
+      this.lastLogged = this.libError;
       return null;
     }
     try {
       this.lib = new NdiLib(found.path);
       logger.info('ndi', `runtime ${this.lib.version} loaded from ${found.path} (${found.from})`);
+      this.lastLogged = null;
+      // Receivers that gave up while the runtime was missing get another go.
+      for (const r of this.receivers.values()) if (r.state.state === 'unavailable' && !r.stop) r.done = this.run(r);
     } catch (e) {
       this.libError = `NDI runtime at ${found.path} could not be loaded: ${errMsg(e)}`;
-      logger.error('ndi', this.libError);
+      if (this.lastLogged !== this.libError) logger.error('ndi', this.libError);
+      this.lastLogged = this.libError;
     }
     return this.lib;
   }
 
+  /** Asked by the camera dialog; while nothing is loaded it looks again, so installing the runtime needs no restart. */
   status(): NdiStatus {
+    if (!this.lib) this.libError = null;
     const lib = this.ensureLib();
-    return lib ? { available: true, runtimePath: lib.path, version: lib.version } : { available: false, error: this.libError ?? undefined };
+    return lib ? { available: true, runtimePath: lib.path, version: lib.version } : { available: false, error: this.libError ?? undefined, downloadUrl: ndiRuntimeDownloadUrl() };
   }
 
   /** Discover sources on the network (plus the cameras' IPs as hints), waiting up to `waitMs`. */

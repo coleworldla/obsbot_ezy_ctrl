@@ -318,3 +318,5 @@ select.input { padding: 0 6px; appearance: auto; }
 .emptystage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px dashed var(--line-3); border-radius: 6px; color: var(--muted); text-align: center; padding: 24px; }
 .emptystage h3 { margin: 0; color: var(--text); font-size: 15px; }
 .emptystage .helpbtns { justify-content: center; }
+
+a.b { text-decoration: none; display: inline-flex; align-items: center; }

@@ -159,6 +159,10 @@ export interface Settings {
     /** Check GitHub Releases on startup and download in the background. */
     autoCheck: boolean;
   };
+  ndi: {
+    /** Full path to the NDI runtime library when the app cannot find it on its own (Locate runtime…). */
+    runtimePath?: string;
+  };
 }
 
 export interface UpdateStatus {
@@ -196,6 +200,8 @@ export interface NdiStatus {
   runtimePath?: string;
   version?: string;
   error?: string;
+  /** Where to get the runtime for this platform. */
+  downloadUrl?: string;
 }
 
 export interface NdiSource {

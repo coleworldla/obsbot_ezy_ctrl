@@ -273,6 +273,27 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
                 : (ndiStatus.error ?? 'NDI runtime not found')}
             </span>
           )}
+          {source === 'ndi' && ndiStatus && !ndiStatus.available && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {ndiStatus.downloadUrl && (
+                <a className="b sm" href={ndiStatus.downloadUrl} target="_blank" rel="noreferrer" title={ndiStatus.downloadUrl}>
+                  Get the NDI runtime
+                </a>
+              )}
+              <button
+                className="b sm"
+                onClick={() =>
+                  void window.ezy.ndi.locate().then((st) => {
+                    setNdiStatus(st);
+                    if (st.available) void refreshNdi(DOTTED_RE.test(trimmedHost) ? trimmedHost : undefined);
+                  })
+                }
+                title="Point the app at the runtime library yourself"
+              >
+                Locate runtime…
+              </button>
+            </div>
+          )}
           {source === 'webcam' && (
             <select
               className="input"

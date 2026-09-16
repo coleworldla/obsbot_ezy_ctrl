@@ -20,7 +20,7 @@ Goals:
 |---|---|---|
 | Control | VISCA over IP | UDP port **52381**, Sony-compatible framing. Full command list in [docs/protocol/visca-over-ip.md](docs/protocol/visca-over-ip.md). |
 | Video (default) | RTSP | `rtsp://<camera-ip>:8554/live` — enable **RTSP mode** in OBSBOT Center / Start (Output → RTSP). |
-| Video (NDI) | NDI | Camera in NDI mode (licence on the camera). The app receives the NDI **proxy stream** (640×360) directly through the NDI runtime installed on the computer (comes with [NDI Tools](https://ndi.video/tools/)), while the full-quality feed goes to your switcher or media server. Sources are discovered automatically; Auto picks the one at the camera's IP. |
+| Video (NDI) | NDI | Camera in NDI mode (licence on the camera). The app receives the NDI **proxy stream** (640×360) directly through the NDI runtime installed on the computer (Windows: comes with [NDI Tools](https://ndi.video/tools/); macOS: install the [NDI Runtime for Apple](https://ndi.link/NDIRedistV6Apple)), while the full-quality feed goes to your switcher or media server. Sources are discovered automatically; Auto picks the one at the camera's IP. |
 | Video (optional) | SRT | Camera in SRT listener mode (default port 5000); the app connects as caller. Only one camera output mode is active at a time. |
 | Web UI | HTTP | `http://<camera-ip>` (login `Admin` / `Admin` on first use) — network setup and a fallback preview. |
 | Video (USB) | Webcam | The Tail 2 over USB-C in UVC mode, or any other video device on the computer. |
@@ -69,7 +69,7 @@ macOS only asks once; after that the app opens like any other. If the app still 
 xattr -cr "/Applications/EZY CTRL.app"
 ```
 
-**NDI on the Mac** needs the NDI runtime too: install [NDI Tools for macOS](https://ndi.video/tools/) and the app finds it. RTSP, SRT and the Web UI work without it.
+**NDI on the Mac** needs the NDI runtime library, and on macOS **NDI Tools does not install it**. Install the [NDI Runtime for Apple](https://ndi.link/NDIRedistV6Apple) (or in Terminal: `brew install --cask libndi`); it puts `libndi.dylib` in `/usr/local/lib`, where the app finds it. Then press **Refresh** in the camera dialog, no restart needed. Installed somewhere unusual? **Locate runtime…** in the same place lets you pick the file. macOS also asks once whether EZY CTRL may find devices on the local network; allow it, or NDI discovery finds nothing. RTSP, SRT and the Web UI work without any of this.
 
 **Updates.** The installed app checks GitHub Releases on startup (switch it off under `?` → Updates), downloads the next version in the background and shows *Restart to update* in the header. The releases are public, so this works out of the box.
 

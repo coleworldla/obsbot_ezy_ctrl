@@ -410,6 +410,13 @@ export default function App() {
     if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
     if (steps.includes('help')) timers.push(window.setTimeout(() => setShowHelp(true), 3000));
     if (steps.includes('add')) timers.push(window.setTimeout(() => setShowAdd(true), 4000));
+    if (steps.includes('add-ndi'))
+      timers.push(
+        window.setTimeout(() => {
+          const all = [...document.querySelectorAll<HTMLElement>('.dialog .seg .b')];
+          all.forEach((b) => b.textContent === 'NDI' && b.click());
+        }, 5000),
+      );
     if (steps.includes('skip')) timers.push(window.setTimeout(() => setWelcomeSkipped(true), 3000));
     if (steps.includes('edit')) timers.push(window.setTimeout(() => setEditCamera(ctxRef.current.cameras[0] ?? null), 3000));
     if (steps.includes('pselect'))

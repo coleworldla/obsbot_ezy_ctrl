@@ -1,9 +1,10 @@
 /**
  * Locate the NDI runtime library on this machine. We never ship it: NDI's redistributable model is
- * that apps load the runtime the user installed (NDI Tools or the standalone NDI Runtime).
+ * that apps load the runtime the user installed (NDI Tools on Windows, the NDI Runtime for Apple on macOS).
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 export interface NdiRuntimeLocation {
@@ -33,9 +34,26 @@ function registryRuntimeDirs(): string[] {
   }
 }
 
-export function findNdiRuntime(override?: string): NdiRuntimeLocation | null {
-  const lib = LIB_NAME[process.platform];
-  if (!lib) return null;
+/** libndi.dylib also lives inside the NDI Tools app bundles on macOS; scanning them is the last resort. */
+function macBundleDirs(): string[] {
+  const roots = ['/Applications', '/Applications/NDI Tools', '/Applications/NDI', path.join(os.homedir(), 'Applications')];
+  const out: string[] = [];
+  for (const root of roots) {
+    let entries: string[] = [];
+    try {
+      entries = fs.readdirSync(root);
+    } catch {
+      continue;
+    }
+    for (const e of entries) {
+      if (!e.endsWith('.app') || !/ndi/i.test(e)) continue;
+      out.push(path.join(root, e, 'Contents', 'Frameworks'), path.join(root, e, 'Contents', 'MacOS'));
+    }
+  }
+  return out;
+}
+
+function candidateDirs(override?: string): { dir: string; from: string }[] {
   const candidates: { dir: string; from: string }[] = [];
   if (override) candidates.push({ dir: override, from: 'settings' });
   for (const v of ['6', '5', '4']) {
@@ -53,18 +71,63 @@ export function findNdiRuntime(override?: string): NdiRuntimeLocation | null {
     ])
       candidates.push({ dir, from: 'default install folder' });
   } else if (process.platform === 'darwin') {
-    for (const dir of ['/usr/local/lib', '/Library/NDI SDK for Apple/lib/macOS', '/Library/NDI Advanced SDK for Apple/lib/macOS']) candidates.push({ dir, from: 'default install folder' });
+    for (const dir of ['/usr/local/lib', '/opt/homebrew/lib', '/Library/NDI SDK for Apple/lib/macOS', '/Library/NDI Advanced SDK for Apple/lib/macOS']) candidates.push({ dir, from: 'default install folder' });
+    for (const dir of macBundleDirs()) candidates.push({ dir, from: 'inside an NDI app bundle' });
   } else {
     for (const dir of ['/usr/lib', '/usr/local/lib', '/usr/lib/x86_64-linux-gnu']) candidates.push({ dir, from: 'default install folder' });
   }
-  for (const c of candidates) {
+  return candidates;
+}
+
+/** Folders the app looks in, for the "not found" message. */
+export function ndiSearchDirs(override?: string): string[] {
+  return [...new Set(candidateDirs(override).map((c) => c.dir))];
+}
+
+/** Matches the plain library name and versioned variants (libndi.6.dylib, libndi.so.6). */
+function libNameMatcher(lib: string): RegExp {
+  const [base, ...rest] = lib.split('.');
+  const ext = rest.join('.');
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${esc(base)}(\\.\\d+)*\\.${esc(ext)}(\\.\\d+)*$`, 'i');
+}
+
+export function findNdiRuntime(override?: string): NdiRuntimeLocation | null {
+  const lib = LIB_NAME[process.platform];
+  if (!lib) return null;
+  const versioned = libNameMatcher(lib);
+  for (const c of candidateDirs(override)) {
     const direct = path.join(c.dir, lib);
     if (fs.existsSync(direct)) return { path: direct, from: c.from };
     // A file path was given instead of a folder.
-    if (c.dir.toLowerCase().endsWith(lib.toLowerCase()) && fs.existsSync(c.dir)) return { path: c.dir, from: c.from };
+    if (/\.(dll|dylib|so)(\.\d+)*$/i.test(c.dir) && fs.existsSync(c.dir)) return { path: c.dir, from: c.from };
+    // Versioned file without the plain symlink.
+    try {
+      const hit = fs.readdirSync(c.dir).find((f) => versioned.test(f));
+      if (hit) return { path: path.join(c.dir, hit), from: c.from };
+    } catch {
+      /* folder missing */
+    }
   }
   return null;
 }
 
 /** Where to get the runtime, for error messages and the dialog. */
 export const NDI_RUNTIME_DOWNLOAD = 'https://ndi.video/tools/';
+export const NDI_RUNTIME_DOWNLOAD_MAC = 'https://ndi.link/NDIRedistV6Apple';
+
+export function ndiRuntimeDownloadUrl(): string {
+  return process.platform === 'darwin' ? NDI_RUNTIME_DOWNLOAD_MAC : NDI_RUNTIME_DOWNLOAD;
+}
+
+/** Platform-specific "not found" explanation. NDI Tools installs the runtime on Windows but not on macOS. */
+export function ndiNotFoundMessage(override?: string): string {
+  const dirs = ndiSearchDirs(override).join(', ');
+  if (process.platform === 'darwin') {
+    return `NDI runtime not found. On macOS, NDI Tools does not install the runtime library: install the NDI Runtime for Apple (${NDI_RUNTIME_DOWNLOAD_MAC}, or in Terminal: brew install --cask libndi), then press Refresh. Looked in: ${dirs}. If it is somewhere else, use Locate runtime…`;
+  }
+  if (process.platform === 'win32') {
+    return `NDI runtime not found. Install NDI Tools or the NDI Runtime from ${NDI_RUNTIME_DOWNLOAD}, then press Refresh. Looked in: ${dirs}. If it is somewhere else, use Locate runtime…`;
+  }
+  return `NDI runtime (libndi.so) not found. Install the NDI SDK / runtime for Linux, then press Refresh. Looked in: ${dirs}.`;
+}

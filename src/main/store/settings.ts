@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: Settings = {
   osc: { enabled: true, listenPort: 9000, feedbackEnabled: false, feedbackHost: '', feedbackPort: 9001, naming: 'name' },
   midi: { disabledDevices: [] },
   updates: { autoCheck: true },
+  ndi: {},
 };
 
 /** settings.json: small, merged with defaults on read so new keys always exist. */
@@ -42,5 +43,6 @@ function merge(base: Settings, patch: Partial<Settings>): Settings {
     osc: { ...base.osc, ...(patch.osc ?? {}) },
     midi: { ...base.midi, ...(patch.midi ?? {}) },
     updates: { ...base.updates, ...(patch.updates ?? {}) },
+    ndi: { ...base.ndi, ...(patch.ndi ?? {}) },
   };
 }
