@@ -219,7 +219,8 @@ select.input { padding: 0 6px; appearance: auto; }
 
 /* help / first run */
 .help { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--bg); }
-.help.inline { position: static; flex: 1; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-rail); min-height: 0; }
+/* z-index applies to flex items even when static; without `auto` the welcome page painted over dialogs. */
+.help.inline { position: static; z-index: auto; flex: 1; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-rail); min-height: 0; }
 .helphead { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--bg-deep); flex: none; }
 .help.inline .helphead { background: transparent; }
 .helphead .spacer { flex: 1; }
@@ -253,7 +254,8 @@ select.input { padding: 0 6px; appearance: auto; }
 .logline .lm { white-space: pre-wrap; word-break: break-word; }
 
 /* dialog */
-.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
+/* Dialogs sit above every panel (.help / .mapping are 20, context menus 30). */
+.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; z-index: 100; }
 .dialog { width: 520px; display: flex; flex-direction: column; gap: 16px; padding: 24px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line-2); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
 .dialog h3 { margin: 0; font-size: 16px; }
 .dialog .sub { color: var(--muted); }
@@ -311,3 +313,8 @@ select.input { padding: 0 6px; appearance: auto; }
 .oscrow { grid-template-columns: minmax(220px, 1fr) 150px minmax(240px, 2fr) 64px; }
 .namerow { grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.8fr) minmax(220px, 1.4fr) 64px; }
 .oscrow .b.xs { justify-self: end; }
+
+/* stage with no cameras after the welcome page was skipped */
+.emptystage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px dashed var(--line-3); border-radius: 6px; color: var(--muted); text-align: center; padding: 24px; }
+.emptystage h3 { margin: 0; color: var(--text); font-size: 15px; }
+.emptystage .helpbtns { justify-content: center; }

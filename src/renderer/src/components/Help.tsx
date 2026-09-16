@@ -51,9 +51,9 @@ export function Help({ info, update, autoCheck, onAutoCheck, onCheck, onInstall,
           v{info?.version ?? '…'} · {info?.platform === 'darwin' ? 'macOS' : info?.platform === 'win32' ? 'Windows' : info?.platform ?? ''}
         </span>
         <span className="spacer" />
-        {!inline && (
-          <button className="b sm" onClick={onClose}>
-            Close
+        {onClose && (
+          <button className="b sm" onClick={onClose} title={inline ? 'Hide this guide; it is always available under ?' : 'Close'}>
+            {inline ? 'Skip for now' : 'Close'}
           </button>
         )}
       </div>

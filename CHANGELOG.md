@@ -2,7 +2,11 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.4] - 2026-09-15
+
+### Fixed
+- **Add camera did nothing on a fresh install.** The dialog opened underneath the welcome page (and underneath the Help and Mapping panels), so a new user was stuck on the welcome screen with no way to add a camera. Dialogs now sit above every panel on Windows and macOS.
+- The welcome page has **Skip for now**; the empty stage then offers Add camera, Try the demo and a way back to the guide.
 
 ### Changed
 - README and Help: step-by-step macOS first-launch guide (which dmg for Apple Silicon vs Intel, Privacy and Security → Open Anyway on macOS 15, right-click → Open on 13–14, local network permission, the xattr fallback).

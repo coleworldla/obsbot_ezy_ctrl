@@ -52,6 +52,7 @@ export default function App() {
   const [showOscMap, setShowOscMap] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [welcomeSkipped, setWelcomeSkipped] = useState(false);
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [update, setUpdate] = useState<UpdateStatus | null>(null);
   const [tally, setTallyMap] = useState<Record<string, Tally>>({});
@@ -408,6 +409,8 @@ export default function App() {
     if (steps.includes('oscmap-scroll')) timers.push(window.setTimeout(() => document.querySelector('.oscmap-body')?.scrollTo({ top: 1500 }), 4500));
     if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
     if (steps.includes('help')) timers.push(window.setTimeout(() => setShowHelp(true), 3000));
+    if (steps.includes('add')) timers.push(window.setTimeout(() => setShowAdd(true), 4000));
+    if (steps.includes('skip')) timers.push(window.setTimeout(() => setWelcomeSkipped(true), 3000));
     if (steps.includes('edit')) timers.push(window.setTimeout(() => setEditCamera(ctxRef.current.cameras[0] ?? null), 3000));
     if (steps.includes('pselect'))
       timers.push(
@@ -530,7 +533,25 @@ export default function App() {
           />
         ) : (
           <div className="stage">
-            <Help {...helpProps} inline />
+            {welcomeSkipped ? (
+              <div className="emptystage">
+                <h3>No cameras yet</h3>
+                <span>Add a Tail 2 by its IP address, a video-only source, or try the demo pattern.</span>
+                <div className="helpbtns">
+                  <button className="b primary" onClick={() => setShowAdd(true)}>
+                    Add camera
+                  </button>
+                  <button className="b" onClick={() => void addDemoCamera()}>
+                    Try the demo
+                  </button>
+                  <button className="b" onClick={() => setWelcomeSkipped(false)}>
+                    Show the guide
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Help {...helpProps} inline onClose={() => setWelcomeSkipped(true)} />
+            )}
           </div>
         )}
 
