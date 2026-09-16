@@ -31,7 +31,7 @@ export interface IpcDeps {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** IPv4 addresses of this machine worth showing for OSC: LAN interfaces only. Loopback, link-local and the Tailscale / carrier-NAT range (<ip address>/10) are left out so a remote-access address never shows up in the UI or a screenshot. */
+/** IPv4 addresses of this machine worth showing for OSC: LAN interfaces only. Loopback, link-local and the Tailscale / carrier-NAT block (RFC 6598) are left out so a remote-access address never shows up in the UI or a screenshot. */
 export function localAddresses(): string[] {
   const out: string[] = [];
   for (const list of Object.values(os.networkInterfaces())) {
