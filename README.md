@@ -50,10 +50,26 @@ Grab the latest build from [Releases](https://github.com/coleworldla/obsbot_ezy_
 | macOS Apple Silicon | `EZY-CTRL-<version>-arm64.dmg` | drag to Applications |
 | macOS Intel | `EZY-CTRL-<version>-x64.dmg` | drag to Applications |
 
-The builds are not code-signed yet:
+The builds are not code-signed yet, so both systems warn on first launch. Nothing is wrong with the download; this is what every unsigned app gets until it is signed with a paid developer certificate.
 
-- Windows SmartScreen shows "Windows protected your PC" the first time: click **More info → Run anyway**.
-- macOS says the app "cannot be opened because the developer cannot be verified" or "is damaged": right-click the app → **Open**, or run `xattr -cr "/Applications/EZY CTRL.app"` once.
+**Windows.** SmartScreen shows "Windows protected your PC": click **More info → Run anyway**. Once.
+
+### macOS: first launch
+
+1. **Pick the right file.** Apple Silicon (M1, M2, M3, M4): `EZY-CTRL-<version>-arm64.dmg`. Intel: `EZY-CTRL-<version>-x64.dmg`. Not sure? Apple menu → About This Mac: "Chip Apple M…" means arm64. The `.zip` and `.blockmap` files are for the auto-updater; ignore them.
+2. Open the dmg and drag **EZY CTRL** into **Applications**. Eject the dmg.
+3. Double-click the app once. macOS refuses: "Apple could not verify EZY CTRL is free of malware" (macOS 15 Sequoia) or "cannot be opened because the developer cannot be verified" (macOS 13–14). Click **Done** / **Cancel**, do not move it to the Trash.
+4. Open **System Settings → Privacy & Security**, scroll down to the **Security** section. It says *"EZY CTRL" was blocked to protect your Mac*. Click **Open Anyway**, enter your password or Touch ID, then **Open** in the last dialog.
+5. On macOS 13–14 you can skip step 4: right-click the app in Applications → **Open** → **Open**.
+6. The first time it talks to a camera, macOS asks *EZY CTRL would like to find and connect to devices on your local network*. Click **Allow**. Without it, VISCA and NDI cannot reach the cameras. Changed your mind later? System Settings → Privacy & Security → Local Network.
+
+macOS only asks once; after that the app opens like any other. If the app still refuses with "is damaged and can't be opened", macOS has flagged the download itself. Clear that flag in Terminal (Applications → Utilities → Terminal), then launch again:
+
+```bash
+xattr -cr "/Applications/EZY CTRL.app"
+```
+
+**NDI on the Mac** needs the NDI runtime too: install [NDI Tools for macOS](https://ndi.video/tools/) and the app finds it. RTSP, SRT and the Web UI work without it.
 
 **Updates.** The installed app checks GitHub Releases on startup (switch it off under `?` → Updates), downloads the next version in the background and shows *Restart to update* in the header. The releases are public, so this works out of the box.
 

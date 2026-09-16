@@ -163,7 +163,7 @@ export function Help({ info, update, autoCheck, onAutoCheck, onCheck, onInstall,
           </div>
           <div className="note">
             Releases: {link('https://github.com/coleworldla/obsbot_ezy_ctrl/releases', 'github.com/coleworldla/obsbot_ezy_ctrl/releases')}. Builds are unsigned: Windows SmartScreen asks once (More info → Run anyway); on macOS
-            right-click the app → Open, or run <span className="mono">xattr -cr "/Applications/EZY CTRL.app"</span> if it says the app is damaged.
+            on macOS open System Settings → Privacy and Security, scroll to Security and click Open Anyway (macOS 13–14: right-click the app → Open); allow local network access when asked. If it says the app is damaged, run <span className="mono">xattr -cr "/Applications/EZY CTRL.app"</span> once. Full steps in the README.
           </div>
         </section>
       </div>

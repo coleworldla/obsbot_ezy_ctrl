@@ -5,6 +5,7 @@ All notable changes to EZY CTRL. Each version here has a matching GitHub Release
 ## [Unreleased]
 
 ### Changed
+- README and Help: step-by-step macOS first-launch guide (which dmg for Apple Silicon vs Intel, Privacy and Security → Open Anyway on macOS 15, right-click → Open on 13–14, local network permission, the xattr fallback).
 - The project is open source under the MIT licence and the repository is public, which also switches on the in-app updater.
 - README states that EZY CTRL is independent of OBSBOT. OBSBOT's original VISCA spreadsheets are no longer redistributed in the repository; `docs/protocol/visca-over-ip.md` remains as our own summary.
 
