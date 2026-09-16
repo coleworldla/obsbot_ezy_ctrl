@@ -37,7 +37,7 @@ koffi.struct('NDIlib_find_create_t', { show_local_sources: 'bool', p_groups: 'co
 koffi.struct('NDIlib_recv_create_v3_t', { source_to_connect_to: Source, color_format: 'int32', bandwidth: 'int32', allow_video_fields: 'bool', p_ndi_recv_name: 'const char *' });
 const VideoFrame = koffi.struct('NDIlib_video_frame_v2_t', {
   xres: 'int32', yres: 'int32', FourCC: 'int32', frame_rate_N: 'int32', frame_rate_D: 'int32', picture_aspect_ratio: 'float', frame_format_type: 'int32',
-  timecode: 'int64', p_data: 'uint8_t *', line_stride_in_bytes: 'int32', p_metadata: 'const char *', timestamp: 'int64',
+  timecode: 'int64', p_data: 'uint8_t *', line_stride_in_bytes: 'int32', p_metadata: 'void *', timestamp: 'int64',
 });
 console.log('sizeof video frame', koffi.sizeof(VideoFrame), '(expect 72)');
 
@@ -77,6 +77,7 @@ if (sources.length) {
     const type = await new Promise((res, rej) => recvCapture.async(recv, frame, null, null, 1000, (err, r) => (err ? rej(err) : res(r))));
     if (type === 1) {
       frames++;
+      if (frames === 1) console.log('metadata pointer:', frame.p_metadata ? 'present: ' + koffi.decode(frame.p_metadata, 'char', -1).slice(0, 120) : 'none');
       if (frames === 1 || frames === 30) {
         const data = koffi.decode(frame.p_data, koffi.array('uint8_t', 8, 'Typed'));
         console.log(`video frame #${frames}: ${frame.xres}x${frame.yres} fourcc 0x${frame.FourCC.toString(16)} stride ${frame.line_stride_in_bytes} fps ${frame.frame_rate_N}/${frame.frame_rate_D} first bytes`, Array.from(data));

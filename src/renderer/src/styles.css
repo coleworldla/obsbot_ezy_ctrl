@@ -273,3 +273,6 @@ select.input { padding: 0 6px; appearance: auto; }
 .result .d { font-family: var(--mono); font-size: 11px; color: var(--text-2); }
 .dialog .foot { display: flex; align-items: center; gap: 10px; }
 .dialog .foot .spacer { flex: 1; }
+
+/* video-only sources */
+.transport.monitor { height: auto; min-height: 0; flex: none; padding: 2px 2px 0; border: 0; background: none; color: var(--muted); font-size: 12px; font-family: var(--mono); line-height: 1.4; }

@@ -10,6 +10,7 @@ Goals:
 - **Map anything** — any action can be bound to a **MIDI** note/CC or an **OSC** address (MIDI-learn style).
 - **Unlimited presets** — presets live in the app (pan, tilt, zoom, focus, thumbnail), not in the camera's fixed slots, so there is no cap. Recalled with absolute moves at a chosen speed.
 - **Multi-camera** — several Tail 2s side by side, each with its own presets and mappings.
+- **Eyes on everything** — anything that is not a Tail 2 (an SDI-to-NDI encoder, another camera, a media server output) can be added as a **video-only** source: picture and tally in the rack, no controls.
 
 ## How it talks to the camera
 
@@ -71,6 +72,8 @@ npm run dist:mac   # on a Mac: arm64 + x64 dmg/zip (downloads both ffmpeg builds
 Releasing: add a `## [x.y.z]` section to `CHANGELOG.md`, bump `version` in `package.json`, then `git tag vx.y.z && git push origin main --tags`. GitHub Actions creates the release with those notes and attaches the Windows and macOS builds plus the update feed files.
 
 On the camera: put the Tail 2 on the same LAN, find its IP (OBSBOT Center → Device Management, or the Web UI), turn on **RTSP mode** (OBSBOT Center → More → Output → RTSP), and in the app press **Add camera**, type the IP, then **Test connection**. No camera handy? Pick the **Demo** video source to see the whole thing run on a test pattern.
+
+Other sources: **Add camera → Video only**, then pick an NDI source by name (type the device's IP first if it does not show up; the app then asks it directly) or enter an RTSP / SRT address. Video-only sources take a rack slot and an OSC number like any camera but ignore PTZ, preset and settings actions.
 
 No camera at all? `npm run fake-camera` starts a fake Tail 2 that answers VISCA on `127.0.0.1:52381`; add a Demo camera with that IP and you get picture, position read-back and presets.
 

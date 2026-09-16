@@ -5,6 +5,8 @@ import { ContextMenu, type MenuItem } from './ContextMenu';
 interface Props {
   camera: CameraConfig | null;
   online: boolean;
+  /** Video-only source: presets do not apply. */
+  monitor?: boolean;
   presets: Preset[];
   activeId: string | null;
   recallSpeed: RecallSpeed;
@@ -17,7 +19,7 @@ interface Props {
 
 const deg = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}`;
 
-export function Presets({ camera, online, presets, activeId, recallSpeed, onRecallSpeed, onSave, onRecall, onChanged, onSnapshot }: Props) {
+export function Presets({ camera, online, monitor = false, presets, activeId, recallSpeed, onRecallSpeed, onSave, onRecall, onChanged, onSnapshot }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [menu, setMenu] = useState<{ x: number; y: number; preset: Preset } | null>(null);
@@ -114,7 +116,7 @@ export function Presets({ camera, online, presets, activeId, recallSpeed, onReca
         <span>Presets{camera ? ` · ${camera.name}` : ''}</span>
         <span className="mono muted">{presets.length} · no limit</span>
         <span className="spacer" />
-        <button className="b sm accent" disabled={!camera || !online || busy} onClick={() => void save()} title="Save the current position (Ctrl+S)">
+        <button className="b sm accent" disabled={!camera || !online || monitor || busy} onClick={() => void save()} title="Save the current position (Ctrl+S)">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M8 3v10M3 8h10" />
           </svg>
@@ -125,8 +127,8 @@ export function Presets({ camera, online, presets, activeId, recallSpeed, onReca
       <div className="plist" ref={listRef}>
         {presets.length === 0 && (
           <div className="empty">
-            <span>No presets for this camera yet.</span>
-            <span>{online ? 'Frame the shot, then press Save (or Ctrl+S).' : 'Presets need the camera online to read its position.'}</span>
+            <span>{monitor ? 'Video-only source.' : 'No presets for this camera yet.'}</span>
+            <span>{monitor ? 'Presets need a camera the app can move.' : online ? 'Frame the shot, then press Save (or Ctrl+S).' : 'Presets need the camera online to read its position.'}</span>
           </div>
         )}
         {presets.map((p, i) => (

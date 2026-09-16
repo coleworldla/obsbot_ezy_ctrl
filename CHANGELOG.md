@@ -2,6 +2,20 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.8.0] - 2026-09-15
+
+Eyes on everything.
+
+### Added
+- Video-only sources: anything that is not a Tail 2 (an SDI-to-NDI encoder such as the ZowieBox, another camera, a media server output) goes in as **Add camera → Video only**. It sits in the rack with a live picture and tally like the others, can be put on stage and selected from MIDI / OSC / keyboard, and has no pan / tilt / zoom, presets or camera settings. Sources: NDI (by name, or Auto by IP), RTSP, SRT, Web UI, Webcam, Demo.
+- NDI discovery asks the device at the address you type directly, so encoders that do not announce themselves over mDNS (or sit on another subnet) still appear in the source list. The rack numbering (`/cam/<i>`) counts monitors like cameras.
+
+### Changed
+- The header counts cameras and monitors separately.
+
+### Fixed
+- NDI senders that attach per-frame metadata (the ZowieBox does) crashed the app with heap corruption right after the first frame: the metadata pointer was being re-marshalled before it went back to the runtime. It is now passed back untouched.
+
 ## [0.7.0] - 2026-09-15
 
 Native NDI.

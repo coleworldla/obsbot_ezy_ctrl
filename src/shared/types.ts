@@ -7,14 +7,21 @@ export type VideoEvent =
   | { kind: 'segment'; id: string; session: number; data: Uint8Array }
   | { kind: 'end'; id: string; session: number; reason: string };
 
+/** 'tail2' = an OBSBOT Tail 2 with VISCA control (the default); 'monitor' = video only, no control (an SDI/NDI encoder, another camera, a media server output). */
+export type CameraKind = 'tail2' | 'monitor';
+
 export interface CameraConfig {
   id: string;
   name: string;
+  /** May be empty for a monitor whose source needs no address (NDI by name, webcam, demo). */
   host: string;
   viscaPort: number;
   videoSource: VideoSource;
   videoUrl: string;
+  kind?: CameraKind;
 }
+
+export const isMonitor = (c: Pick<CameraConfig, 'kind'> | null | undefined): boolean => c?.kind === 'monitor';
 
 export type CameraInput = Omit<CameraConfig, 'id'>;
 
@@ -229,10 +236,11 @@ export interface LogEntry {
 export const DEFAULT_VISCA_PORT = 52381;
 export const DEFAULT_RTSP_PORT = 8554;
 
-export function defaultVideoUrl(source: VideoSource, host: string): string {
+export function defaultVideoUrl(source: VideoSource, host: string, kind: CameraKind = 'tail2'): string {
   switch (source) {
     case 'rtsp':
-      return `rtsp://${host}:${DEFAULT_RTSP_PORT}/live`;
+      // Other devices rarely share the Tail 2's port and path; leave a stub for the user to complete.
+      return kind === 'monitor' ? `rtsp://${host}:554/` : `rtsp://${host}:${DEFAULT_RTSP_PORT}/live`;
     case 'srt':
       return `srt://${host}:5000`;
     case 'webui':

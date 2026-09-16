@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CameraConfig, CameraStatus, Tally } from '../../../shared/types';
+import { isMonitor, type CameraConfig, type CameraStatus, type Tally } from '../../../shared/types';
 import { ContextMenu } from './ContextMenu';
 import { Viewport } from './Viewport';
 
@@ -13,6 +13,9 @@ interface Props {
   onAdd: () => void;
   onEdit: (cam: CameraConfig) => void;
 }
+
+const SRC: Record<string, string> = { ndi: 'NDI', rtsp: 'RTSP', srt: 'SRT', webui: 'WEB UI', webcam: 'WEBCAM', demo: 'DEMO' };
+const shortAddr = (c: CameraConfig) => (c.videoSource === 'webcam' || !c.videoUrl ? '' : c.videoUrl.replace(/^[a-z]+:\/\//i, '').slice(0, 24));
 
 const fmt = (n: number | undefined, suffix = '') => (n === undefined ? '—' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}${suffix}`);
 
@@ -31,6 +34,7 @@ export function Rack({ cameras, status, selectedId, tally, onSelect, onTally, on
         const p = s?.position;
         const selected = c.id === selectedId;
         const t = tally[c.id] ?? 0;
+        const mon = isMonitor(c);
         return (
           <div
             key={c.id}
@@ -46,12 +50,12 @@ export function Rack({ cameras, status, selectedId, tally, onSelect, onTally, on
             <div className="title">
               <span className="idx">CAM {i + 1}</span>
               <span className="name">{c.name}</span>
-              <span className="host">{c.host}</span>
+              <span className="host">{c.host || SRC[c.videoSource]}</span>
             </div>
             <div className="miniwrap">
               {selected ? (
                 <div className="mini">
-                  <span className={`led${s?.connected ? ' on' : s?.lastError ? ' warn' : ''}`} />
+                  {!mon && <span className={`led${s?.connected ? ' on' : s?.lastError ? ' warn' : ''}`} />}
                   ON STAGE
                 </div>
               ) : (
@@ -59,12 +63,20 @@ export function Rack({ cameras, status, selectedId, tally, onSelect, onTally, on
               )}
               <TallyBadge tally={t} mini />
             </div>
-            <div className="readout">
-              <span>P {fmt(p?.panDeg)}</span>
-              <span>T {fmt(p?.tiltDeg)}</span>
-              <span>Z {p ? `${p.zoomRatio.toFixed(1)}×` : '—'}</span>
-              <span className={s?.connected ? 'ok' : 'muted'}>{s?.connected ? (s.state?.track ? 'TRK' : 'VISCA') : s?.lastError ? 'no reply' : '…'}</span>
-            </div>
+            {mon ? (
+              <div className="readout">
+                <span>{SRC[c.videoSource]}</span>
+                <span className="muted">{shortAddr(c)}</span>
+                <span className="ok">VIEW</span>
+              </div>
+            ) : (
+              <div className="readout">
+                <span>P {fmt(p?.panDeg)}</span>
+                <span>T {fmt(p?.tiltDeg)}</span>
+                <span>Z {p ? `${p.zoomRatio.toFixed(1)}×` : '—'}</span>
+                <span className={s?.connected ? 'ok' : 'muted'}>{s?.connected ? (s.state?.track ? 'TRK' : 'VISCA') : s?.lastError ? 'no reply' : '…'}</span>
+              </div>
+            )}
           </div>
         );
       })}
@@ -82,7 +94,7 @@ export function Rack({ cameras, status, selectedId, tally, onSelect, onTally, on
           onClose={() => setMenu(null)}
           items={[
             { label: 'Put on stage', onClick: () => onSelect(menu.cam.id) },
-            { label: 'Edit camera…', onClick: () => onEdit(menu.cam) },
+            { label: isMonitor(menu.cam) ? 'Edit source…' : 'Edit camera…', onClick: () => onEdit(menu.cam) },
             { label: 'Tally: program (PGM)', onClick: () => onTally(menu.cam.id, 1) },
             { label: 'Tally: preview (PVW)', onClick: () => onTally(menu.cam.id, 2) },
             { label: 'Tally: clear', onClick: () => onTally(menu.cam.id, 0), disabled: !tally[menu.cam.id] },

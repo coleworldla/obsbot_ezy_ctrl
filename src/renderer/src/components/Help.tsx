@@ -75,6 +75,9 @@ export function Help({ info, update, autoCheck, onAutoCheck, onCheck, onInstall,
               Press <b>Add camera</b>, type the IP, hit <b>Test connection</b>. A reply with pan / tilt / zoom means control works; the picture follows once RTSP mode is on.
             </li>
           </ol>
+          <div className="note">
+            Not a Tail 2? An SDI-to-NDI encoder, another camera or your media server's output goes in as <b>Add camera → Video only</b>: pick its NDI name or stream address and it sits in the rack with picture and tally, no controls.
+          </div>
           <div className="helpbtns">
             <button className="b primary" onClick={onAddCamera}>
               Add camera

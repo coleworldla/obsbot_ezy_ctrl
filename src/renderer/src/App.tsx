@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { keyInputFrom, matchMappings, parseBuiltinOsc, type Input, type Invocation, type Mapping } from '../../shared/mapping';
 import type { AppInfo, CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, Tally, UpdateStatus } from '../../shared/types';
+import { isMonitor } from '../../shared/types';
 import { CameraDialog } from './components/CameraDialog';
 import { CameraPanel } from './components/CameraPanel';
 import { Help } from './components/Help';
@@ -152,6 +153,7 @@ export default function App() {
 
   const savePresetFor = useCallback(
     async (cameraId: string): Promise<Preset | null> => {
+      if (isMonitor(cameras.find((c) => c.id === cameraId))) return null;
       const thumbnail = snapshotFor(cameraId, 240) ?? undefined;
       const n = presets.filter((p) => p.cameraId === cameraId).length + 1;
       try {
@@ -164,7 +166,7 @@ export default function App() {
         return null;
       }
     },
-    [presets, loadPresets],
+    [presets, loadPresets, cameras],
   );
 
   const savePreset = useCallback(() => (selected ? savePresetFor(selected.id) : Promise.resolve(null)), [selected, savePresetFor]);
@@ -441,7 +443,9 @@ export default function App() {
     onDemo: () => void addDemoCamera(),
   };
 
-  const connectedCount = cameras.filter((c) => status[c.id]?.connected).length;
+  const ptzCameras = cameras.filter((c) => !isMonitor(c));
+  const monitorCount = cameras.length - ptzCameras.length;
+  const connectedCount = ptzCameras.filter((c) => status[c.id]?.connected).length;
   const errorCount = logs.filter((e) => e.level === 'error').length;
   const warnCount = logs.filter((e) => e.level === 'warn').length;
   const cameraNames = Object.fromEntries(cameras.map((c) => [c.id, c.name]));
@@ -452,7 +456,7 @@ export default function App() {
       <header className="hdr">
         <span className="brand">EZY CTRL</span>
         <span className="info">
-          {cameras.length} camera{cameras.length === 1 ? '' : 's'} · {connectedCount} online · {presets.length} presets
+          {ptzCameras.length} camera{ptzCameras.length === 1 ? '' : 's'} · {connectedCount} online{monitorCount ? ` · ${monitorCount} monitor${monitorCount === 1 ? '' : 's'}` : ''} · {presets.length} presets
         </span>
         <span className="spacer" />
         <span className="info" title={midiActive.map((d) => d.name).join(', ') || midi.error || 'no MIDI device'}>
@@ -520,6 +524,7 @@ export default function App() {
         <Presets
           camera={selected}
           online={selectedOnline}
+          monitor={isMonitor(selected)}
           presets={camPresets}
           activeId={activePreset?.id ?? null}
           recallSpeed={recallSpeed}
@@ -556,7 +561,7 @@ export default function App() {
         )}
       </div>
 
-      {showPanel && selected && <CameraPanel camera={selected} status={status[selected.id]} onClose={() => setShowPanel(false)} />}
+      {showPanel && selected && !isMonitor(selected) && <CameraPanel camera={selected} status={status[selected.id]} onClose={() => setShowPanel(false)} />}
 
       {showLog && (
         <LogPanel

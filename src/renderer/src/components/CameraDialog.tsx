@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DEFAULT_VISCA_PORT, defaultVideoUrl, type CameraConfig, type NdiSource, type NdiStatus, type TestResult, type VideoSource } from '../../../shared/types';
+import { DEFAULT_VISCA_PORT, defaultVideoUrl, type CameraConfig, type CameraKind, type NdiSource, type NdiStatus, type TestResult, type VideoSource } from '../../../shared/types';
 import { listVideoInputs, type VideoInput } from '../video/webcam';
 
 interface Props {
@@ -18,6 +18,11 @@ const SOURCES: { id: VideoSource; label: string }[] = [
   { id: 'demo', label: 'Demo' },
 ];
 
+const KINDS: { id: CameraKind; label: string; hint: string }[] = [
+  { id: 'tail2', label: 'OBSBOT Tail 2', hint: 'Pan / tilt / zoom over VISCA, presets, camera settings and the picture.' },
+  { id: 'monitor', label: 'Video only', hint: 'Picture and tally only: an SDI / NDI encoder, another camera, a media server output.' },
+];
+
 const NOTES: Record<VideoSource, string> = {
   rtsp: 'Turn on RTSP mode on the camera first: OBSBOT Center → More → Output → RTSP. Default stream: rtsp://<ip>:8554/live.',
   srt: 'Camera: OBSBOT Center → More → SRT Settings → Listener mode (default port 5000), then Output → SRT. The app connects as caller. If you enabled encryption, append ?passphrase=YOURKEY to the address.',
@@ -27,16 +32,30 @@ const NOTES: Record<VideoSource, string> = {
   demo: 'Built-in moving test pattern, no camera needed. Controls stay offline unless an IP is given.',
 };
 
+const MONITOR_NOTES: Record<VideoSource, string> = {
+  ndi: "Pick the NDI source by name. Type the device's IP address first and the app asks it directly, which finds encoders that do not announce themselves on the network (or sit on another subnet).",
+  rtsp: "The stream address from the device's web page or manual, e.g. rtsp://<ip>:554/… (H.264 or H.265, no re-encoding).",
+  srt: 'srt://<ip>:<port> with the device in listener mode; the app connects as caller. Append ?passphrase=YOURKEY if the stream is encrypted.',
+  webui: "Shows the device's own web page inside the app.",
+  webcam: 'Any video device this computer can see: a capture card, a USB camera, or NDI Tools → Webcam Input.',
+  demo: 'Built-in moving test pattern.',
+};
+
 const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$|^[a-z0-9.-]+\.local$/i;
+const DOTTED_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
+/** "ZOWIEBOX-SDI-46014 (ZowieBox-SDI-46014)" → "ZowieBox-SDI-46014" */
+const shortNdiName = (name: string) => /\(([^)]+)\)\s*$/.exec(name)?.[1] ?? name;
 
 export function CameraDialog({ existing, onClose, onSaved }: Props) {
   const editing = !!existing;
+  const [kind, setKind] = useState<CameraKind>(existing?.kind ?? 'tail2');
+  const monitor = kind === 'monitor';
   const [name, setName] = useState(existing?.name ?? '');
   const [host, setHost] = useState(existing?.host ?? '');
   const [port, setPort] = useState(String(existing?.viscaPort ?? DEFAULT_VISCA_PORT));
   const [source, setSource] = useState<VideoSource>(existing?.videoSource ?? 'rtsp');
   const [videoUrl, setVideoUrl] = useState(existing?.videoUrl ?? '');
-  const [urlTouched, setUrlTouched] = useState(() => !!existing && existing.videoUrl !== defaultVideoUrl(existing.videoSource, existing.host));
+  const [urlTouched, setUrlTouched] = useState(() => !!existing && existing.videoUrl !== defaultVideoUrl(existing.videoSource, existing.host, existing.kind));
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
   const [saving, setSaving] = useState(false);
@@ -44,18 +63,31 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
   const [devices, setDevices] = useState<VideoInput[] | null>(null);
   const [ndiStatus, setNdiStatus] = useState<NdiStatus | null>(null);
   const [ndiSources, setNdiSources] = useState<NdiSource[] | null>(null);
+  const [queriedIp, setQueriedIp] = useState<string | null>(null);
 
-  const refreshNdi = async () => {
+  const trimmedHost = host.trim();
+  const hostGiven = trimmedHost !== '';
+
+  const refreshNdi = async (extraIp?: string) => {
     setNdiSources(null);
-    const [status, list] = await Promise.all([window.ezy.ndi.status(), window.ezy.ndi.sources()]);
+    if (extraIp) setQueriedIp(extraIp);
+    const [status, list] = await Promise.all([window.ezy.ndi.status(), window.ezy.ndi.sources(extraIp)]);
     setNdiStatus(status);
     setNdiSources(list);
   };
 
   useEffect(() => {
-    if (source === 'ndi') void refreshNdi();
+    if (source === 'ndi') void refreshNdi(DOTTED_RE.test(trimmedHost) ? trimmedHost : undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source]);
+
+  // Once a full IP is typed, ask that address for its NDI sources (devices that mDNS does not surface).
+  useEffect(() => {
+    if (source !== 'ndi' || !DOTTED_RE.test(trimmedHost) || trimmedHost === queriedIp) return;
+    const t = window.setTimeout(() => void refreshNdi(trimmedHost), 700);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trimmedHost, source]);
 
   useEffect(() => {
     if (source !== 'webcam') return;
@@ -75,16 +107,27 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source]);
 
-  const effectiveUrl = urlTouched ? videoUrl : defaultVideoUrl(source, host || '<ip>');
+  const effectiveUrl = urlTouched ? videoUrl : defaultVideoUrl(source, trimmedHost || '<ip>', kind);
   const portNum = Number(port);
-  const hostOk = source === 'demo' ? host.trim() === '' || IP_RE.test(host.trim()) : IP_RE.test(host.trim());
-  const valid = hostOk && Number.isInteger(portNum) && portNum > 0 && portNum < 65536 && (source !== 'webcam' || !!videoUrl);
+  const hostOk = hostGiven ? IP_RE.test(trimmedHost) : monitor || source === 'demo';
+  const portOk = monitor || (Number.isInteger(portNum) && portNum > 0 && portNum < 65536);
+  const urlOk =
+    source === 'ndi'
+      ? (urlTouched && videoUrl.trim() !== '') || hostGiven
+      : source === 'webcam'
+        ? !!videoUrl
+        : source === 'demo'
+          ? true
+          : urlTouched
+            ? videoUrl.trim() !== ''
+            : hostGiven;
+  const valid = hostOk && portOk && urlOk;
 
   const test = async () => {
     setTesting(true);
     setResult(null);
     try {
-      setResult(await window.ezy.camera.test(host.trim(), portNum));
+      setResult(await window.ezy.camera.test(trimmedHost, portNum));
     } finally {
       setTesting(false);
     }
@@ -94,14 +137,17 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const h = host.trim() || (source === 'demo' ? '127.0.0.1' : '');
+      const h = trimmedHost || (source === 'demo' && !monitor ? '127.0.0.1' : '');
+      const ndiName = source === 'ndi' && urlTouched ? videoUrl.trim() : '';
+      const fallbackName = ndiName ? shortNdiName(ndiName) : source === 'demo' ? 'Demo pattern' : h || (monitor ? 'Monitor' : '');
       const cfg = {
-        name: name.trim() || (source === 'demo' ? 'Demo pattern' : h),
+        name: name.trim() || fallbackName,
         host: h,
-        viscaPort: portNum,
+        viscaPort: monitor ? DEFAULT_VISCA_PORT : portNum,
         videoSource: source,
         // For NDI the "URL" is the source name ('' = pick by IP); for Webcam it is the device id.
-        videoUrl: urlTouched ? videoUrl.trim() : defaultVideoUrl(source, h),
+        videoUrl: urlTouched ? videoUrl.trim() : defaultVideoUrl(source, h, kind),
+        kind,
       };
       const cam = existing ? await window.ezy.cameras.update({ ...existing, ...cfg }) : await window.ezy.cameras.add(cfg);
       onSaved(cam);
@@ -117,25 +163,47 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
     setUrlTouched(false);
   };
 
+  const pickKind = (k: CameraKind) => {
+    if (k === kind) return;
+    setKind(k);
+    setResult(null);
+    setUrlTouched(false);
+    if (!editing) setSource(k === 'monitor' ? 'ndi' : 'rtsp');
+  };
+
+  const title = editing ? (monitor ? 'Edit video source' : 'Edit camera') : monitor ? 'Add video source' : 'Add camera';
+  const sub = editing ? 'Changing the address or video source reconnects right away.' : monitor ? KINDS[1].hint : 'OBSBOT Tail 2 on your local network';
+
   return (
     <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
         <div>
-          <h3>{editing ? 'Edit camera' : 'Add camera'}</h3>
-          <div className="sub">{editing ? 'Changing the IP or video source reconnects the camera right away.' : 'OBSBOT Tail 2 on your local network'}</div>
+          <h3>{title}</h3>
+          <div className="sub">{sub}</div>
+        </div>
+
+        <div className="field">
+          <span className="lbl">Type</span>
+          <div className="seg">
+            {KINDS.map((k) => (
+              <button key={k.id} className={`b${kind === k.id ? ' on' : ''}`} onClick={() => pickKind(k.id)} title={k.hint}>
+                {k.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="field">
           <span className="lbl">Name</span>
-          <input className="input" autoFocus placeholder="Stage Left" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="input" autoFocus placeholder={monitor ? 'SDI encoder' : 'Stage Left'} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
-        <div className="two">
+        <div className={monitor ? 'field' : 'two'}>
           <div className="field">
-            <span className="lbl">IP address</span>
+            <span className="lbl">IP address{monitor ? ' (optional)' : ''}</span>
             <input
               className="input mono"
-              placeholder="<ip address>"
+              placeholder={monitor ? '<ip address>' : '<ip address>'}
               value={host}
               onChange={(e) => {
                 setHost(e.target.value);
@@ -143,10 +211,12 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
               }}
             />
           </div>
-          <div className="field">
-            <span className="lbl">VISCA port (UDP)</span>
-            <input className="input mono" value={port} onChange={(e) => setPort(e.target.value)} />
-          </div>
+          {!monitor && (
+            <div className="field">
+              <span className="lbl">VISCA port (UDP)</span>
+              <input className="input mono" value={port} onChange={(e) => setPort(e.target.value)} />
+            </div>
+          )}
         </div>
 
         <div className="field">
@@ -168,7 +238,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
                   setUrlTouched(e.target.value !== '');
                 }}
               >
-                <option value="">Auto — the NDI source at {host.trim() || 'this IP'}</option>
+                <option value="">{hostGiven ? `Auto — the NDI source at ${trimmedHost}` : monitor ? 'Choose an NDI source…' : 'Auto — the NDI source at this IP'}</option>
                 {ndiSources?.map((s) => (
                   <option key={s.name} value={s.name}>
                     {s.name}
@@ -176,7 +246,12 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
                   </option>
                 ))}
               </select>
-              <button className="b sm" onClick={() => void refreshNdi()} disabled={ndiSources === null} title="Search the network again">
+              <button
+                className="b sm"
+                onClick={() => void refreshNdi(DOTTED_RE.test(trimmedHost) ? trimmedHost : undefined)}
+                disabled={ndiSources === null}
+                title="Search the network again"
+              >
                 {ndiSources === null ? 'Searching…' : 'Refresh'}
               </button>
             </div>
@@ -217,7 +292,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
                   setUrlTouched(true);
                   setVideoUrl(e.target.value);
                 }}
-                title="Stream or page address; edit it if your camera uses a different port or path"
+                title="Stream or page address; edit it if your device uses a different port or path"
               />
               {urlTouched && (
                 <button className="b sm" onClick={() => setUrlTouched(false)} title="Back to the default address for this source">
@@ -226,7 +301,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
               )}
             </div>
           )}
-          <span className="note">{NOTES[source]}</span>
+          <span className="note">{(monitor ? MONITOR_NOTES : NOTES)[source]}</span>
         </div>
 
         {result && (
@@ -245,15 +320,17 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
         {error && <div className="result bad">{error}</div>}
 
         <div className="foot">
-          <button className="b sm" disabled={!valid || testing} onClick={() => void test()}>
-            {testing ? 'Testing…' : 'Test connection'}
-          </button>
+          {!monitor && (
+            <button className="b sm" disabled={!valid || testing} onClick={() => void test()}>
+              {testing ? 'Testing…' : 'Test connection'}
+            </button>
+          )}
           <span className="spacer" />
           <button className="b" onClick={onClose}>
             Cancel
           </button>
           <button className="b primary" disabled={!valid || saving} onClick={() => void save()}>
-            {editing ? 'Save' : 'Add camera'}
+            {editing ? 'Save' : monitor ? 'Add source' : 'Add camera'}
           </button>
         </div>
       </div>

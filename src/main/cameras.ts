@@ -39,6 +39,11 @@ export class CameraManager {
   async connect(id: string): Promise<CameraStatus> {
     const cfg = this.store.get(id);
     if (!cfg) throw new Error(`camera ${id} not found`);
+    if (cfg.kind === 'monitor') {
+      // Video only: nothing to control, nothing to poll.
+      if (this.cams.has(id)) this.disconnect(id);
+      return this.push({ id, connected: false, updatedAt: Date.now() });
+    }
     let cam = this.cams.get(id);
     if (!cam) {
       cam = new Tail2(cfg.host, cfg.viscaPort);

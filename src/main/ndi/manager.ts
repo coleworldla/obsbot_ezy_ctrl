@@ -37,6 +37,8 @@ export class NdiManager {
   private finder: unknown | null = null;
   private readonly receivers = new Map<string, Receiver>();
   private extraIps = new Set<string>();
+  private finderStale = false;
+  private finderBusy: Promise<unknown> = Promise.resolve();
   private focusedId: string | null = null;
 
   constructor(private readonly runtimeOverride?: string) {}
@@ -71,25 +73,38 @@ export class NdiManager {
   }
 
   /** Discover sources on the network (plus the cameras' IPs as hints), waiting up to `waitMs`. */
-  async sources(waitMs = 1500): Promise<NdiSource[]> {
+  /**
+   * List the NDI sources on the network. `extraIp` makes discovery ask that address directly, which finds
+   * devices that do not announce themselves over mDNS (or sit on another subnet). Calls are serialised so
+   * the finder is never destroyed underneath a wait that is still running.
+   */
+  async sources(waitMs = 1500, extraIp?: string): Promise<NdiSource[]> {
     const lib = this.ensureLib();
     if (!lib) return [];
-    if (!this.finder) this.finder = lib.findCreate([...this.extraIps]);
-    await lib.findWait(this.finder, waitMs).catch(() => false);
-    return lib
-      .findSources(this.finder)
-      .filter((s) => s.p_ndi_name)
-      .map((s) => ({ name: s.p_ndi_name!, url: s.p_url_address ?? '' }));
+    if (extraIp) this.hint(extraIp);
+    const run = async (): Promise<NdiSource[]> => {
+      if (this.finderStale && this.finder) {
+        lib.findDestroy(this.finder);
+        this.finder = null;
+      }
+      this.finderStale = false;
+      if (!this.finder) this.finder = lib.findCreate([...this.extraIps]);
+      await lib.findWait(this.finder, waitMs).catch(() => false);
+      return lib
+        .findSources(this.finder)
+        .filter((s) => s.p_ndi_name)
+        .map((s) => ({ name: s.p_ndi_name!, url: s.p_url_address ?? '' }));
+    };
+    const p = this.finderBusy.then(run, run);
+    this.finderBusy = p.catch(() => undefined);
+    return p;
   }
 
   /** Tell discovery about a camera's IP so it is found even across subnets. */
   private hint(ip: string): void {
     if (!ip || this.extraIps.has(ip)) return;
     this.extraIps.add(ip);
-    if (this.finder && this.lib) {
-      this.lib.findDestroy(this.finder);
-      this.finder = null;
-    }
+    this.finderStale = true; // recreated with the new address on the next discovery pass
   }
 
   subscribe(cfg: CameraConfig, wc: WebContents): void {
@@ -141,6 +156,7 @@ export class NdiManager {
   async stopAll(): Promise<void> {
     const pending = [...this.receivers.keys()].map((id) => this.stop(id));
     await Promise.race([Promise.all(pending), sleep(STOP_TIMEOUT_MS)]);
+    await Promise.race([this.finderBusy, sleep(1600)]);
     if (this.finder && this.lib) this.lib.findDestroy(this.finder);
     this.finder = null;
     if (this.lib) {
@@ -177,7 +193,7 @@ export class NdiManager {
       match =
         free.find((s) => s.url.split(':')[0] === r.cfg.host) ??
         free.find((s) => s.name.toUpperCase().includes(r.cfg.name.toUpperCase())) ??
-        (tails.length === 1 ? tails[0] : undefined);
+        (tails.length === 1 && r.cfg.kind !== 'monitor' ? tails[0] : undefined);
     }
     if (!match) return null;
     r.source = match;
@@ -194,15 +210,17 @@ export class NdiManager {
     try {
       while (!r.stop) {
         // ---- find the source ----
-        this.setState(r, 'searching', r.cfg.videoUrl.trim() ? `looking for "${r.cfg.videoUrl}"` : `looking for an NDI source at ${r.cfg.host}`);
+        this.setState(r, 'searching', r.cfg.videoUrl.trim() ? `looking for "${r.cfg.videoUrl}"` : r.cfg.host ? `looking for an NDI source at ${r.cfg.host}` : 'looking for NDI sources');
         let src: RawSource | null = null;
         while (!r.stop && !(src = await this.resolveSource(r))) {
           this.setState(
             r,
             'no-source',
             r.seen.length
-              ? `no NDI source matches ${r.cfg.host}; on the network: ${r.seen.join(', ')} (pick one by name under Edit)`
-              : `no NDI source found for ${r.cfg.host} yet (is the camera in NDI mode?)`,
+              ? `no NDI source matches ${r.cfg.host || r.cfg.name}; on the network: ${r.seen.join(', ')} (pick one by name under Edit)`
+              : r.cfg.host
+                ? `no NDI source found for ${r.cfg.host} yet (is the device sending NDI?)`
+                : 'no NDI sources on the network yet',
           );
           await sleep(RESOLVE_RETRY_MS);
         }

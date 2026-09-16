@@ -71,7 +71,9 @@ function declareStructs(): void {
     timecode: 'int64',
     p_data: 'uint8_t *',
     line_stride_in_bytes: 'int32',
-    p_metadata: 'const char *',
+    // Opaque on purpose: as 'const char *' koffi would turn it into a JS string and hand the runtime a fresh temporary
+    // pointer in recv_free_video_v2, which corrupts the heap for senders that attach per-frame metadata (ZowieBox).
+    p_metadata: 'void *',
     timestamp: 'int64',
   });
 }

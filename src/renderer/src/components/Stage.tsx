@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CameraConfig, CameraStatus, JogDir, Tally, ZoomDir } from '../../../shared/types';
+import { isMonitor, type CameraConfig, type CameraStatus, type JogDir, type Tally, type ZoomDir } from '../../../shared/types';
 import type { CamState, Speed } from '../control/executor';
 import { TallyBadge } from './Rack';
 import { Viewport } from './Viewport';
@@ -88,6 +88,34 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
   const online = status?.connected ?? false;
   const { tracking, recording, portrait } = camState;
   const live = status?.state;
+
+  if (isMonitor(camera)) {
+    // Video only: picture and tally, no transport.
+    return (
+      <div className="stage">
+        <div className="top">
+          <h2>{camera.name}</h2>
+          <TallyBadge tally={tally} />
+          <span className="mono muted" style={{ fontSize: 11 }}>
+            {camera.host ? `${camera.host} · ` : ''}
+            {camera.videoSource.toUpperCase()} {camera.videoSource === 'webcam' ? '' : camera.videoUrl}
+          </span>
+          <span className="spacer" style={{ flex: 1 }} />
+          <button className="b sm" onClick={onEdit} title="Name, address and video source">
+            Edit
+          </button>
+          <button className="b sm" onClick={onRemove}>
+            Remove
+          </button>
+        </div>
+        <div className="stagewrap">
+          <Viewport camera={camera} />
+          <div className="ov tl">VIDEO ONLY · {camera.videoSource.toUpperCase()}</div>
+        </div>
+        <div className="transport monitor">Video-only source: picture and tally. No pan / tilt / zoom, presets or camera settings. Select it from the rack, a mapping or OSC like any camera.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="stage">

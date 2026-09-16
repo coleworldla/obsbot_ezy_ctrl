@@ -97,7 +97,7 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
 
   // ---- NDI ----
   handle('ndi:status', () => ndi.status());
-  handle('ndi:sources', () => ndi.sources(1500));
+  handle('ndi:sources', (_e, extraIp?: string) => ndi.sources(1500, extraIp || undefined));
   handle('ndi:subscribe', (e, id: string) => {
     const cfg = store.get(id);
     if (cfg) ndi.subscribe(cfg, e.sender);

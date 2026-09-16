@@ -114,7 +114,7 @@ export const api = {
   },
   ndi: {
     status: () => invoke<NdiStatus>('ndi:status'),
-    sources: () => invoke<NdiSource[]>('ndi:sources'),
+    sources: (extraIp?: string) => invoke<NdiSource[]>('ndi:sources', extraIp),
     subscribe: (id: string) => invoke<void>('ndi:subscribe', id),
     unsubscribe: (id: string) => invoke<void>('ndi:unsubscribe', id),
     focus: (id: string | null) => invoke<void>('ndi:focus', id),
