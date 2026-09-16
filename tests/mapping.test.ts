@@ -8,6 +8,8 @@ import {
   noteName,
   oscAddress,
   oscAddressList,
+  oscMapRows,
+  oscSlug,
   parseBuiltinOsc,
   type Mapping,
 } from '../src/shared/mapping';
@@ -81,7 +83,22 @@ describe('built-in OSC scheme', () => {
     expect(parseBuiltinOsc({ type: 'osc', address: '/cam/1/track', args: ['1'] })).toMatchObject({ actionId: 'ai.track', phase: 'press', value: 1 });
     expect(parseBuiltinOsc({ type: 'osc', address: '/app/log', args: [] })).toEqual({ actionId: 'log.toggle', phase: 'press' });
     expect(parseBuiltinOsc({ type: 'osc', address: '/nope', args: [] })).toBeNull();
-    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/x/home', args: [] })).toBeNull();
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/1/nope', args: [] })).toBeNull();
+  });
+
+  it('addresses cameras and presets by name', () => {
+    expect(oscSlug('Stage Left  (wide)')).toBe('stage_left_wide');
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/stage_left/home', args: [] })).toMatchObject({ actionId: 'ptz.home', phase: 'press', camera: null, cameraName: 'stage_left' });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/Stage_Left/preset/podium', args: [] })).toMatchObject({ actionId: 'preset.recall', cameraName: 'stage_left', presetName: 'podium' });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/2/preset/podium', args: [] })).toMatchObject({ actionId: 'preset.recall', camera: 2, presetName: 'podium' });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/sel/preset', args: ['Podium'] })).toMatchObject({ actionId: 'preset.recall', camera: null, presetName: 'podium' });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/select', args: ['stage left'] })).toEqual({ actionId: 'cam.select', phase: 'press', cameraName: 'stage_left' });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/tally/pgm', args: ['zowiebox_sdi'] })).toMatchObject({ actionId: 'tally.pgm', cameraName: 'zowiebox_sdi' });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/2/nope', args: [] })).toBeNull();
+    const cams = [{ id: 'a', name: 'Stage Left' }];
+    const ps = [{ cameraId: 'a', name: 'Podium' }];
+    expect(oscMapRows(cams, ps, 'name').some((r) => r.address === '/cam/stage_left/preset/podium')).toBe(true);
+    expect(oscMapRows(cams, ps, 'index').some((r) => r.address === '/cam/1/preset/1')).toBe(true);
   });
 
   it('parses tally addresses', () => {

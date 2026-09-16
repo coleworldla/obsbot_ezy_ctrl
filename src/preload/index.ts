@@ -78,6 +78,7 @@ export const api = {
     update: (id: string, patch: PresetPatch) => invoke<Preset>('presets:update', id, patch),
     updatePosition: (id: string) => invoke<Preset>('presets:updatePosition', id),
     remove: (id: string) => invoke<void>('presets:remove', id),
+    removeMany: (ids: string[]) => invoke<number>('presets:removeMany', ids),
     reorder: (cameraId: string, ids: string[]) => invoke<Preset[]>('presets:reorder', cameraId, ids),
     mirror: (id: string, slot: number) => invoke<Preset>('presets:mirror', id, slot),
     export: (cameraId?: string) => invoke<string | null>('presets:export', cameraId),

@@ -79,6 +79,8 @@ No camera at all? `npm run fake-camera` starts a fake Tail 2 that answers VISCA 
 
 Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_NDI_RUNTIME=<path to Processing.NDI.Lib.x64.dll / libndi.dylib>` overrides NDI runtime detection; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits; `EZY_AUTOTEST=presets,log` runs a scripted interaction for those screenshots.
 
+Presets rail: click recalls, drag reorders, double-click renames. To delete several at once press **Select** (or Ctrl-click a preset), pick the rows (Shift-click for a range, Ctrl+A for all), then **Delete** or the Delete key. One confirmation, one write.
+
 Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `I` camera settings · `L` log · `M` mapping.
 
 **Camera settings** (`I`): AI tracking mode, speed and auto-zoom framing, only-me; focus auto/manual with position; exposure auto/manual with compensation, shutter, gain, backlight and anti-flicker; white balance modes with colour temperature and R/B gain; image style, brightness, contrast, saturation, sharpness, hue. The drawer reads the camera's real values and re-reads after each change.
@@ -101,8 +103,10 @@ Open **Mapping** (top right or `M`). Every control is a row.
   /cam/<i>/tally <0|1|2>       /tally/pgm <i>             /tally/pvw <i>
   ```
 
-  `<i>` is the camera number in the rack (1, 2, …) or `sel` for the selected one; `<dir>` is up, down, left, right, upleft, upright, downleft, downright. *Copy address list* in the panel gives you the full expanded list for TouchOSC or Bitfocus Companion (generic OSC module).
-- **OSC feedback**: switch it on and point it at a host:port to receive `/cam/select`, `/cam/<i>/preset/active <n>`, `/cam/<i>/online <0|1>` and `/cam/<i>/position <pan> <tilt> <zoom>` (4 Hz).
+  `<i>` is the camera's **name** as a slug (lower-case, anything that is not a letter or digit becomes `_`: "Stage Left" → `stage_left`), its rack number (1, 2, …), or `sel` for the camera on stage. Presets work the same way: `/cam/stage_left/preset/podium` or `/cam/1/preset/2`. Renaming a camera or preset renames its address; the OSC map always shows the current ones. `<dir>` is up, down, left, right, upleft, upright, downleft, downright. *Copy address list* in the panel gives you the full expanded list for TouchOSC or Bitfocus Companion (generic OSC module).
+- **OSC map**: Mapping → **OSC map…** lists every address for your actual rack (CAM 1, CAM 2, …, presets by name, feedback addresses) with a filter and copy buttons in four formats: plain text, addresses only, CSV (section, address, argument, description, direction) and a Markdown table. Click any address to copy just that one. **By name / By number** switches how the map and the feedback messages address cameras (incoming always accepts both).
+- **Presets over OSC**: `/cam/<i>/preset/<n>` recalls preset `n` (its position in the rail, 1-based, at the rail's recall speed); `/cam/<i>/preset <n>` does the same with the number as the argument, for encoders and faders; `/cam/<i>/preset/save` stores the current position as a new preset. Feedback sends `/cam/<i>/preset/active <n> <name>` (0 and "" when the camera has left every preset). Deleting and renaming are app-only.
+- **OSC feedback**: switch it on and point it at a host:port to receive `/cam/select <n> <name>`, `/cam/<i>/preset/active <n> <name>`, `/cam/<i>/tally <0|1|2>`, `/cam/<i>/online <0|1>` and `/cam/<i>/position <pan> <tilt> <zoom>` (4 Hz). `<i>` is the camera's name slug by default, or its number when the OSC map is set to By number.
 - Test from a terminal: `npm run osc-send -- /cam/1/preset/2` (add `host:port` first to target another machine).
 
 When something misbehaves, open **Log** (top right). It lists VISCA connection changes, ffmpeg errors, failed commands and app errors; "Open log file" reveals `logs/ezy-ctrl.log` in the config folder (`%APPDATA%\EZY CTRL` for the installed app).

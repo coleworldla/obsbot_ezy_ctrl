@@ -148,6 +148,8 @@ export interface Settings {
     feedbackEnabled: boolean;
     feedbackHost: string;
     feedbackPort: number;
+    /** How feedback and the OSC map address cameras: name slug (/cam/stage_left/…) or rack number (/cam/1/…). Incoming accepts both. */
+    naming?: 'name' | 'index';
   };
   midi: {
     /** Input device names the user switched off. */

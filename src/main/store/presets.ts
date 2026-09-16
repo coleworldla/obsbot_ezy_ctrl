@@ -48,6 +48,15 @@ export class PresetStore {
     this.write();
   }
 
+  /** Delete several presets with a single write. Returns how many went. */
+  removeMany(ids: string[]): number {
+    const drop = new Set(ids);
+    const before = this.presets.length;
+    this.presets = this.presets.filter((p) => !drop.has(p.id));
+    if (this.presets.length !== before) this.write();
+    return before - this.presets.length;
+  }
+
   removeForCamera(cameraId: string): void {
     this.presets = this.presets.filter((p) => p.cameraId !== cameraId);
     this.write();

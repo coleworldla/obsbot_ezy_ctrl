@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } f
 import fs from 'node:fs';
 import os from 'node:os';
 import type { Mapping } from '../shared/mapping';
-import type { AppInfo, CameraConfig, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir } from '../shared/types';
+import type { AppInfo, CameraConfig, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir, Preset } from '../shared/types';
 import type { Updater } from './updater';
 import type { NdiManager } from './ndi/manager';
 import type { CameraManager } from './cameras';
@@ -157,6 +157,13 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
     const p = presets.get(id);
     presets.remove(id);
     if (p) logger.info('preset', `deleted "${p.name}"`, p.cameraId);
+  });
+  handle('presets:removeMany', (_e, ids: string[]) => {
+    const gone = ids.map((id) => presets.get(id)).filter((p): p is Preset => !!p);
+    const n = presets.removeMany(ids);
+    const names = gone.map((p) => `"${p.name}"`);
+    logger.info('preset', `deleted ${n} preset${n === 1 ? '' : 's'}: ${names.slice(0, 6).join(', ')}${names.length > 6 ? `, … (${names.length - 6} more)` : ''}`, gone[0]?.cameraId);
+    return n;
   });
   handle('presets:reorder', (_e, cameraId: string, ids: string[]) => presets.reorder(cameraId, ids));
   handle('presets:mirror', async (_e, id: string, slot: number) => {

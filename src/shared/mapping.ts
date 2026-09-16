@@ -68,6 +68,10 @@ export interface Invocation {
   phase: Phase;
   arg?: number;
   camera?: number | null;
+  /** Camera addressed by its name slug (/cam/<name>/…) rather than a rack number; the executor resolves it. */
+  cameraName?: string;
+  /** Preset addressed by its name slug (/cam/<i>/preset/<name>); the executor resolves it. */
+  presetName?: string;
   /** For continuous actions. */
   value?: number;
   /** 'normalized' = 0..1 (MIDI), 'natural' = the action's own units (OSC). */
@@ -242,6 +246,18 @@ export function matchMappings(mappings: Mapping[], input: Input): Invocation[] {
   return out;
 }
 
+/** Camera and preset names as they appear in OSC addresses: lower-case, runs of anything but a-z / 0-9 become "_". */
+export function oscSlug(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+/** A slug that could be mistaken for a rack number or a reserved word cannot address a camera. */
+export const oscSlugUsable = (slug: string): boolean => slug !== '' && !/^\d+$/.test(slug) && slug !== 'sel' && slug !== 'selected' && slug !== 'select';
+
 /**
  * Built-in OSC scheme, always active:
  *   /cam/select <i>                       /cam/<i>/preset/<n>          /cam/<i>/preset/save
@@ -250,7 +266,8 @@ export function matchMappings(mappings: Mapping[], input: Input): Invocation[] {
  *   /cam/<i>/zoom/tele [0|1]              /cam/<i>/zoom/wide [0|1]     /cam/<i>/track [0|1]
  *   /cam/<i>/record [0|1]                 /cam/<i>/rotate [0|1]        /cam/<i>/focus/push
  *   /app/log                              /app/mapping
- * <i> is the 1-based camera index or "sel" for the selected camera.
+ * <i> is the camera's name slug (/cam/stage_left/…), its 1-based rack number, or "sel" for the selected camera.
+ * Presets likewise: /cam/<i>/preset/<n> by rail position or /cam/<i>/preset/<name-slug>.
  */
 export function parseBuiltinOsc(input: OscInput): Invocation | null {
   const num = (x: unknown): number | undefined => (typeof x === 'number' ? x : typeof x === 'boolean' ? (x ? 1 : 0) : typeof x === 'string' && x.trim() !== '' && !Number.isNaN(Number(x)) ? Number(x) : undefined);
@@ -262,25 +279,50 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
   }
   // Switcher-style tally: /tally/pgm <i>, /tally/pvw <i>
   if (parts[0] === 'tally' && parts.length === 2 && (parts[1] === 'pgm' || parts[1] === 'pvw')) {
-    const idx = num(input.args[0]);
-    return Number.isInteger(idx) && (idx as number) >= 1 ? { actionId: `tally.${parts[1]}`, phase: 'press', camera: idx as number } : null;
+    const raw = input.args[0];
+    const idx = num(raw);
+    if (Number.isInteger(idx) && (idx as number) >= 1) return { actionId: `tally.${parts[1]}`, phase: 'press', camera: idx as number };
+    const slug = typeof raw === 'string' ? oscSlug(raw) : '';
+    return oscSlugUsable(slug) ? { actionId: `tally.${parts[1]}`, phase: 'press', camera: null, cameraName: slug } : null;
   }
   if (parts[0] !== 'cam') return null;
   if (parts[1] === 'select') {
-    const idx = num(input.args[0]) ?? Number(parts[2]);
-    return Number.isInteger(idx) && idx >= 1 ? { actionId: 'cam.select', phase: 'press', arg: idx } : null;
+    const raw = input.args[0] ?? parts[2];
+    const idx = num(raw);
+    if (Number.isInteger(idx) && (idx as number) >= 1) return { actionId: 'cam.select', phase: 'press', arg: idx as number };
+    const slug = typeof raw === 'string' ? oscSlug(raw) : '';
+    return oscSlugUsable(slug) ? { actionId: 'cam.select', phase: 'press', cameraName: slug } : null;
   }
-  const camera = parts[1] === 'sel' || parts[1] === 'selected' ? null : Number(parts[1]);
-  if (camera !== null && (!Number.isInteger(camera) || camera < 1)) return null;
+  // Which camera: "sel", a rack number, or a name slug (case-insensitive, punctuation folded to "_").
+  let camera: number | null = null;
+  let cameraName: string | undefined;
+  const who = parts[1] ?? '';
+  if (who === 'sel' || who === 'selected') camera = null;
+  else if (/^\d+$/.test(who)) {
+    camera = Number(who);
+    if (camera < 1) return null;
+  } else {
+    const slug = oscSlug(who);
+    if (!oscSlugUsable(slug)) return null;
+    cameraName = slug;
+  }
+  const target: Pick<Invocation, 'camera' | 'cameraName'> = cameraName ? { camera, cameraName } : { camera };
   const rest = parts.slice(2).join('/');
-  const press = (actionId: string): Invocation => ({ actionId, phase: v === 0 ? 'release' : 'press', camera, value: v });
-  const cont = (actionId: string): Invocation | null => (v === undefined ? null : { actionId, phase: 'value', camera, value: v, unit: 'natural' });
+  const press = (actionId: string): Invocation => ({ actionId, phase: v === 0 ? 'release' : 'press', ...target, value: v });
+  const cont = (actionId: string): Invocation | null => (v === undefined ? null : { actionId, phase: 'value', ...target, value: v, unit: 'natural' });
 
-  if (/^preset\/\d+$/.test(rest)) {
+  const presetPart = rest.match(/^preset\/([^/]+)$/);
+  if (presetPart && presetPart[1] !== 'save' && presetPart[1] !== 'active') {
     if (v === 0) return null; // button release from TouchOSC-style controls
-    return { actionId: 'preset.recall', phase: 'press', camera, arg: Number(rest.split('/')[1]) };
+    if (/^\d+$/.test(presetPart[1])) return { actionId: 'preset.recall', phase: 'press', ...target, arg: Number(presetPart[1]) };
+    const slug = oscSlug(presetPart[1]);
+    return slug ? { actionId: 'preset.recall', phase: 'press', ...target, presetName: slug } : null;
   }
-  if (rest === 'preset' && v !== undefined && v >= 1) return { actionId: 'preset.recall', phase: 'press', camera, arg: Math.round(v) };
+  if (rest === 'preset' && v !== undefined && v >= 1) return { actionId: 'preset.recall', phase: 'press', ...target, arg: Math.round(v) };
+  if (rest === 'preset' && v === undefined && typeof input.args[0] === 'string') {
+    const slug = oscSlug(input.args[0]);
+    return slug ? { actionId: 'preset.recall', phase: 'press', ...target, presetName: slug } : null;
+  }
   if (rest === 'preset/save') return press('preset.save');
   const jog = rest.match(/^ptz\/(up|down|left|right|upleft|upright|downleft|downright)$/);
   if (jog) return press(`ptz.${jog[1]}`);
@@ -299,7 +341,7 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
   if (rest === 'focus/push') return press('focus.push');
   if (rest === 'tally') {
     if (v === undefined) return null;
-    return { actionId: v === 1 ? 'tally.pgm' : v === 2 ? 'tally.pvw' : 'tally.clear', phase: 'press', camera };
+    return { actionId: v === 1 ? 'tally.pgm' : v === 2 ? 'tally.pvw' : 'tally.clear', phase: 'press', ...target };
   }
   if (rest === 'tally/pgm') return press('tally.pgm');
   if (rest === 'tally/pvw') return press('tally.pvw');
@@ -332,4 +374,155 @@ export function oscAddressList(count: number): string[] {
   }
   out.push('/cam/<i>/tally <0|1|2>', '/tally/pgm <i>', '/tally/pvw <i>', '/app/panel', '/app/log', '/app/mapping');
   return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// OSC map: every address the app understands, per camera, with the presets spelled out by name.
+// Rendered by the OSC map panel and copied into TouchOSC / Companion / a media server.
+// ---------------------------------------------------------------------------------------------
+
+export interface OscMapRow {
+  section: string;
+  address: string;
+  /** Argument hint, e.g. "1 | 0", "<1..12>", "" for none. */
+  args: string;
+  desc: string;
+  kind: 'in' | 'feedback';
+}
+
+export type OscMapFormat = 'text' | 'addresses' | 'csv' | 'markdown';
+
+const CAM_ROWS: { rest: string; args: string; desc: string }[] = [
+  { rest: 'ptz/up', args: '1 | 0', desc: 'Tilt up while held (1 start, 0 stop)' },
+  { rest: 'ptz/down', args: '1 | 0', desc: 'Tilt down while held' },
+  { rest: 'ptz/left', args: '1 | 0', desc: 'Pan left while held' },
+  { rest: 'ptz/right', args: '1 | 0', desc: 'Pan right while held' },
+  { rest: 'ptz/upleft', args: '1 | 0', desc: 'Diagonal up-left while held' },
+  { rest: 'ptz/upright', args: '1 | 0', desc: 'Diagonal up-right while held' },
+  { rest: 'ptz/downleft', args: '1 | 0', desc: 'Diagonal down-left while held' },
+  { rest: 'ptz/downright', args: '1 | 0', desc: 'Diagonal down-right while held' },
+  { rest: 'ptz/pan', args: '<-1..1>', desc: 'Pan axis for a joystick or fader: -1 full left, 0 stop, 1 full right' },
+  { rest: 'ptz/tilt', args: '<-1..1>', desc: 'Tilt axis: -1 full down, 0 stop, 1 full up' },
+  { rest: 'ptz/speed', args: '<1..24>', desc: 'Jog speed' },
+  { rest: 'ptz/speed/up', args: '', desc: 'Jog speed one step faster' },
+  { rest: 'ptz/speed/down', args: '', desc: 'Jog speed one step slower' },
+  { rest: 'home', args: '', desc: 'Return to the home position' },
+  { rest: 'zoom', args: '<1..12>', desc: 'Zoom to this ratio (1x wide … 12x tele)' },
+  { rest: 'zoom/tele', args: '1 | 0', desc: 'Zoom in while held' },
+  { rest: 'zoom/wide', args: '1 | 0', desc: 'Zoom out while held' },
+  { rest: 'preset/save', args: '', desc: 'Save the current position as a new preset' },
+  { rest: 'preset', args: '<n>', desc: 'Recall preset n (number as the argument, for encoders)' },
+  { rest: 'track', args: '1 | 0', desc: 'AI tracking on / off (no argument flips it)' },
+  { rest: 'record', args: '1 | 0', desc: 'Recording on the camera on / off' },
+  { rest: 'rotate', args: '1 | 0', desc: 'Portrait (1) / landscape (0) orientation' },
+  { rest: 'focus/push', args: '', desc: 'One-push autofocus' },
+  { rest: 'tally', args: '0 | 1 | 2', desc: 'Tally: 0 off, 1 program (red), 2 preview (green)' },
+  { rest: 'tally/pgm', args: '', desc: 'Tally program' },
+  { rest: 'tally/pvw', args: '', desc: 'Tally preview' },
+  { rest: 'tally/clear', args: '', desc: 'Tally off' },
+];
+
+const FEEDBACK_ROWS: { rest: string; args: string; desc: string }[] = [
+  { rest: 'online', args: '0 | 1', desc: 'VISCA control reachable (sent on change)' },
+  { rest: 'preset/active', args: '<n>', desc: 'Preset the camera sits on, 0 when it has moved off (sent on change)' },
+  { rest: 'tally', args: '0 | 1 | 2', desc: 'Tally state (sent on change)' },
+  { rest: 'position', args: '<pan> <tilt> <zoom>', desc: 'Pan °, tilt °, zoom ratio at 4 Hz' },
+];
+
+export type OscNaming = 'name' | 'index';
+
+/** The address key for a camera: its name slug when addressing by name and the slug is usable, else its rack number. */
+export function oscCameraKey(camera: { name: string }, index: number, naming: OscNaming): string {
+  const slug = oscSlug(camera.name);
+  return naming === 'name' && oscSlugUsable(slug) ? slug : String(index + 1);
+}
+
+export function oscMapRows(cameras: { id: string; name: string; kind?: string }[], presets: { cameraId: string; name: string }[], naming: OscNaming = 'name'): OscMapRow[] {
+  const out: OscMapRow[] = [];
+  const n = Math.max(1, cameras.length);
+  const push = (section: string, address: string, args: string, desc: string, kind: 'in' | 'feedback' = 'in') => out.push({ section, address, args, desc, kind });
+  const byName = naming === 'name';
+
+  push('Global', '/cam/select', byName ? '<name> or <1..' + n + '>' : `<1..${n}>`, 'Put that camera on stage');
+  push('Global', '/tally/pgm', byName ? '<name> or <i>' : '<i>', 'Camera program (switcher style)');
+  push('Global', '/tally/pvw', byName ? '<name> or <i>' : '<i>', 'Camera preview');
+  push('Global', '/app/panel', '', 'Toggle the camera settings drawer');
+  push('Global', '/app/log', '', 'Toggle the Log');
+  push('Global', '/app/mapping', '', 'Toggle the Mapping panel');
+
+  const camSections: { key: string; title: string; id: string | null; monitor: boolean }[] = [
+    { key: 'sel', title: 'Selected camera (/cam/sel/…)', id: null, monitor: false },
+    ...cameras.map((c, i) => {
+      const key = oscCameraKey(c, i, naming);
+      const alt = byName ? (key === String(i + 1) ? ' (name not usable as an address, so by number)' : ` · also /cam/${i + 1}/…`) : ` · also /cam/${oscSlug(c.name)}/…`;
+      return { key, title: `CAM ${i + 1} · ${c.name}${c.kind === 'monitor' ? ' (video only)' : ''}${alt}`, id: c.id, monitor: c.kind === 'monitor' };
+    }),
+  ];
+  for (const sec of camSections) {
+    const base = `/cam/${sec.key}`;
+    if (sec.monitor) {
+      push(sec.title, `${base}/tally`, '0 | 1 | 2', 'Tally: 0 off, 1 program, 2 preview');
+      push(sec.title, `${base}/tally/pgm`, '', 'Tally program');
+      push(sec.title, `${base}/tally/pvw`, '', 'Tally preview');
+      push(sec.title, `${base}/tally/clear`, '', 'Tally off');
+      push(sec.title, `${base}/tally`, '0 | 1 | 2', 'Feedback: tally state', 'feedback');
+      continue;
+    }
+    const mine = sec.id ? presets.filter((p) => p.cameraId === sec.id) : [];
+    if (mine.length) {
+      const seen = new Set<string>();
+      mine.forEach((p, i) => {
+        const slug = oscSlug(p.name);
+        if (byName && slug && !/^\d+$/.test(slug)) {
+          const dup = seen.has(slug);
+          seen.add(slug);
+          push(sec.title, `${base}/preset/${slug}`, '', `Recall preset ${i + 1} · "${p.name}"${dup ? ' (same name as an earlier preset: the earlier one answers; rename to fix)' : ''}`);
+        } else push(sec.title, `${base}/preset/${i + 1}`, '', `Recall preset ${i + 1} · "${p.name}"`);
+      });
+      push(sec.title, `${base}/preset/<n>`, '', byName ? 'Recall a preset by its number in the rail' : 'Recall preset n (its number in the rail)');
+    } else push(sec.title, `${base}/preset/<n>`, '', sec.id ? 'Recall preset n (no presets saved yet)' : 'Recall preset n of the camera on stage');
+    if (!sec.id) push(sec.title, `${base}/preset/<name>`, '', 'Recall a preset by name (lower-case, spaces → _)');
+    for (const r of CAM_ROWS) push(sec.title, `${base}/${r.rest}`, r.args, r.desc);
+    for (const r of FEEDBACK_ROWS) push(sec.title, `${base}/${r.rest}`, r.args, `Feedback: ${r.desc}`, 'feedback');
+  }
+  push('Feedback (global)', '/cam/select', '<n>', 'Feedback: camera n went on stage', 'feedback');
+  return out;
+}
+
+const csvCell = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+
+export function oscMapText(rows: OscMapRow[], format: OscMapFormat): string {
+  switch (format) {
+    case 'addresses':
+      return [...new Set(rows.map((r) => r.address))].join('\n');
+    case 'csv':
+      return ['section,address,argument,description,direction', ...rows.map((r) => [r.section, r.address, r.args, r.desc, r.kind === 'feedback' ? 'out' : 'in'].map(csvCell).join(','))].join('\n');
+    case 'markdown': {
+      const lines: string[] = [];
+      let section = '';
+      for (const r of rows) {
+        if (r.section !== section) {
+          section = r.section;
+          lines.push('', `### ${section}`, '', '| Address | Argument | Does |', '|---|---|---|');
+        }
+        lines.push(`| \`${r.address}\` | ${r.args || '—'} | ${r.kind === 'feedback' ? '(feedback) ' : ''}${r.desc} |`);
+      }
+      return lines.join('\n').trim();
+    }
+    default: {
+      const width = Math.min(40, Math.max(...rows.map((r) => r.address.length + (r.args ? r.args.length + 1 : 0))));
+      const lines: string[] = [];
+      let section = '';
+      for (const r of rows) {
+        if (r.section !== section) {
+          section = r.section;
+          if (lines.length) lines.push('');
+          lines.push(`# ${section}`);
+        }
+        const left = r.args ? `${r.address} ${r.args}` : r.address;
+        lines.push(`${left.padEnd(width)}  ${r.kind === 'feedback' ? '(feedback) ' : ''}${r.desc}`);
+      }
+      return lines.join('\n');
+    }
+  }
 }

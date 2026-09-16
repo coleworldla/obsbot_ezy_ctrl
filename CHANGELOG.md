@@ -2,6 +2,14 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.8.2] - 2026-09-15
+
+### Added
+- Presets rail: multi-select and delete. **Select** (or Ctrl-click a preset) enters select mode; click, Shift-click for a range or Ctrl+A to pick rows; **Delete** or the Delete key removes them all after one confirmation, in a single write. Right-click also offers "Delete N selected".
+- OSC addresses by name: `/cam/stage_left/preset/podium` works alongside `/cam/1/preset/2`. Camera and preset names become slugs (lower-case, punctuation and spaces → `_`), `/cam/select` and `/tally/pgm` take a name as the argument too, and feedback goes out under the name (switchable to numbers in the OSC map). Renaming changes the address; the map shows the current one.
+- OSC map panel (Mapping → **OSC map…**): every address the app understands, laid out per camera in rack order with your presets spelled out by name and the feedback addresses, plus a filter. Copy all or one section as text, addresses only, CSV or a Markdown table; click an address to copy just that one.
+- README documents the OSC preset addresses (`/cam/<i>/preset/<n>`, `/cam/<i>/preset <n>`, `/cam/<i>/preset/save`, feedback `/cam/<i>/preset/active`).
+
 ## [0.8.1] - 2026-09-15
 
 ### Changed

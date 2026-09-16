@@ -2,6 +2,7 @@
  * Runs action invocations (from keyboard, MIDI or OSC) against the app: one place that knows
  * how to jog, zoom, recall presets, toggle tracking, set tally, and so on.
  */
+import { oscSlug } from '../../../shared/mapping';
 import type { Invocation } from '../../../shared/mapping';
 import type { CameraConfig, CameraStatus, JogDir, Preset, Tally } from '../../../shared/types';
 
@@ -78,7 +79,7 @@ export class ActionExecutor {
     switch (inv.actionId) {
       case 'cam.select': {
         if (inv.phase !== 'press') return;
-        const target = c.cameras[(inv.arg ?? 1) - 1];
+        const target = inv.cameraName ? c.cameras.find((x) => oscSlug(x.name) === inv.cameraName) : c.cameras[(inv.arg ?? 1) - 1];
         if (target) c.selectCamera(target.id);
         return;
       }
@@ -93,7 +94,7 @@ export class ActionExecutor {
         return;
     }
 
-    const cam = inv.camera ? c.cameras[inv.camera - 1] : c.cameras.find((x) => x.id === c.selectedId);
+    const cam = inv.cameraName ? c.cameras.find((x) => oscSlug(x.name) === inv.cameraName) : inv.camera ? c.cameras[inv.camera - 1] : c.cameras.find((x) => x.id === c.selectedId);
     if (!cam) return;
     const id = cam.id;
     const online = c.status[id]?.connected ?? false;
@@ -153,7 +154,7 @@ export class ActionExecutor {
       case 'preset.recall': {
         if (inv.phase !== 'press' || !online) return;
         const list = c.presets.filter((p) => p.cameraId === id);
-        const p = list[(inv.arg ?? 1) - 1];
+        const p = inv.presetName ? list.find((x) => oscSlug(x.name) === inv.presetName) : list[(inv.arg ?? 1) - 1];
         if (p) c.recall(p);
         return;
       }

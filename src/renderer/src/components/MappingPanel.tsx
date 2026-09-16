@@ -33,6 +33,7 @@ interface Props {
   monitor: MonitorEntry[];
   learn: LearnState | null;
   onLearn: (l: LearnState | null) => void;
+  onOscMap: () => void;
   onClose: () => void;
 }
 
@@ -55,6 +56,7 @@ export function MappingPanel({
   monitor,
   learn,
   onLearn,
+  onOscMap,
   onClose,
 }: Props) {
   const [port, setPort] = useState(String(settings.osc.listenPort));
@@ -231,9 +233,14 @@ export function MappingPanel({
               <input className="input mono small" style={{ width: 64 }} value={fbPort} onChange={(e) => setFbPort(e.target.value)} onBlur={applyFeedback} onKeyDown={(e) => e.key === 'Enter' && applyFeedback()} />
             </div>
             <div className="note">Feedback: /cam/select, /cam/&lt;i&gt;/preset/active, /cam/&lt;i&gt;/online, /cam/&lt;i&gt;/tally, /cam/&lt;i&gt;/position (4 Hz).</div>
-            <button className="b sm" onClick={() => void copyAddresses()} style={{ marginTop: 6 }}>
-              {copied ? 'Copied' : 'Copy address list'}
-            </button>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <button className="b sm accent" onClick={onOscMap} title="Every address per camera, presets by name, copy as text / CSV / Markdown">
+                OSC map…
+              </button>
+              <button className="b sm" onClick={() => void copyAddresses()}>
+                {copied ? 'Copied' : 'Copy address list'}
+              </button>
+            </div>
           </div>
 
           <div className="side-section" style={{ flex: 1, minHeight: 0 }}>

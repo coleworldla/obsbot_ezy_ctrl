@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { Settings } from '../../shared/types';
 
 export const DEFAULT_SETTINGS: Settings = {
-  osc: { enabled: true, listenPort: 9000, feedbackEnabled: false, feedbackHost: '', feedbackPort: 9001 },
+  osc: { enabled: true, listenPort: 9000, feedbackEnabled: false, feedbackHost: '', feedbackPort: 9001, naming: 'name' },
   midi: { disabledDevices: [] },
   updates: { autoCheck: true },
 };

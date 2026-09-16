@@ -276,3 +276,27 @@ select.input { padding: 0 6px; appearance: auto; }
 
 /* video-only sources */
 .transport.monitor { height: auto; min-height: 0; flex: none; padding: 2px 2px 0; border: 0; background: none; color: var(--muted); font-size: 12px; font-family: var(--mono); line-height: 1.4; }
+
+/* preset multi-select */
+.prow.sel { background: var(--panel); box-shadow: inset 3px 0 0 var(--text-2); }
+.prow.sel.active { background: var(--accent-soft); }
+.pcheck { width: 16px; height: 16px; flex: none; border-radius: 3px; border: 1px solid var(--line-3); background: var(--bg-deep); display: inline-flex; align-items: center; justify-content: center; }
+.pcheck.on { border-color: var(--accent); background: var(--accent); }
+.pcheck.on::after { content: ''; width: 4px; height: 8px; border: solid #0f1215; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+.b.danger { border-color: var(--pgm); color: #ffb3b6; }
+.b.danger:not(:disabled):hover { background: rgba(179, 45, 45, 0.18); }
+
+/* OSC map */
+.oscmap-body { padding: 4px 16px 16px; }
+.oscsec { margin: 10px 0 14px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.oscsec-head { display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: var(--panel); font-weight: 700; font-size: 12px; }
+.oscsec-head .spacer { flex: 1; }
+.oscrow { display: grid; grid-template-columns: minmax(220px, 1fr) 150px minmax(240px, 2fr); gap: 12px; align-items: center; min-height: 30px; padding: 0 12px; font-size: 12px; border-top: 1px solid var(--line); }
+.oscrow .addr { color: var(--accent-text); cursor: copy; user-select: text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oscrow .addr:hover { text-decoration: underline; }
+.oscrow .args { color: var(--text-2); }
+.oscrow .desc { color: var(--text-2); }
+.oscrow.fb .addr { color: #9fb4d8; }
+.oscrow.fb .desc { color: var(--muted); }
+.oscmap .mono, .oscrow .addr, .oscrow .args { font-variant-ligatures: none; }
+.oscmap .maphead > span:first-child, .oscmap .maphead .b { white-space: nowrap; }

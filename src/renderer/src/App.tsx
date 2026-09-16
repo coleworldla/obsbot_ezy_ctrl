@@ -3,6 +3,8 @@ import { keyInputFrom, matchMappings, parseBuiltinOsc, type Input, type Invocati
 import type { AppInfo, CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, Tally, UpdateStatus } from '../../shared/types';
 import { isMonitor } from '../../shared/types';
 import { CameraDialog } from './components/CameraDialog';
+import { OscMapPanel } from './components/OscMapPanel';
+import { oscCameraKey, oscSlug } from '../../shared/mapping';
 import { CameraPanel } from './components/CameraPanel';
 import { Help } from './components/Help';
 import { LogPanel } from './components/LogPanel';
@@ -47,6 +49,7 @@ export default function App() {
   const [editCamera, setEditCamera] = useState<CameraConfig | null>(null);
   const [showLog, setShowLog] = useState(false);
   const [showMapping, setShowMapping] = useState(false);
+  const [showOscMap, setShowOscMap] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [info, setInfo] = useState<AppInfo | null>(null);
@@ -340,28 +343,32 @@ export default function App() {
     },
     [feedbackOn, addMonitor],
   );
+  // Feedback addresses use the camera's name slug or its rack number, as chosen in the OSC map.
+  const naming = settings?.osc.naming ?? 'name';
+  const camKey = useCallback((c: CameraConfig, idx: number) => oscCameraKey(c, idx, naming), [naming]);
   useEffect(() => {
     if (!selected) return;
-    sendFeedback('/cam/select', [cameras.indexOf(selected) + 1]);
+    sendFeedback('/cam/select', [cameras.indexOf(selected) + 1, oscSlug(selected.name)]);
   }, [selected, cameras, sendFeedback]);
   useEffect(() => {
     for (const [cameraId, presetId] of Object.entries(active)) {
-      const i = cameras.findIndex((c) => c.id === cameraId) + 1;
-      if (i === 0) continue;
+      const idx = cameras.findIndex((c) => c.id === cameraId);
+      if (idx < 0) continue;
       const list = presets.filter((p) => p.cameraId === cameraId);
-      sendFeedback(`/cam/${i}/preset/active`, [presetId ? list.findIndex((p) => p.id === presetId) + 1 : 0]);
+      const p = presetId ? list.find((x) => x.id === presetId) : undefined;
+      sendFeedback(`/cam/${camKey(cameras[idx], idx)}/preset/active`, [p ? list.indexOf(p) + 1 : 0, p ? oscSlug(p.name) : '']);
     }
-  }, [active, cameras, presets, sendFeedback]);
+  }, [active, cameras, presets, sendFeedback, camKey]);
   const lastTally = useRef<Record<string, Tally>>({});
   useEffect(() => {
     cameras.forEach((c, idx) => {
       const t = tally[c.id] ?? 0;
       if ((lastTally.current[c.id] ?? 0) !== t) {
         lastTally.current[c.id] = t;
-        sendFeedback(`/cam/${idx + 1}/tally`, [t]);
+        sendFeedback(`/cam/${camKey(c, idx)}/tally`, [t]);
       }
     });
-  }, [tally, cameras, sendFeedback]);
+  }, [tally, cameras, sendFeedback, camKey]);
   const lastOnline = useRef<Record<string, boolean>>({});
   const lastPos = useRef<Record<string, number>>({});
   useEffect(() => {
@@ -371,14 +378,14 @@ export default function App() {
       if (!s) return;
       if (lastOnline.current[c.id] !== s.connected) {
         lastOnline.current[c.id] = s.connected;
-        sendFeedback(`/cam/${idx + 1}/online`, [s.connected ? 1 : 0]);
+        sendFeedback(`/cam/${camKey(c, idx)}/online`, [s.connected ? 1 : 0]);
       }
       if (s.position && Date.now() - (lastPos.current[c.id] ?? 0) >= 250) {
         lastPos.current[c.id] = Date.now();
-        sendFeedback(`/cam/${idx + 1}/position`, [s.position.panDeg, s.position.tiltDeg, s.position.zoomRatio]);
+        sendFeedback(`/cam/${camKey(c, idx)}/position`, [s.position.panDeg, s.position.tiltDeg, s.position.zoomRatio]);
       }
     });
-  }, [status, cameras, feedbackOn, sendFeedback]);
+  }, [status, cameras, feedbackOn, sendFeedback, camKey]);
 
   // ---- scripted interactions for screenshot-based checks (EZY_AUTOTEST=presets,log,mapping) ----
   useEffect(() => {
@@ -397,9 +404,18 @@ export default function App() {
     }
     if (steps.includes('log')) timers.push(window.setTimeout(() => setShowLog(true), 3000));
     if (steps.includes('mapping')) timers.push(window.setTimeout(() => setShowMapping(true), 3000));
+    if (steps.includes('oscmap')) timers.push(window.setTimeout(() => setShowOscMap(true), 3000));
+    if (steps.includes('oscmap-scroll')) timers.push(window.setTimeout(() => document.querySelector('.oscmap-body')?.scrollTo({ top: 1500 }), 4500));
     if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
     if (steps.includes('help')) timers.push(window.setTimeout(() => setShowHelp(true), 3000));
     if (steps.includes('edit')) timers.push(window.setTimeout(() => setEditCamera(ctxRef.current.cameras[0] ?? null), 3000));
+    if (steps.includes('pselect'))
+      timers.push(
+        window.setTimeout(() => {
+          // Ctrl-click the first three preset rows to show select mode.
+          document.querySelectorAll<HTMLElement>('.prow').forEach((el, i) => i < 3 && el.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true })));
+        }, 3000),
+      );
     if (steps.includes('tally'))
       timers.push(
         window.setTimeout(() => {
@@ -553,6 +569,7 @@ export default function App() {
             monitor={monitor}
             learn={learn}
             onLearn={setLearn}
+            onOscMap={() => setShowOscMap(true)}
             onClose={() => {
               setShowMapping(false);
               setLearn(null);
@@ -560,6 +577,8 @@ export default function App() {
           />
         )}
       </div>
+
+      {showOscMap && settings && <OscMapPanel cameras={cameras} presets={presets} settings={settings} oscStatus={oscStatus} onSettings={(patch) => void updateSettings(patch)} onClose={() => setShowOscMap(false)} />}
 
       {showPanel && selected && !isMonitor(selected) && <CameraPanel camera={selected} status={status[selected.id]} onClose={() => setShowPanel(false)} />}
 
