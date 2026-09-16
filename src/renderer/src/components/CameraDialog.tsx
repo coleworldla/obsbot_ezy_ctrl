@@ -64,6 +64,8 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
   const [ndiStatus, setNdiStatus] = useState<NdiStatus | null>(null);
   const [ndiSources, setNdiSources] = useState<NdiSource[] | null>(null);
   const [queriedIp, setQueriedIp] = useState<string | null>(null);
+  /** Shown under Type after the dialog switched it on its own. */
+  const [kindNote, setKindNote] = useState<string | null>(null);
 
   const trimmedHost = host.trim();
   const hostGiven = trimmedHost !== '';
@@ -166,6 +168,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
   const pickKind = (k: CameraKind) => {
     if (k === kind) return;
     setKind(k);
+    setKindNote(null);
     setResult(null);
     setUrlTouched(false);
     if (!editing) setSource(k === 'monitor' ? 'ndi' : 'rtsp');
@@ -191,6 +194,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
               </button>
             ))}
           </div>
+          {kindNote && <span className="note">{kindNote}</span>}
         </div>
 
         <div className="field">
@@ -234,8 +238,14 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
                 className="input"
                 value={urlTouched ? videoUrl : ''}
                 onChange={(e) => {
-                  setVideoUrl(e.target.value);
-                  setUrlTouched(e.target.value !== '');
+                  const v = e.target.value;
+                  setVideoUrl(v);
+                  setUrlTouched(v !== '');
+                  // Picking a source that is plainly not a Tail 2 while adding: make it a monitor, and say so.
+                  if (!editing && v && kind === 'tail2' && !/TAIL ?2/i.test(v)) {
+                    setKind('monitor');
+                    setKindNote(`"${shortNdiName(v)}" does not look like a Tail 2, so Type switched to Video only. Switch it back if this is a PTZ camera the app should drive over VISCA.`);
+                  }
                 }}
               >
                 <option value="">{hostGiven ? `Auto — the NDI source at ${trimmedHost}` : monitor ? 'Choose an NDI source…' : 'Auto — the NDI source at this IP'}</option>
@@ -312,7 +322,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
               <div className="d">
                 {result.ok && result.position
                   ? `pan ${result.position.panDeg.toFixed(1)}° tilt ${result.position.tiltDeg.toFixed(1)}° zoom ${result.position.zoomRatio.toFixed(1)}× · ${result.latencyMs} ms`
-                  : result.error}
+                  : `${result.error ?? 'no reply'} · Not a Tail 2? Set Type to Video only.`}
               </div>
             </div>
           </div>

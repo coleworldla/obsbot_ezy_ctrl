@@ -141,7 +141,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
       <div className="stagewrap">
         <Viewport camera={camera} />
         <div className={`ov tl${online ? '' : ' err'}`}>
-          {online ? 'VISCA ONLINE' : status?.lastError ? `OFFLINE · ${status.lastError}` : 'CONNECTING…'}
+          {online ? 'VISCA ONLINE' : status?.lastError ? `OFFLINE · ${status.lastError} · not a Tail 2? Edit → Type: Video only` : 'CONNECTING…'}
         </div>
         <div className="ov bl">
           PAN {fmt(p?.panDeg)} &nbsp; TILT {fmt(p?.tiltDeg)} &nbsp; ZOOM {p ? `${p.zoomRatio.toFixed(1)}×` : '—'} &nbsp;·&nbsp; TRACK {tracking ? (live?.trackMode === 'group' ? 'group' : 'on') : 'off'}{' '}
