@@ -19,6 +19,7 @@ Goals:
 | Video (default) | RTSP | `rtsp://<camera-ip>:8554/live` — enable **RTSP mode** in OBSBOT Center / Start (Output → RTSP). |
 | Video (optional) | NDI / SRT | NDI needs a paid licence key; SRT listener defaults to port 5000. Only one output mode is active at a time. |
 | Web UI | HTTP | `http://<camera-ip>` (login `Admin` / `Admin` on first use) — network setup and a fallback preview. |
+| Video (NDI, via NDI Tools) | Webcam | No direct NDI decode yet. NDI Tools → **Webcam Input** exposes the camera's NDI source as a system webcam; pick it with the app's **Webcam** source. Same path works for the Tail 2 over USB-C (UVC). |
 
 Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× hybrid (5× optical).
 
@@ -126,6 +127,7 @@ src/
 scripts/fake-tail2.mjs   # fake camera for development (npm run fake-camera)
 scripts/osc-send.mjs     # send a test OSC message (npm run osc-send -- /cam/1/home)
 scripts/fetch-ffmpeg.mjs # download ffmpeg per architecture for packaging (used by the macOS build)
+scripts/diagnose.mjs     # ask a real camera every inquiry the app uses + pull 3 s of video (npm run diagnose -- <ip>)
 tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store, mapping logic, OSC codec
 docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit

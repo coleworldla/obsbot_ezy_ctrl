@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { keyInputFrom, matchMappings, parseBuiltinOsc, type Input, type Invocation, type Mapping } from '../../shared/mapping';
 import type { AppInfo, CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, Tally, UpdateStatus } from '../../shared/types';
-import { AddCamera } from './components/AddCamera';
+import { CameraDialog } from './components/CameraDialog';
 import { CameraPanel } from './components/CameraPanel';
 import { Help } from './components/Help';
 import { LogPanel } from './components/LogPanel';
@@ -11,7 +11,7 @@ import { Rack } from './components/Rack';
 import { Stage } from './components/Stage';
 import { ActionExecutor, type CamState, type ExecContext, type Speed } from './control/executor';
 import { MidiManager, type MidiDeviceInfo } from './control/midi';
-import { dispatchVideoEvent, dropPlayer, getPlayer } from './video/player';
+import { dispatchVideoEvent, dropPlayer, snapshotFor } from './video/player';
 
 export type { Speed } from './control/executor';
 
@@ -42,6 +42,7 @@ export default function App() {
   const [status, setStatus] = useState<Record<string, CameraStatus>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [editCamera, setEditCamera] = useState<CameraConfig | null>(null);
   const [showLog, setShowLog] = useState(false);
   const [showMapping, setShowMapping] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
@@ -137,7 +138,7 @@ export default function App() {
 
   const savePresetFor = useCallback(
     async (cameraId: string): Promise<Preset | null> => {
-      const thumbnail = getPlayer(cameraId).snapshot(240) ?? undefined;
+      const thumbnail = snapshotFor(cameraId, 240) ?? undefined;
       const n = presets.filter((p) => p.cameraId === cameraId).length + 1;
       try {
         const p = await window.ezy.presets.save(cameraId, `Preset ${n}`, thumbnail);
@@ -382,6 +383,7 @@ export default function App() {
     if (steps.includes('mapping')) timers.push(window.setTimeout(() => setShowMapping(true), 3000));
     if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
     if (steps.includes('help')) timers.push(window.setTimeout(() => setShowHelp(true), 3000));
+    if (steps.includes('edit')) timers.push(window.setTimeout(() => setEditCamera(ctxRef.current.cameras[0] ?? null), 3000));
     if (steps.includes('tally'))
       timers.push(
         window.setTimeout(() => {
@@ -475,7 +477,7 @@ export default function App() {
       </header>
 
       <div className="body">
-        <Rack cameras={cameras} status={status} selectedId={selectedId} tally={tally} onSelect={setSelectedId} onTally={setTally} onAdd={() => setShowAdd(true)} />
+        <Rack cameras={cameras} status={status} selectedId={selectedId} tally={tally} onSelect={setSelectedId} onTally={setTally} onAdd={() => setShowAdd(true)} onEdit={setEditCamera} />
 
         {selected ? (
           <Stage
@@ -484,6 +486,7 @@ export default function App() {
             speed={speed}
             onSpeed={setSpeed}
             onRemove={() => void removeCamera(selected.id)}
+            onEdit={() => setEditCamera(selected)}
             activePresetName={activePreset ? `P${camPresets.indexOf(activePreset) + 1} · ${activePreset.name}` : undefined}
             onManual={() => clearActive(selected.id)}
             camState={camState[selected.id] ?? { tracking: false, recording: false, portrait: false }}
@@ -510,7 +513,7 @@ export default function App() {
           onSave={savePreset}
           onRecall={recall}
           onChanged={loadPresets}
-          onSnapshot={() => (selected ? (getPlayer(selected.id).snapshot(240) ?? undefined) : undefined)}
+          onSnapshot={() => (selected ? (snapshotFor(selected.id, 240) ?? undefined) : undefined)}
         />
 
         {showMapping && settings && (
@@ -553,11 +556,16 @@ export default function App() {
         />
       )}
 
-      {showAdd && (
-        <AddCamera
-          onClose={() => setShowAdd(false)}
-          onAdded={async (cam) => {
+      {(showAdd || editCamera) && (
+        <CameraDialog
+          existing={editCamera ?? undefined}
+          onClose={() => {
             setShowAdd(false);
+            setEditCamera(null);
+          }}
+          onSaved={async (cam) => {
+            setShowAdd(false);
+            setEditCamera(null);
             await refresh();
             setSelectedId(cam.id);
           }}

@@ -10,6 +10,7 @@ interface Props {
   speed: Speed;
   onSpeed: (s: Speed) => void;
   onRemove: () => void;
+  onEdit: () => void;
   /** "P4 · Podium" while the camera sits on a recalled preset. */
   activePresetName?: string;
   /** Called on any manual move so the active-preset mark is dropped. */
@@ -41,7 +42,7 @@ const JOG: { dir: JogDir; key: string; d: string }[] = [
 
 const fmt = (n: number | undefined) => (n === undefined ? '—' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}°`);
 
-export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetName, onManual, camState, onCamState, tally, panelOpen, onTogglePanel }: Props) {
+export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, activePresetName, onManual, camState, onCamState, tally, panelOpen, onTogglePanel }: Props) {
   const id = camera.id;
   const [zoomSlider, setZoomSlider] = useState(1);
   const zoomTimer = useRef<number | null>(null);
@@ -100,6 +101,9 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, activePresetNa
         <span className="spacer" style={{ flex: 1 }} />
         <button className={`b sm${panelOpen ? ' accent' : ''}`} onClick={onTogglePanel} title="Camera settings (I)">
           Camera settings
+        </button>
+        <button className="b sm" onClick={onEdit} title="Name, IP address, video source and stream address">
+          Edit
         </button>
         <button className="b sm" onClick={onRemove}>
           Remove

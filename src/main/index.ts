@@ -80,7 +80,8 @@ app.whenReady().then(() => {
   logger.on('entry', (entry) => win?.webContents.send('log:entry', entry));
 
   // Web MIDI (and clipboard for "copy address list") need explicit permission in Electron.
-  const allowed = new Set(['midi', 'midiSysex', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen']);
+  // 'media' = webcam capture for the Webcam video source (UVC / NDI Tools Webcam Input).
+  const allowed = new Set(['midi', 'midiSysex', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', 'media']);
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)));
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
 

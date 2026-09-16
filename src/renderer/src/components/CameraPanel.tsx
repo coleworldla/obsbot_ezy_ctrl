@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CameraConfig, CameraFullState, CameraSet, CameraStatus } from '../../../shared/types';
+import type { CameraConfig, CameraFullState, CameraLiveState, CameraSet, CameraStatus } from '../../../shared/types';
 
 interface Props {
   camera: CameraConfig;
@@ -17,6 +17,16 @@ const SPEEDS = ['Super lazy', 'Lazy', 'Slow', 'Fast', 'Crazy'];
 const AUTO_ZOOM = ['Off', 'Close-up', 'Half body', 'Above knees', 'Nine-head', 'Full body', 'Long shot 1', 'Long shot 2'];
 const WB = ['Auto', 'Daylight', 'Fluorescent', 'One-push', 'Tungsten', 'Manual', 'Cloudy'];
 const STYLES = ['Standard', 'Outdoor', 'Pastel', 'Custom'];
+
+const DEFAULTS: CameraFullState = {
+  track: false, trackMode: 'single', record: false, portrait: false, focusAuto: true, exposureAuto: true, wbMode: 0,
+  trackSpeed: 3, autoZoom: 0, onlyMe: false, focusPos: 50, expComp: 9, backlight: false, flicker: 0, shutter: 0x1e, gain: 1,
+  colorTemp: 5500, rGain: 128, bGain: 128, style: 0, bright: 50, contrast: 50, saturation: 50, sharpness: 50, hue: 50,
+  unsupported: [],
+};
+
+/** How long a click's optimistic value wins over the polled state. */
+const OPTIMISTIC_MS = 4000;
 
 function Seg<T extends string | number>({ value, options, onChange, disabled }: { value: T; options: { v: T; label: string }[]; onChange: (v: T) => void; disabled?: boolean }) {
   return (
@@ -51,61 +61,126 @@ export function CameraPanel({ camera, status, onClose }: Props) {
   const id = camera.id;
   const online = status?.connected ?? false;
   const live = status?.state;
-  const [full, setFull] = useState<CameraFullState | null>(null);
+  const [full, setFull] = useState<CameraFullState>(DEFAULTS);
+  const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  /** Values the user just clicked, shown until the camera confirms or the timer runs out. */
+  const [pending, setPending] = useState<Partial<CameraLiveState>>({});
+  const pendingTimers = useRef<Record<string, number>>({});
   const refreshTimer = useRef<number | null>(null);
   const sliderTimers = useRef<Record<string, number>>({});
+  const errTimer = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     if (!online) return;
     setLoading(true);
     try {
       setFull(await window.ezy.camera.fullState(id));
-    } catch {
-      /* stays as is; the log has the reason */
+      setLoaded(true);
+    } catch (e) {
+      showErr(`could not read the camera state: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, online]);
 
   useEffect(() => {
-    setFull(null);
+    setFull(DEFAULTS);
+    setLoaded(false);
+    setPending({});
     void load();
   }, [load]);
 
-  const scheduleRefresh = () => {
-    if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
-    refreshTimer.current = window.setTimeout(() => void load(), 500);
+  // Drop an optimistic value as soon as the camera reports the same thing.
+  useEffect(() => {
+    if (!live) return;
+    setPending((p) => {
+      const next = { ...p };
+      let changed = false;
+      for (const k of Object.keys(next) as (keyof CameraLiveState)[]) {
+        if (live[k] === next[k]) {
+          delete next[k];
+          changed = true;
+        }
+      }
+      return changed ? next : p;
+    });
+  }, [live]);
+
+  const showErr = (message: string) => {
+    setErr(message);
+    if (errTimer.current) window.clearTimeout(errTimer.current);
+    errTimer.current = window.setTimeout(() => setErr(null), 6000);
   };
 
+  const scheduleRefresh = () => {
+    if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
+    refreshTimer.current = window.setTimeout(() => void load(), 600);
+  };
+
+  const optimistic = (patch: Partial<CameraLiveState>) => {
+    setPending((p) => ({ ...p, ...patch }));
+    for (const k of Object.keys(patch)) {
+      if (pendingTimers.current[k]) window.clearTimeout(pendingTimers.current[k]);
+      pendingTimers.current[k] = window.setTimeout(() => setPending((p) => { const n = { ...p }; delete n[k as keyof CameraLiveState]; return n; }), OPTIMISTIC_MS);
+    }
+  };
+
+  const send = (s: CameraSet) =>
+    window.ezy.camera.set(id, s).catch((e: unknown) => showErr(`camera rejected ${s.key}: ${e instanceof Error ? e.message : String(e)}`));
+
+  /** Image-state settings: update the local copy at once, send, then re-read. */
   const set = (s: CameraSet) => {
-    // Optimistic update for immediate feedback; the refresh confirms it.
-    if ('value' in s) setFull((f) => (f ? { ...f, [s.key === 'portrait' ? 'portrait' : s.key]: s.value } as CameraFullState : f));
-    window.ezy.camera.set(id, s).catch(() => undefined);
+    if ('value' in s) setFull((f) => ({ ...f, [s.key]: s.value }) as CameraFullState);
+    void send(s);
+    scheduleRefresh();
+  };
+
+  /** Live-state settings (tracking, focus/exposure/WB mode): show the click immediately, confirm from the poll. */
+  const setLive = (s: CameraSet, patch: Partial<CameraLiveState>) => {
+    optimistic(patch);
+    setFull((f) => ({ ...f, ...patch }));
+    void send(s);
     scheduleRefresh();
   };
 
   /** Sliders: send at most every 120 ms while dragging. */
   const setSlider = (key: Extract<CameraSet, { value: number }>['key'], value: number) => {
-    setFull((f) => (f ? { ...f, [key]: value } : f));
+    setFull((f) => ({ ...f, [key]: value }));
     if (sliderTimers.current[key]) window.clearTimeout(sliderTimers.current[key]);
     sliderTimers.current[key] = window.setTimeout(() => {
-      window.ezy.camera.set(id, { key, value } as CameraSet).catch(() => undefined);
+      void send({ key, value } as CameraSet);
       scheduleRefresh();
     }, 120);
   };
 
-  const track = live?.track ?? false;
-  const trackMode = live?.trackMode ?? 'single';
-  const focusAuto = live?.focusAuto ?? true;
-  const exposureAuto = live?.exposureAuto ?? true;
-  const wbMode = live?.wbMode ?? 0;
+  const track = pending.track ?? live?.track ?? full.track;
+  const trackMode = pending.trackMode ?? live?.trackMode ?? full.trackMode;
+  const focusAuto = pending.focusAuto ?? live?.focusAuto ?? full.focusAuto;
+  const exposureAuto = pending.exposureAuto ?? live?.exposureAuto ?? full.exposureAuto;
+  const wbMode = pending.wbMode ?? live?.wbMode ?? full.wbMode;
+
+  const statusText = !online
+    ? 'camera offline'
+    : loading
+      ? 'reading…'
+      : err
+        ? err
+        : !loaded
+          ? 'showing defaults until the camera answers'
+          : full.unsupported.length
+            ? `live · not reported by this camera: ${full.unsupported.join(', ')}`
+            : 'live';
 
   return (
     <div className="campanel">
       <div className="cphead">
         <span style={{ fontWeight: 700 }}>Camera settings · {camera.name}</span>
-        <span className="mono muted">{online ? (loading ? 'reading…' : full ? 'live' : 'no state yet') : 'camera offline'}</span>
+        <span className={`mono ${err ? 'warn-text' : 'muted'}`} title={full.unsupported.length ? 'For these the panel shows the last value you set, or a default' : undefined}>
+          {statusText}
+        </span>
         <span className="spacer" />
         <button className="b sm" disabled={!online} onClick={() => void load()}>
           Refresh
@@ -120,16 +195,16 @@ export function CameraPanel({ camera, status, onClose }: Props) {
         <section className="cpsection">
           <div className="lbl">AI tracking</div>
           <Row label="Tracking">
-            <Toggle on={track} disabled={!online} onChange={(v) => set({ key: 'track', value: v })} />
+            <Toggle on={track} disabled={!online} onChange={(v) => setLive({ key: 'track', value: v }, { track: v })} />
           </Row>
           <Row label="Mode">
-            <Seg value={trackMode} disabled={!online} options={[{ v: 'single', label: 'Single' }, { v: 'group', label: 'Group' }]} onChange={(v) => set({ key: 'trackMode', value: v })} />
+            <Seg value={trackMode} disabled={!online} options={[{ v: 'single', label: 'Single' }, { v: 'group', label: 'Group' }]} onChange={(v) => setLive({ key: 'trackMode', value: v }, { trackMode: v })} />
           </Row>
           <Row label="Speed">
-            <Seg value={full?.trackSpeed ?? 3} disabled={!online || !full} options={SPEEDS.map((label, v) => ({ v, label }))} onChange={(v) => set({ key: 'trackSpeed', value: v })} />
+            <Seg value={full.trackSpeed} disabled={!online} options={SPEEDS.map((label, v) => ({ v, label }))} onChange={(v) => set({ key: 'trackSpeed', value: v })} />
           </Row>
           <Row label="Auto-zoom">
-            <select className="input small sel" disabled={!online || !full} value={full?.autoZoom ?? 0} onChange={(e) => set({ key: 'autoZoom', value: Number(e.target.value) })}>
+            <select className="input small sel" disabled={!online} value={full.autoZoom} onChange={(e) => set({ key: 'autoZoom', value: Number(e.target.value) })}>
               {AUTO_ZOOM.map((label, v) => (
                 <option key={v} value={v}>
                   {label}
@@ -138,7 +213,7 @@ export function CameraPanel({ camera, status, onClose }: Props) {
             </select>
           </Row>
           <Row label="Only me">
-            <Toggle on={full?.onlyMe ?? false} disabled={!online || !full} onChange={(v) => set({ key: 'onlyMe', value: v })} />
+            <Toggle on={full.onlyMe} disabled={!online} onChange={(v) => set({ key: 'onlyMe', value: v })} />
           </Row>
         </section>
 
@@ -146,24 +221,24 @@ export function CameraPanel({ camera, status, onClose }: Props) {
         <section className="cpsection">
           <div className="lbl">Focus &amp; exposure</div>
           <Row label="Focus">
-            <Seg value={focusAuto ? 'auto' : 'manual'} disabled={!online} options={[{ v: 'auto', label: 'Auto' }, { v: 'manual', label: 'Manual' }]} onChange={(v) => set({ key: 'focusAuto', value: v === 'auto' })} />
+            <Seg value={focusAuto ? 'auto' : 'manual'} disabled={!online} options={[{ v: 'auto', label: 'Auto' }, { v: 'manual', label: 'Manual' }]} onChange={(v) => setLive({ key: 'focusAuto', value: v === 'auto' }, { focusAuto: v === 'auto' })} />
             <button className="b sm" disabled={!online} onClick={() => set({ key: 'focusPush' })}>
               One-push
             </button>
           </Row>
           {!focusAuto && (
             <Row label="Focus position">
-              <input type="range" min={0} max={100} value={full?.focusPos ?? 50} disabled={!online || !full} onChange={(e) => setSlider('focusPos', Number(e.target.value))} />
-              <output className="mono">{full?.focusPos ?? '—'}</output>
+              <input type="range" min={0} max={100} value={full.focusPos} disabled={!online} onChange={(e) => setSlider('focusPos', Number(e.target.value))} />
+              <output className="mono">{full.focusPos}</output>
             </Row>
           )}
           <Row label="Exposure">
-            <Seg value={exposureAuto ? 'auto' : 'manual'} disabled={!online} options={[{ v: 'auto', label: 'Auto' }, { v: 'manual', label: 'Manual' }]} onChange={(v) => set({ key: 'exposureAuto', value: v === 'auto' })} />
+            <Seg value={exposureAuto ? 'auto' : 'manual'} disabled={!online} options={[{ v: 'auto', label: 'Auto' }, { v: 'manual', label: 'Manual' }]} onChange={(v) => setLive({ key: 'exposureAuto', value: v === 'auto' }, { exposureAuto: v === 'auto' })} />
           </Row>
           {exposureAuto ? (
             <Row label="Exp. comp">
-              <input type="range" min={0} max={18} value={full?.expComp ?? 9} disabled={!online || !full} onChange={(e) => setSlider('expComp', Number(e.target.value))} />
-              <output className="mono">{full ? `${EV[full.expComp] >= 0 ? '+' : ''}${EV[full.expComp] ?? 0} EV` : '—'}</output>
+              <input type="range" min={0} max={18} value={full.expComp} disabled={!online} onChange={(e) => setSlider('expComp', Number(e.target.value))} />
+              <output className="mono">{`${(EV[full.expComp] ?? 0) >= 0 ? '+' : ''}${EV[full.expComp] ?? 0} EV`}</output>
             </Row>
           ) : (
             <>
@@ -171,7 +246,7 @@ export function CameraPanel({ camera, status, onClose }: Props) {
                 <button className="b sm" disabled={!online} onClick={() => set({ key: 'shutterDown' })}>
                   −
                 </button>
-                <output className="mono">{full ? (SHUTTER[full.shutter] ?? full.shutter) : '—'}</output>
+                <output className="mono">{SHUTTER[full.shutter] ?? full.shutter}</output>
                 <button className="b sm" disabled={!online} onClick={() => set({ key: 'shutterUp' })}>
                   +
                 </button>
@@ -180,7 +255,7 @@ export function CameraPanel({ camera, status, onClose }: Props) {
                 <button className="b sm" disabled={!online} onClick={() => set({ key: 'gainDown' })}>
                   −
                 </button>
-                <output className="mono">{full ? `ISO ${full.gain * 100}` : '—'}</output>
+                <output className="mono">{`ISO ${full.gain * 100}`}</output>
                 <button className="b sm" disabled={!online} onClick={() => set({ key: 'gainUp' })}>
                   +
                 </button>
@@ -188,10 +263,10 @@ export function CameraPanel({ camera, status, onClose }: Props) {
             </>
           )}
           <Row label="Backlight">
-            <Toggle on={full?.backlight ?? false} disabled={!online || !full} onChange={(v) => set({ key: 'backlight', value: v })} />
+            <Toggle on={full.backlight} disabled={!online} onChange={(v) => set({ key: 'backlight', value: v })} />
           </Row>
           <Row label="Anti-flicker">
-            <Seg value={full?.flicker ?? 0} disabled={!online || !full} options={[{ v: 0, label: 'Off' }, { v: 1, label: '50 Hz' }, { v: 2, label: '60 Hz' }]} onChange={(v) => set({ key: 'flicker', value: v })} />
+            <Seg value={full.flicker} disabled={!online} options={[{ v: 0, label: 'Off' }, { v: 1, label: '50 Hz' }, { v: 2, label: '60 Hz' }]} onChange={(v) => set({ key: 'flicker', value: v })} />
           </Row>
         </section>
 
@@ -199,7 +274,7 @@ export function CameraPanel({ camera, status, onClose }: Props) {
         <section className="cpsection">
           <div className="lbl">White balance &amp; image</div>
           <Row label="White balance">
-            <select className="input small sel" disabled={!online} value={wbMode} onChange={(e) => set({ key: 'wbMode', value: Number(e.target.value) })}>
+            <select className="input small sel" disabled={!online} value={wbMode} onChange={(e) => setLive({ key: 'wbMode', value: Number(e.target.value) }, { wbMode: Number(e.target.value) })}>
               {WB.map((label, v) => (
                 <option key={v} value={v}>
                   {label}
@@ -215,21 +290,21 @@ export function CameraPanel({ camera, status, onClose }: Props) {
           {wbMode === 5 && (
             <>
               <Row label="Colour temp">
-                <input type="range" min={2000} max={10000} step={100} value={full?.colorTemp ?? 5500} disabled={!online || !full} onChange={(e) => setSlider('colorTemp', Number(e.target.value))} />
-                <output className="mono">{full ? `${full.colorTemp} K` : '—'}</output>
+                <input type="range" min={2000} max={10000} step={100} value={full.colorTemp} disabled={!online} onChange={(e) => setSlider('colorTemp', Number(e.target.value))} />
+                <output className="mono">{`${full.colorTemp} K`}</output>
               </Row>
               <Row label="R / B gain">
                 <button className="b sm" disabled={!online} onClick={() => set({ key: 'rGainDown' })}>
                   R−
                 </button>
-                <output className="mono">{full?.rGain ?? '—'}</output>
+                <output className="mono">{full.rGain}</output>
                 <button className="b sm" disabled={!online} onClick={() => set({ key: 'rGainUp' })}>
                   R+
                 </button>
                 <button className="b sm" disabled={!online} onClick={() => set({ key: 'bGainDown' })}>
                   B−
                 </button>
-                <output className="mono">{full?.bGain ?? '—'}</output>
+                <output className="mono">{full.bGain}</output>
                 <button className="b sm" disabled={!online} onClick={() => set({ key: 'bGainUp' })}>
                   B+
                 </button>
@@ -237,12 +312,12 @@ export function CameraPanel({ camera, status, onClose }: Props) {
             </>
           )}
           <Row label="Style">
-            <Seg value={full?.style ?? 0} disabled={!online || !full} options={STYLES.map((label, v) => ({ v, label }))} onChange={(v) => set({ key: 'style', value: v })} />
+            <Seg value={full.style} disabled={!online} options={STYLES.map((label, v) => ({ v, label }))} onChange={(v) => set({ key: 'style', value: v })} />
           </Row>
           {(['bright', 'contrast', 'saturation', 'sharpness', 'hue'] as const).map((key) => (
             <Row key={key} label={key === 'bright' ? 'Brightness' : key[0].toUpperCase() + key.slice(1)}>
-              <input type="range" min={0} max={100} value={full?.[key] ?? 50} disabled={!online || !full} onChange={(e) => setSlider(key, Number(e.target.value))} />
-              <output className="mono">{full?.[key] ?? '—'}</output>
+              <input type="range" min={0} max={100} value={full[key]} disabled={!online} onChange={(e) => setSlider(key, Number(e.target.value))} />
+              <output className="mono">{full[key]}</output>
             </Row>
           ))}
         </section>

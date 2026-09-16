@@ -2,6 +2,19 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.6.2] - 2026-09-15
+
+### Added
+- Edit camera: change a camera's name, IP address, VISCA port, video source (RTSP / SRT / Web UI / Webcam / NDI / Demo) and stream address after the fact. From the stage's **Edit** button or the rack's right-click menu. Changing the IP or source reconnects control and restarts the picture immediately; a **Default** button restores the standard address for the chosen source.
+- Webcam video source: any video device the computer sees. That covers the Tail 2 over USB-C (UVC mode) and, importantly, NDI: run NDI Tools → Webcam Input, pick the camera's NDI source, then choose Webcam in the app. Preset thumbnails work from it too.
+- `npm run diagnose -- <camera-ip>`: sends every inquiry the app uses to a real camera, prints what it answers or rejects, and pulls three seconds of the stream with the bundled ffmpeg.
+
+### Fixed
+- Camera settings panel on a real Tail 2: the state read-back was all-or-nothing, so one inquiry the camera did not answer left the whole panel disabled and unresponsive. Every inquiry is now tolerant; anything the camera will not report shows the last value you set (or a default), and the panel header lists those items. Clicks show their new state immediately and the camera confirms on the next poll; if the camera rejects a command, the header says which one and why.
+
+### Changed
+- Clearer wording when a source has no in-app preview (NDI): control keeps working, and the Web UI source is suggested to keep a picture while the camera streams NDI to a switcher.
+
 ## [0.6.1] - 2026-09-11
 
 ### Fixed

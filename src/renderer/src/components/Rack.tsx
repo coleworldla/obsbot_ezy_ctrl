@@ -11,6 +11,7 @@ interface Props {
   onSelect: (id: string) => void;
   onTally: (id: string, t: Tally) => void;
   onAdd: () => void;
+  onEdit: (cam: CameraConfig) => void;
 }
 
 const fmt = (n: number | undefined, suffix = '') => (n === undefined ? '—' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}${suffix}`);
@@ -20,7 +21,7 @@ export function TallyBadge({ tally, mini = false }: { tally: Tally | undefined; 
   return <span className={`tally ${tally === 1 ? 'pgm' : 'pvw'}${mini ? ' overlay' : ''}`}>{tally === 1 ? 'PGM' : 'PVW'}</span>;
 }
 
-export function Rack({ cameras, status, selectedId, tally, onSelect, onTally, onAdd }: Props) {
+export function Rack({ cameras, status, selectedId, tally, onSelect, onTally, onAdd, onEdit }: Props) {
   const [menu, setMenu] = useState<{ x: number; y: number; cam: CameraConfig } | null>(null);
 
   return (
@@ -81,6 +82,7 @@ export function Rack({ cameras, status, selectedId, tally, onSelect, onTally, on
           onClose={() => setMenu(null)}
           items={[
             { label: 'Put on stage', onClick: () => onSelect(menu.cam.id) },
+            { label: 'Edit camera…', onClick: () => onEdit(menu.cam) },
             { label: 'Tally: program (PGM)', onClick: () => onTally(menu.cam.id, 1) },
             { label: 'Tally: preview (PVW)', onClick: () => onTally(menu.cam.id, 2) },
             { label: 'Tally: clear', onClick: () => onTally(menu.cam.id, 0), disabled: !tally[menu.cam.id] },

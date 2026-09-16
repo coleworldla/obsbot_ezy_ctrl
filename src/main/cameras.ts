@@ -14,6 +14,7 @@ export class CameraManager {
   private readonly cams = new Map<string, Tail2>();
   private readonly status = new Map<string, CameraStatus>();
   private readonly failures = new Map<string, number>();
+  private readonly stateWarned = new Set<string>();
   private timer: NodeJS.Timeout | null = null;
   private polling = false;
   private pollCount = 0;
@@ -41,6 +42,7 @@ export class CameraManager {
     let cam = this.cams.get(id);
     if (!cam) {
       cam = new Tail2(cfg.host, cfg.viscaPort);
+      cam.onUnsupported = (name, error) => logger.warn('visca', `${this.label(id)}: camera did not answer the "${name}" inquiry (${error}); showing the last commanded or default value`, id);
       this.cams.set(id, cam);
       logger.info('visca', `${cfg.name}: connecting to ${cfg.host}:${cfg.viscaPort}`, id);
     }
@@ -105,9 +107,12 @@ export class CameraManager {
       let state = prev?.state;
       if (withState || !state) {
         try {
-          state = await cam.liveState();
+          state = await cam.liveState(prev?.state);
         } catch (e) {
-          if (!prev?.state) logger.warn('visca', `${this.label(id)}: state inquiry failed (${errMsg(e)})`, id);
+          if (!this.stateWarned.has(id)) {
+            this.stateWarned.add(id);
+            logger.warn('visca', `${this.label(id)}: state inquiry failed (${errMsg(e)})`, id);
+          }
         }
       }
       return this.push({ id, connected: true, latencyMs, position, state, updatedAt: Date.now() });

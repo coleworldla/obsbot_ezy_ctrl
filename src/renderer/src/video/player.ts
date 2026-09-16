@@ -229,6 +229,27 @@ export class VideoPlayer {
 }
 
 const players = new Map<string, VideoPlayer>();
+const external = new Map<string, HTMLVideoElement>();
+
+/** A <video> that is not MSE-backed (webcam source) that snapshots may use for this camera. */
+export function registerExternalVideo(id: string, el: HTMLVideoElement | null): void {
+  if (el) external.set(id, el);
+  else external.delete(id);
+}
+
+/** JPEG data URL of the camera's current frame from whichever element has one. */
+export function snapshotFor(id: string, maxWidth = 240): string | null {
+  const own = players.get(id)?.snapshot(maxWidth) ?? null;
+  if (own) return own;
+  const el = external.get(id);
+  if (!el || !el.videoWidth || el.readyState < 2) return null;
+  const scale = Math.min(1, maxWidth / el.videoWidth);
+  const c = document.createElement('canvas');
+  c.width = Math.round(el.videoWidth * scale);
+  c.height = Math.round(el.videoHeight * scale);
+  c.getContext('2d')?.drawImage(el, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.75);
+}
 
 export function getPlayer(id: string): VideoPlayer {
   let p = players.get(id);

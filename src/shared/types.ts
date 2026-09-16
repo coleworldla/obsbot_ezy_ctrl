@@ -1,4 +1,5 @@
-export type VideoSource = 'rtsp' | 'ndi' | 'srt' | 'webui' | 'demo';
+/** 'webcam' = any system video device (Tail 2 over USB in UVC mode, or an NDI source via NDI Tools Webcam Input); videoUrl holds the deviceId. */
+export type VideoSource = 'rtsp' | 'ndi' | 'srt' | 'webui' | 'demo' | 'webcam';
 
 /** Messages from the main-process video manager to the renderer (channel 'video:event'). */
 export type VideoEvent =
@@ -56,7 +57,11 @@ export interface CameraImageState {
   hue: number;
 }
 
-export type CameraFullState = CameraLiveState & CameraImageState;
+export type CameraFullState = CameraLiveState &
+  CameraImageState & {
+    /** Inquiries this camera did not answer; their values above are defaults or last commanded values. */
+    unsupported: string[];
+  };
 
 export type CameraSet =
   | { key: 'track' | 'onlyMe' | 'focusAuto' | 'exposureAuto' | 'backlight' | 'record' | 'portrait'; value: boolean }
@@ -201,6 +206,7 @@ export function defaultVideoUrl(source: VideoSource, host: string): string {
       return `http://${host}/`;
     case 'ndi':
     case 'demo':
+    case 'webcam':
       return '';
   }
 }

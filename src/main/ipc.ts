@@ -107,7 +107,7 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
     // Live-state keys are re-read right away so the UI mirrors the camera.
     if (['track', 'trackMode', 'record', 'portrait', 'focusAuto', 'exposureAuto', 'wbMode'].includes(s.key)) await manager.refreshState(id).catch(() => undefined);
   });
-  handle('camera:fullState', (_e, id: string) => manager.get(id).fullState());
+  handle('camera:fullState', (_e, id: string) => manager.get(id).fullState(manager.statuses().find((s) => s.id === id)?.state));
 
   // ---- other actions ----
   handle('focus:push', (_e, id: string) => manager.get(id).focusOnePush());

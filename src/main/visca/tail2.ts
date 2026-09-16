@@ -5,11 +5,35 @@ import type { CameraFullState, CameraImageState, CameraLiveState, CameraSet, Jog
 import { ViscaClient, type ViscaClientOptions } from './client';
 import { cmd, inq, parse } from './commands';
 
+const LIVE_DEFAULTS: CameraLiveState = { track: false, trackMode: 'single', record: false, portrait: false, focusAuto: true, exposureAuto: true, wbMode: 0 };
+
 export class Tail2 {
   readonly client: ViscaClient;
+  /** Inquiries this camera has rejected or not answered (by name). */
+  readonly unsupported = new Set<string>();
+  /** Last values we commanded, used when the camera cannot report them back. */
+  private assumed: Partial<CameraLiveState & CameraImageState> = {};
+  /** Called once per inquiry name the first time it fails (for the log). */
+  onUnsupported?: (name: string, error: string) => void;
 
   constructor(host: string, port = 52381, opts?: ViscaClientOptions) {
     this.client = new ViscaClient(host, port, opts);
+  }
+
+  /** Run one inquiry; on failure remember it and fall back to the last commanded value, then the default. */
+  private async tryQ<T>(name: string, payload: Buffer, fn: (d: Buffer) => T, fallback: T): Promise<T> {
+    try {
+      const v = fn(await this.client.inquiry(payload));
+      this.unsupported.delete(name);
+      return v;
+    } catch (e) {
+      if (!this.unsupported.has(name)) {
+        this.unsupported.add(name);
+        this.onUnsupported?.(name, e instanceof Error ? e.message : String(e));
+      }
+      const assumed = (this.assumed as Record<string, unknown>)[name];
+      return (assumed !== undefined ? assumed : fallback) as T;
+    }
   }
 
   open(): Promise<void> {
@@ -74,7 +98,13 @@ export class Tail2 {
   }
 
   /** One setter for the camera panel; maps a key/value onto the matching VISCA command. */
-  set(s: CameraSet): Promise<void> {
+  async set(s: CameraSet): Promise<void> {
+    await this.send(s);
+    // Remember what we asked for, in case the camera cannot report it back.
+    if ('value' in s) (this.assumed as Record<string, unknown>)[s.key] = s.value;
+  }
+
+  private send(s: CameraSet): Promise<void> {
     const c = this.client;
     switch (s.key) {
       case 'track':
@@ -160,51 +190,48 @@ export class Tail2 {
     return parse.onOff01(await this.client.inquiry(inq.record()));
   }
 
-  /** The handful of states shown on the stage; polled every couple of seconds. */
-  async liveState(): Promise<CameraLiveState> {
-    const q = this.client;
+  /**
+   * The handful of states shown on the stage; polled every couple of seconds.
+   * Every inquiry is tolerant: an unanswered one falls back to the last commanded value, else `prev`, else a default.
+   */
+  async liveState(prev?: CameraLiveState): Promise<CameraLiveState> {
+    const d = prev ?? LIVE_DEFAULTS;
+    const track = await this.tryQ('track', inq.track(), parse.onOff23, d.track);
+    const multi = await this.tryQ('trackMode', inq.trackMode(), parse.onOff01, d.trackMode === 'group');
     return {
-      track: parse.onOff23(await q.inquiry(inq.track())),
-      trackMode: parse.onOff01(await q.inquiry(inq.trackMode())) ? 'group' : 'single',
-      record: parse.onOff01(await q.inquiry(inq.record())),
-      portrait: parse.onOff01(await q.inquiry(inq.orientation())),
-      focusAuto: parse.onOff23(await q.inquiry(inq.focusMode())),
-      exposureAuto: parse.byte(await q.inquiry(inq.exposureMode())) === 0x00,
-      wbMode: parse.byte(await q.inquiry(inq.wbMode())),
+      track,
+      trackMode: typeof multi === 'string' ? multi : multi ? 'group' : 'single',
+      record: await this.tryQ('record', inq.record(), parse.onOff01, d.record),
+      portrait: await this.tryQ('portrait', inq.orientation(), parse.onOff01, d.portrait),
+      focusAuto: await this.tryQ('focusAuto', inq.focusMode(), parse.onOff23, d.focusAuto),
+      exposureAuto: await this.tryQ('exposureAuto', inq.exposureMode(), (b) => parse.byte(b) === 0x00, d.exposureAuto),
+      wbMode: await this.tryQ('wbMode', inq.wbMode(), parse.byte, d.wbMode),
     };
   }
 
-  /** Everything the camera panel shows; each inquiry is tolerant so one unsupported query does not sink the rest. */
-  async fullState(): Promise<CameraFullState> {
-    const q = this.client;
-    const live = await this.liveState();
-    const tryQ = async <T>(payload: Buffer, fn: (d: Buffer) => T, fallback: T): Promise<T> => {
-      try {
-        return fn(await q.inquiry(payload));
-      } catch {
-        return fallback;
-      }
-    };
+  /** Everything the camera panel shows. Never throws for an unsupported inquiry; see `unsupported`. */
+  async fullState(prev?: CameraLiveState): Promise<CameraFullState> {
+    const live = await this.liveState(prev);
     const image: CameraImageState = {
-      trackSpeed: (await tryQ(inq.trackSpeed(), parse.trackSpeed, { preset: 3, panAuto: true, panSpeed: 5, tiltAuto: true, tiltSpeed: 5 })).preset,
-      autoZoom: await tryQ(inq.autoZoom(), parse.byte, 0),
-      onlyMe: await tryQ(inq.onlyMe(), parse.onOff01, false),
-      focusPos: await tryQ(inq.focusPosition(), parse.nib4, 50),
-      expComp: await tryQ(inq.expComp(), parse.nib2, 9),
-      backlight: await tryQ(inq.backlight(), parse.onOff23, false),
-      flicker: await tryQ(inq.flicker(), parse.byte, 0),
-      shutter: await tryQ(inq.shutter(), parse.nib2, 0x1e),
-      gain: await tryQ(inq.gain(), parse.nib2, 1),
-      colorTemp: await tryQ(inq.colorTemp(), parse.nib4, 5500),
-      rGain: await tryQ(inq.rGain(), parse.nib2, 128),
-      bGain: await tryQ(inq.bGain(), parse.nib2, 128),
-      style: await tryQ(inq.style(), parse.byte, 0),
-      bright: await tryQ(inq.bright(), parse.nib2, 50),
-      contrast: await tryQ(inq.contrast(), parse.nib2, 50),
-      saturation: await tryQ(inq.saturation(), parse.nib2, 50),
-      sharpness: await tryQ(inq.sharpness(), parse.nib2, 50),
-      hue: await tryQ(inq.hue(), parse.nib2, 50),
+      trackSpeed: await this.tryQ('trackSpeed', inq.trackSpeed(), (b) => parse.trackSpeed(b).preset, 3),
+      autoZoom: await this.tryQ('autoZoom', inq.autoZoom(), parse.byte, 0),
+      onlyMe: await this.tryQ('onlyMe', inq.onlyMe(), parse.onOff01, false),
+      focusPos: await this.tryQ('focusPos', inq.focusPosition(), parse.nib4, 50),
+      expComp: await this.tryQ('expComp', inq.expComp(), parse.nib2, 9),
+      backlight: await this.tryQ('backlight', inq.backlight(), parse.onOff23, false),
+      flicker: await this.tryQ('flicker', inq.flicker(), parse.byte, 0),
+      shutter: await this.tryQ('shutter', inq.shutter(), parse.nib2, 0x1e),
+      gain: await this.tryQ('gain', inq.gain(), parse.nib2, 1),
+      colorTemp: await this.tryQ('colorTemp', inq.colorTemp(), parse.nib4, 5500),
+      rGain: await this.tryQ('rGain', inq.rGain(), parse.nib2, 128),
+      bGain: await this.tryQ('bGain', inq.bGain(), parse.nib2, 128),
+      style: await this.tryQ('style', inq.style(), parse.byte, 0),
+      bright: await this.tryQ('bright', inq.bright(), parse.nib2, 50),
+      contrast: await this.tryQ('contrast', inq.contrast(), parse.nib2, 50),
+      saturation: await this.tryQ('saturation', inq.saturation(), parse.nib2, 50),
+      sharpness: await this.tryQ('sharpness', inq.sharpness(), parse.nib2, 50),
+      hue: await this.tryQ('hue', inq.hue(), parse.nib2, 50),
     };
-    return { ...live, ...image };
+    return { ...live, ...image, unsupported: [...this.unsupported] };
   }
 }
