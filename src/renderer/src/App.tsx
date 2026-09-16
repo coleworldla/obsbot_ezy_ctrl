@@ -48,6 +48,8 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [editCamera, setEditCamera] = useState<CameraConfig | null>(null);
   const [showLog, setShowLog] = useState(false);
+  /** How many log entries existed when the Log panel was last open; the badge counts problems after that. */
+  const [logSeen, setLogSeen] = useState(0);
   const [showMapping, setShowMapping] = useState(false);
   const [showOscMap, setShowOscMap] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
@@ -115,6 +117,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(RECALL_KEY, JSON.stringify(recallSpeed));
   }, [recallSpeed]);
+
+  // While the Log is open everything counts as seen; the header badge only shows what arrived since.
+  useEffect(() => {
+    if (showLog) setLogSeen(logs.length);
+  }, [showLog, logs.length]);
 
   // Connect control and start video for every configured camera once.
   useEffect(() => {
@@ -472,8 +479,9 @@ export default function App() {
   const ptzCameras = cameras.filter((c) => !isMonitor(c));
   const monitorCount = cameras.length - ptzCameras.length;
   const connectedCount = ptzCameras.filter((c) => status[c.id]?.connected).length;
-  const errorCount = logs.filter((e) => e.level === 'error').length;
-  const warnCount = logs.filter((e) => e.level === 'warn').length;
+  const unseen = logs.slice(Math.min(logSeen, logs.length));
+  const errorCount = unseen.filter((e) => e.level === 'error').length;
+  const warnCount = unseen.filter((e) => e.level === 'warn').length;
   const cameraNames = Object.fromEntries(cameras.map((c) => [c.id, c.name]));
   const midiActive = midiDevices.filter((d) => d.connected && d.enabled);
 

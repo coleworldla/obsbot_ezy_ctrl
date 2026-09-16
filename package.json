@@ -1,6 +1,6 @@
 {
   "name": "obsbot-ezy-ctrl",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "license": "MIT",
   "description": "Easy MIDI/OSC-mappable controller with live viewport and unlimited presets for OBSBOT Tail 2 cameras",
   "main": "./out/main/index.js",

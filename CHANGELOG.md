@@ -2,6 +2,13 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.8.6] - 2026-09-15
+
+### Fixed
+- The offline pill no longer suggests switching a Tail 2 to Video only. That hint sent a user down the wrong path when the real problem was the Mac being on a different network, and a video-only camera has no controls. It now asks whether the camera is on this network; the Video only advice stays in the Add camera dialog, worded as a last resort.
+- On macOS a VISCA timeout says where to look: System Settings → Privacy & Security → Local Network, and the network the Mac is on.
+- The Log badge in the header counts only problems that arrived since you last opened the Log, so a camera that came back online stops shouting.
+
 ## [0.8.5] - 2026-09-15
 
 ### Fixed

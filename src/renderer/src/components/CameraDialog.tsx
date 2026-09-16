@@ -343,7 +343,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
               <div className="d">
                 {result.ok && result.position
                   ? `pan ${result.position.panDeg.toFixed(1)}° tilt ${result.position.tiltDeg.toFixed(1)}° zoom ${result.position.zoomRatio.toFixed(1)}× · ${result.latencyMs} ms`
-                  : `${result.error ?? 'no reply'} · Not a Tail 2? Set Type to Video only.`}
+                  : `${result.error ?? 'no reply'}. Check the camera is on the same network as this computer. Only if this device is not a Tail 2: set Type to Video only.`}
               </div>
             </div>
           </div>

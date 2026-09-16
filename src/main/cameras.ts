@@ -10,6 +10,13 @@ const POLL_MS = 500;
 const STATE_EVERY_POLLS = 4; // live state (tracking, record, focus mode …) every 2 s
 const FAILS_BEFORE_OFFLINE = 3;
 
+/** Error text for the UI; a VISCA timeout on macOS usually means the Local Network permission is off or the Mac is on another network. */
+function describe(e: unknown): string {
+  const msg = errMsg(e);
+  if (/no reply/i.test(msg) && process.platform === 'darwin') return `${msg} (macOS: System Settings → Privacy & Security → Local Network → allow EZY CTRL; and is the Mac on the camera's network?)`;
+  return msg;
+}
+
 export class CameraManager {
   private readonly cams = new Map<string, Tail2>();
   private readonly status = new Map<string, CameraStatus>();
@@ -90,8 +97,8 @@ export class CameraManager {
       logger.info('visca', `test ${host}:${port}: reply in ${Date.now() - t0} ms`);
       return { ok: true, latencyMs: Date.now() - t0, position };
     } catch (e) {
-      logger.warn('visca', `test ${host}:${port}: ${errMsg(e)}`);
-      return { ok: false, error: errMsg(e) };
+      logger.warn('visca', `test ${host}:${port}: ${describe(e)}`);
+      return { ok: false, error: describe(e) };
     } finally {
       cam.close();
     }
@@ -125,12 +132,12 @@ export class CameraManager {
       const n = (this.failures.get(id) ?? 0) + 1;
       this.failures.set(id, n);
       const connected = n < FAILS_BEFORE_OFFLINE && (prev?.connected ?? false);
-      if (n === 1 && prev?.connected) logger.warn('visca', `${this.label(id)}: ${errMsg(e)}`, id);
-      if (n === FAILS_BEFORE_OFFLINE) logger.error('visca', `${this.label(id)}: offline after ${n} failed polls (${errMsg(e)})`, id);
+      if (n === 1 && prev?.connected) logger.warn('visca', `${this.label(id)}: ${describe(e)}`, id);
+      if (n === FAILS_BEFORE_OFFLINE) logger.error('visca', `${this.label(id)}: offline after ${n} failed polls (${describe(e)})`, id);
       return this.push({
         id,
         connected,
-        lastError: errMsg(e),
+        lastError: describe(e),
         position: prev?.position,
         state: prev?.state,
         updatedAt: Date.now(),
