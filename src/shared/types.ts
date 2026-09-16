@@ -181,6 +181,39 @@ export interface OscIncomingMessage {
   from: string;
 }
 
+// ---- NDI ----
+export interface NdiStatus {
+  available: boolean;
+  runtimePath?: string;
+  version?: string;
+  error?: string;
+}
+
+export interface NdiSource {
+  name: string;
+  /** "ip:port" as reported by NDI discovery. */
+  url: string;
+}
+
+export type NdiState = 'idle' | 'searching' | 'connecting' | 'receiving' | 'no-source' | 'error' | 'unavailable';
+
+export interface NdiStateMessage {
+  id: string;
+  state: NdiState;
+  message?: string;
+  source?: NdiSource;
+}
+
+export interface NdiFrame {
+  id: string;
+  width: number;
+  height: number;
+  /** Bytes per row of RGBA/RGBX data. */
+  stride: number;
+  data: Uint8Array;
+  ts: number;
+}
+
 export type LogLevel = 'info' | 'warn' | 'error';
 
 export interface LogEntry {

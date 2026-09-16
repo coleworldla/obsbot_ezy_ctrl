@@ -69,7 +69,7 @@ export function Help({ info, update, autoCheck, onAutoCheck, onCheck, onInstall,
               Find its IP address: OBSBOT Center → Settings → Device Management, Obsbot Start → More → About device → Network, or your router's client list. The camera's own web page is at <span className="mono">http://&lt;ip&gt;</span> (login Admin / Admin).
             </li>
             <li>
-              Turn on the video stream: OBSBOT Center → More → Output → <b>RTSP</b>. (NDI, SRT and UVC are exclusive with it; only one output mode runs at a time.)
+              Turn on a video output: OBSBOT Center → More → Output → <b>NDI</b> (licence on the camera; the computer needs the NDI runtime that comes with NDI Tools) or <b>RTSP</b>. Only one output mode runs at a time, so use the one your switcher or media server takes and give the app the same source.
             </li>
             <li>
               Press <b>Add camera</b>, type the IP, hit <b>Test connection</b>. A reply with pan / tilt / zoom means control works; the picture follows once RTSP mode is on.

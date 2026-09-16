@@ -1,6 +1,6 @@
 {
   "name": "obsbot-ezy-ctrl",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Easy MIDI/OSC-mappable controller with live viewport and unlimited presets for OBSBOT Tail 2 cameras",
   "main": "./out/main/index.js",
   "private": true,
@@ -21,6 +21,7 @@
     "dist:mac": "electron-vite build && node scripts/fetch-ffmpeg.mjs mac arm64 x64 && electron-builder --mac --arm64 --x64 --publish never -c.mac.identity=-",
     "fake-camera": "node scripts/fake-tail2.mjs",
     "diagnose": "node scripts/diagnose.mjs",
+    "ndi-probe": "node scripts/ndi-probe.mjs",
     "osc-send": "node scripts/osc-send.mjs"
   },
   "devDependencies": {
@@ -39,7 +40,8 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
-    "ffmpeg-static": "^5.3.0"
+    "ffmpeg-static": "^5.3.0",
+    "koffi": "^3.3.0"
   },
   "build": {
     "appId": "com.coleworldla.ezyctrl",
@@ -54,7 +56,10 @@
       "package.json"
     ],
     "asar": true,
-    "asarUnpack": ["**/node_modules/ffmpeg-static/**"],
+    "asarUnpack": [
+      "**/node_modules/ffmpeg-static/**",
+      "**/node_modules/koffi/**"
+    ],
     "publish": {
       "provider": "github",
       "owner": "coleworldla",
@@ -63,8 +68,18 @@
     "win": {
       "icon": "build/icon.ico",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
@@ -81,15 +96,35 @@
       "icon": "build/icon.icns",
       "category": "public.app-category.video",
       "target": [
-        { "target": "dmg", "arch": ["arm64", "x64"] },
-        { "target": "zip", "arch": ["arm64", "x64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
       "artifactName": "EZY-CTRL-${version}-${arch}.${ext}",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "files": ["!node_modules/ffmpeg-static/ffmpeg"],
+      "files": [
+        "!node_modules/ffmpeg-static/ffmpeg"
+      ],
       "extraResources": [
-        { "from": "build/ffmpeg/mac-${arch}", "to": "ffmpeg", "filter": ["**/*"] }
+        {
+          "from": "build/ffmpeg/mac-${arch}",
+          "to": "ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
       ]
     },
     "dmg": {

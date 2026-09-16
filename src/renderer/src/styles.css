@@ -75,7 +75,7 @@ input, select { font: inherit; }
 .stage .top h2 { margin: 0; font-size: 15px; font-weight: 700; }
 .stagewrap { flex: 1; position: relative; min-height: 0; display: flex; }
 .viewport { flex: 1; position: relative; border-radius: 6px; overflow: hidden; background: #0f1215; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); min-height: 0; }
-.viewport video, .mini video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+.viewport video, .mini video, .viewport canvas, .mini canvas { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
 .cam .mini.live { border: none; padding: 0; overflow: hidden; }
 .cam .mini.live video { object-fit: cover; }
 .ov.center { left: 50%; top: 50%; transform: translate(-50%, -50%); }

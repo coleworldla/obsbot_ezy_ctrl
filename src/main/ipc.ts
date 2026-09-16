@@ -4,6 +4,7 @@ import os from 'node:os';
 import type { Mapping } from '../shared/mapping';
 import type { AppInfo, CameraConfig, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir } from '../shared/types';
 import type { Updater } from './updater';
+import type { NdiManager } from './ndi/manager';
 import type { CameraManager } from './cameras';
 import { CameraManager as Manager } from './cameras';
 import { errMsg, logger } from './log';
@@ -25,6 +26,7 @@ export interface IpcDeps {
   /** Re-apply OSC settings (start/stop/rebind the listener). */
   applyOsc: () => Promise<void>;
   updater: Updater;
+  ndi: NdiManager;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -41,7 +43,7 @@ export function oscStatusOf(osc: OscServer): OscStatus {
   return { listening: osc.listening, port: osc.port, error: osc.lastError, addresses: localAddresses() };
 }
 
-export function registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater }: IpcDeps): void {
+export function registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater, ndi }: IpcDeps): void {
   /** Register a handler whose failures are logged (and still rejected to the renderer). */
   const handle = <A extends unknown[], R>(channel: string, fn: (e: IpcMainInvokeEvent, ...args: A) => R | Promise<R>) => {
     ipcMain.handle(channel, async (e, ...args) => {
@@ -66,12 +68,14 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
     const cam = store.update(cfg);
     await manager.reconnect(cam);
     video.update(cam);
+    ndi.update(cam);
     return cam;
   });
   handle('cameras:remove', (_e, id: string) => {
     const cam = store.get(id);
     manager.disconnect(id);
     video.stop(id);
+    ndi.stop(id);
     presets.removeForCamera(id);
     store.remove(id);
     logger.info('app', `removed camera "${cam?.name ?? id}"`, id);
@@ -90,6 +94,16 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
     if (cfg) video.subscribe(cfg, e.sender);
   });
   handle('video:unsubscribe', (e, id: string) => video.unsubscribe(id, e.sender));
+
+  // ---- NDI ----
+  handle('ndi:status', () => ndi.status());
+  handle('ndi:sources', () => ndi.sources(1500));
+  handle('ndi:subscribe', (e, id: string) => {
+    const cfg = store.get(id);
+    if (cfg) ndi.subscribe(cfg, e.sender);
+  });
+  handle('ndi:unsubscribe', (e, id: string) => ndi.unsubscribe(id, e.sender));
+  handle('ndi:focus', (_e, id: string | null) => ndi.focus(id));
 
   // ---- pan / tilt / zoom ----
   handle('ptz:drive', (_e, id: string, dir: JogDir, pan: number, tilt: number) => manager.get(id).jog(dir, pan, tilt));

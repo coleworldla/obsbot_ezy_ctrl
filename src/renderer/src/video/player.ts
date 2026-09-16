@@ -229,10 +229,10 @@ export class VideoPlayer {
 }
 
 const players = new Map<string, VideoPlayer>();
-const external = new Map<string, HTMLVideoElement>();
+const external = new Map<string, HTMLVideoElement | HTMLCanvasElement>();
 
-/** A <video> that is not MSE-backed (webcam source) that snapshots may use for this camera. */
-export function registerExternalVideo(id: string, el: HTMLVideoElement | null): void {
+/** A <video> or <canvas> that is not MSE-backed (webcam / NDI sources) that snapshots may use for this camera. */
+export function registerExternalVideo(id: string, el: HTMLVideoElement | HTMLCanvasElement | null): void {
   if (el) external.set(id, el);
   else external.delete(id);
 }
@@ -242,11 +242,14 @@ export function snapshotFor(id: string, maxWidth = 240): string | null {
   const own = players.get(id)?.snapshot(maxWidth) ?? null;
   if (own) return own;
   const el = external.get(id);
-  if (!el || !el.videoWidth || el.readyState < 2) return null;
-  const scale = Math.min(1, maxWidth / el.videoWidth);
+  if (!el) return null;
+  const w = el instanceof HTMLVideoElement ? el.videoWidth : el.width;
+  const h = el instanceof HTMLVideoElement ? el.videoHeight : el.height;
+  if (!w || !h || (el instanceof HTMLVideoElement && el.readyState < 2)) return null;
+  const scale = Math.min(1, maxWidth / w);
   const c = document.createElement('canvas');
-  c.width = Math.round(el.videoWidth * scale);
-  c.height = Math.round(el.videoHeight * scale);
+  c.width = Math.round(w * scale);
+  c.height = Math.round(h * scale);
   c.getContext('2d')?.drawImage(el, 0, 0, c.width, c.height);
   return c.toDataURL('image/jpeg', 0.75);
 }

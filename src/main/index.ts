@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { CameraManager } from './cameras';
 import { oscStatusOf, registerIpc } from './ipc';
 import { errMsg, logger } from './log';
+import { NdiManager } from './ndi/manager';
 import { OscServer, type OscIncoming } from './osc/server';
 import { CameraStore } from './store/cameras';
 import { MappingStore } from './store/mappings';
@@ -22,6 +23,7 @@ let win: BrowserWindow | null = null;
 let manager: CameraManager | null = null;
 let video: VideoManager | null = null;
 let osc: OscServer | null = null;
+let ndi: NdiManager | null = null;
 
 function createWindow(): BrowserWindow {
   const w = new BrowserWindow({
@@ -119,7 +121,9 @@ app.whenReady().then(() => {
   const updater = new Updater();
   updater.on('status', (s) => win?.webContents.send('update:status', s));
 
-  registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater });
+  ndi = new NdiManager(process.env.EZY_NDI_RUNTIME);
+
+  registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater, ndi });
   manager.startPolling();
   void applyOsc();
 
@@ -135,15 +139,25 @@ app.whenReady().then(() => {
   });
 });
 
-function shutdown(): void {
+let quitting = false;
+
+async function shutdown(): Promise<void> {
   manager?.stopAll();
   video?.stopAll();
   osc?.close();
+  // NDI receivers must be destroyed before the process exits, otherwise the runtime hangs on unload.
+  await ndi?.stopAll();
 }
 
 app.on('window-all-closed', () => {
-  shutdown();
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', shutdown);
+app.on('before-quit', (e) => {
+  if (quitting) return;
+  quitting = true;
+  e.preventDefault();
+  void shutdown()
+    .catch((err) => logger.error('app', `shutdown: ${errMsg(err)}`))
+    .finally(() => app.quit());
+});

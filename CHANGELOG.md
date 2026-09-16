@@ -2,6 +2,25 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.7.0] - 2026-09-15
+
+Native NDI.
+
+### Added
+- NDI video source: the app receives the camera's NDI stream itself through the NDI runtime on the computer (installed with NDI Tools or the NDI Runtime). No conversion tools, no webcam tricks. It uses NDI's low-bandwidth proxy stream (640×360), which is what a control monitor needs and costs the camera and the network almost nothing while the full-quality feed goes to your media server.
+- NDI source discovery in the camera dialog: leave the source on **Auto** and the app picks the NDI source at the camera's IP, or choose one by name. Cameras' IPs are passed to discovery so they are found across subnets.
+- Automatic reconnect: if the source disappears (camera switches mode, network blip) the receiver goes back to searching and reattaches when it returns.
+- The camera on stage receives at full rate; rack thumbnails get a lower rate to keep CPU down.
+- `npm run ndi-probe`: lists NDI sources on the network and pulls a few frames, for troubleshooting.
+- Auto source matching copes with a camera that is on Wi-Fi and Ethernet at once (its NDI stream may be advertised from the other address): it falls back to the NDI name carrying the camera's name, then to the one Tail 2 no other camera has claimed. When nothing matches, the viewport lists the sources it can see so you can pick one by name.
+
+### Fixed
+- Quitting waits until the NDI receivers are destroyed; exiting with receivers still alive hung the process.
+
+### Notes
+- Verified against two Tail 2s in NDI mode on the local network with NDI runtime 6.3.
+- The NDI runtime is not bundled (NDI's licence terms). Without it, the NDI source shows what to install.
+
 ## [0.6.2] - 2026-09-15
 
 ### Added

@@ -1,7 +1,57 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CameraConfig } from '../../../shared/types';
+import type { CameraConfig, NdiStateMessage } from '../../../shared/types';
+import { onNdiFrame, onNdiState, paintFrame } from '../video/ndi';
 import { getPlayer, registerExternalVideo, type PlayerStats } from '../video/player';
 import { openWebcam } from '../video/webcam';
+
+/** Canvas painted from NDI frames delivered by the main process. */
+function NdiView({ camera, mini }: Props) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [state, setState] = useState<NdiStateMessage | null>(null);
+  const [info, setInfo] = useState('');
+  const frames = useRef(0);
+  const lastTick = useRef(performance.now());
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    if (!mini) registerExternalVideo(camera.id, canvas);
+    const offFrame = onNdiFrame(camera.id, (f) => {
+      paintFrame(canvas, f);
+      frames.current += 1;
+    });
+    const offState = onNdiState(camera.id, setState);
+    const tick = window.setInterval(() => {
+      const now = performance.now();
+      const fps = Math.round((frames.current * 1000) / (now - lastTick.current));
+      frames.current = 0;
+      lastTick.current = now;
+      if (canvas.width) setInfo(`${canvas.width}×${canvas.height} · ${fps} fps`);
+    }, 1000);
+    return () => {
+      offFrame();
+      offState();
+      window.clearInterval(tick);
+      if (!mini) registerExternalVideo(camera.id, null);
+    };
+  }, [camera.id, mini]);
+
+  const receiving = state?.state === 'receiving';
+  const label = !state || state.state === 'idle' ? 'NDI · starting…' : state.state === 'receiving' ? null : `NDI · ${state.state.replace('-', ' ')}${state.message ? ` · ${state.message}` : ''}`;
+  const isErr = state?.state === 'error' || state?.state === 'unavailable';
+
+  return (
+    <div className={mini ? 'mini live' : 'viewport'}>
+      <canvas ref={ref} />
+      {label && <div className={`ov ${mini ? 'mini-lbl' : 'center'}${isErr ? ' err' : ''}`}>{mini ? (isErr ? 'NDI ERROR' : 'NDI…') : label}</div>}
+      {!mini && receiving && (
+        <div className="ov tr">
+          NDI · {state?.source?.name ?? ''} · {info}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   camera: CameraConfig;
@@ -79,6 +129,7 @@ export function Viewport({ camera, mini = false }: Props) {
   }, [camera.id, streamable]);
 
   if (camera.videoSource === 'webcam') return <WebcamView camera={camera} mini={mini} />;
+  if (camera.videoSource === 'ndi') return <NdiView camera={camera} mini={mini} />;
 
   if (camera.videoSource === 'webui') {
     return (
@@ -97,7 +148,7 @@ export function Viewport({ camera, mini = false }: Props) {
       <div className={mini ? 'mini' : 'viewport'}>
         <div className="hint">
           <strong>No {camera.videoSource.toUpperCase()} preview in the app yet</strong>
-          {!mini && <span>Control still works. For a picture here, Edit this camera and pick Webcam (NDI Tools → Webcam Input), Web UI, RTSP or SRT.</span>}
+          {!mini && <span>Control still works. For a picture here, Edit this camera and pick NDI, RTSP, SRT, Webcam or Web UI.</span>}
         </div>
       </div>
     );

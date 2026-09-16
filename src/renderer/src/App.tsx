@@ -11,6 +11,7 @@ import { Rack } from './components/Rack';
 import { Stage } from './components/Stage';
 import { ActionExecutor, type CamState, type ExecContext, type Speed } from './control/executor';
 import { MidiManager, type MidiDeviceInfo } from './control/midi';
+import { dispatchNdiFrame, dispatchNdiState } from './video/ndi';
 import { dispatchVideoEvent, dropPlayer, snapshotFor } from './video/player';
 
 export type { Speed } from './control/executor';
@@ -96,6 +97,8 @@ export default function App() {
     const offs = [
       window.ezy.onStatus((s) => setStatus((m) => ({ ...m, [s.id]: s }))),
       window.ezy.video.onEvent(dispatchVideoEvent),
+      window.ezy.ndi.onFrame(dispatchNdiFrame),
+      window.ezy.ndi.onState(dispatchNdiState),
       window.ezy.log.onEntry((e) => setLogs((l) => (l.length >= 2000 ? [...l.slice(-1999), e] : [...l, e]))),
       window.ezy.osc.onStatus(setOscStatus),
       window.ezy.update.onStatus(setUpdate),
@@ -115,8 +118,19 @@ export default function App() {
       connectedOnce.current.add(c.id);
       window.ezy.camera.connect(c.id).catch(() => undefined);
       window.ezy.video.subscribe(c.id).catch(() => undefined);
+      window.ezy.ndi.subscribe(c.id).catch(() => undefined);
     }
   }, [cameras]);
+
+  // A camera whose source was switched to NDI after start needs its receiver started too.
+  useEffect(() => {
+    for (const c of cameras) if (c.videoSource === 'ndi') window.ezy.ndi.subscribe(c.id).catch(() => undefined);
+  }, [cameras]);
+
+  // Full NDI frame rate for the camera on stage, a trickle for the rack thumbnails.
+  useEffect(() => {
+    window.ezy.ndi.focus(selectedId).catch(() => undefined);
+  }, [selectedId]);
 
   const selected = cameras.find((c) => c.id === selectedId) ?? null;
   const selectedOnline = selected ? (status[selected.id]?.connected ?? false) : false;

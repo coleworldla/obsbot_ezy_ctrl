@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DEFAULT_VISCA_PORT, defaultVideoUrl, type CameraConfig, type TestResult, type VideoSource } from '../../../shared/types';
+import { DEFAULT_VISCA_PORT, defaultVideoUrl, type CameraConfig, type NdiSource, type NdiStatus, type TestResult, type VideoSource } from '../../../shared/types';
 import { listVideoInputs, type VideoInput } from '../video/webcam';
 
 interface Props {
@@ -10,11 +10,11 @@ interface Props {
 }
 
 const SOURCES: { id: VideoSource; label: string }[] = [
+  { id: 'ndi', label: 'NDI' },
   { id: 'rtsp', label: 'RTSP' },
   { id: 'srt', label: 'SRT' },
   { id: 'webui', label: 'Web UI' },
   { id: 'webcam', label: 'Webcam' },
-  { id: 'ndi', label: 'NDI' },
   { id: 'demo', label: 'Demo' },
 ];
 
@@ -23,7 +23,7 @@ const NOTES: Record<VideoSource, string> = {
   srt: 'Camera: OBSBOT Center → More → SRT Settings → Listener mode (default port 5000), then Output → SRT. The app connects as caller. If you enabled encryption, append ?passphrase=YOURKEY to the address.',
   webui: "Shows the camera's own web page (login Admin / Admin on first use). Works in any output mode, including NDI.",
   webcam: 'Any video device this computer can see: the Tail 2 over USB-C (UVC mode), or an NDI source turned into a webcam with NDI Tools → Webcam Input. Pick the device below.',
-  ndi: 'No direct NDI decoding in the app yet. To see NDI here: run NDI Tools → Webcam Input, select the camera\'s NDI source, then choose Webcam above. Control over VISCA works in NDI mode regardless.',
+  ndi: 'Camera: OBSBOT Center → More → Output → NDI (licence already on the camera). The app receives the NDI proxy stream directly through the NDI runtime on this computer (installed with NDI Tools). Leave the source on Auto to pick the camera by its IP. A camera on Wi-Fi and Ethernet at once may advertise NDI from its other address; pick the source by name then.',
   demo: 'Built-in moving test pattern, no camera needed. Controls stay offline unless an IP is given.',
 };
 
@@ -42,6 +42,20 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devices, setDevices] = useState<VideoInput[] | null>(null);
+  const [ndiStatus, setNdiStatus] = useState<NdiStatus | null>(null);
+  const [ndiSources, setNdiSources] = useState<NdiSource[] | null>(null);
+
+  const refreshNdi = async () => {
+    setNdiSources(null);
+    const [status, list] = await Promise.all([window.ezy.ndi.status(), window.ezy.ndi.sources()]);
+    setNdiStatus(status);
+    setNdiSources(list);
+  };
+
+  useEffect(() => {
+    if (source === 'ndi') void refreshNdi();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source]);
 
   useEffect(() => {
     if (source !== 'webcam') return;
@@ -86,6 +100,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
         host: h,
         viscaPort: portNum,
         videoSource: source,
+        // For NDI the "URL" is the source name ('' = pick by IP); for Webcam it is the device id.
         videoUrl: urlTouched ? videoUrl.trim() : defaultVideoUrl(source, h),
       };
       const cam = existing ? await window.ezy.cameras.update({ ...existing, ...cfg }) : await window.ezy.cameras.add(cfg);
@@ -143,6 +158,36 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
               </button>
             ))}
           </div>
+          {source === 'ndi' && (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <select
+                className="input"
+                value={urlTouched ? videoUrl : ''}
+                onChange={(e) => {
+                  setVideoUrl(e.target.value);
+                  setUrlTouched(e.target.value !== '');
+                }}
+              >
+                <option value="">Auto — the NDI source at {host.trim() || 'this IP'}</option>
+                {ndiSources?.map((s) => (
+                  <option key={s.name} value={s.name}>
+                    {s.name}
+                    {s.url ? ` (${s.url})` : ''}
+                  </option>
+                ))}
+              </select>
+              <button className="b sm" onClick={() => void refreshNdi()} disabled={ndiSources === null} title="Search the network again">
+                {ndiSources === null ? 'Searching…' : 'Refresh'}
+              </button>
+            </div>
+          )}
+          {source === 'ndi' && ndiStatus && (
+            <span className={`note${ndiStatus.available ? '' : ' warn-text'}`}>
+              {ndiStatus.available
+                ? `NDI runtime ${ndiStatus.version ?? ''} found${ndiSources ? ` · ${ndiSources.length} source${ndiSources.length === 1 ? '' : 's'} on the network` : ''}`
+                : (ndiStatus.error ?? 'NDI runtime not found')}
+            </span>
+          )}
           {source === 'webcam' && (
             <select
               className="input"

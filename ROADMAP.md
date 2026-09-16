@@ -53,6 +53,7 @@ Each milestone maps to GitHub issues (labelled by milestone). Order is the inten
 - [ ] Make the repository (or its releases) public so the updater can see new versions
 
 ## Later / research
-- NDI viewport (needs NDI SDK + licence on the camera).
-- SRT viewport.
-- Probe the camera Web UI's preview transport (WebRTC?) for a lower-latency picture.
+- [x] NDI viewport — done 2026-09-15 (v0.7.0): koffi bindings to the installed NDI runtime, proxy stream, discovery by IP.
+- [x] SRT viewport — same ffmpeg path as RTSP, verified locally.
+- [ ] NDI at full quality (bandwidth "highest") as an option; NDI tally (PGM/PVW) read back from the switcher via the receiver.
+- [ ] Probe the camera Web UI's preview transport (WebRTC?) for a lower-latency picture.

@@ -89,6 +89,13 @@ interface Preset {
 - Built-in scheme (`parseBuiltinOsc`) is always active; custom OSC triggers from the mapping table match exact addresses on top.
 - Feedback (optional, `settings.osc.feedback*`): `/cam/select`, `/cam/<i>/preset/active`, `/cam/<i>/online`, `/cam/<i>/position` (4 Hz), sent from the renderer via `osc:send`.
 
+### `ndi` (native NDI receive, v0.7.0)
+- No native addon to compile: `main/ndi/lib.ts` uses **koffi** (prebuilt FFI, N-API) to load the NDI runtime the user already has (`Processing.NDI.Lib.x64.dll` / `libndi.dylib`) and declares just the receiver API: `NDIlib_initialize`, `find_create_v2` / `find_wait_for_sources` / `find_get_current_sources`, `recv_create_v3` / `recv_connect` / `recv_capture_v3` / `recv_free_video_v2`. Struct layouts are declared in koffi (`sizeof(NDIlib_video_frame_v2_t)` = 72 on x64).
+- `main/ndi/runtime.ts` finds the runtime: settings/`EZY_NDI_RUNTIME` override → `NDI_RUNTIME_DIR_V6/V5` (process env, then the Windows machine registry) → default install folders. We never bundle it (NDI licence terms); the UI links to NDI Tools when it is missing.
+- `main/ndi/manager.ts`: one receiver loop per camera. Discovery (with the cameras' IPs as `p_extra_ips`) → pick the source at the camera's IP (or by configured name) → `recv_create_v3` with `RGBX_RGBA` colour and **lowest bandwidth** (the ~640×360 proxy; HX decoding happens inside the runtime) → `recv_capture_v3` on koffi's async thread pool (500 ms timeout, never blocks the event loop) → copy pixels out with `koffi.decode(..., 'Typed')` → IPC `ndi:frame {id,width,height,stride,data}`. The camera on stage gets 30 fps, the others 8. No frames for 5 s → back to discovery; source gone → keeps searching.
+- Renderer `video/ndi.ts` paints frames into a `<canvas>` (alpha forced opaque, stride respected); the canvas doubles as the snapshot source for preset thumbnails.
+- Verified on 2026-09-15 with two Tail 2s in NDI mode (NDI 6.3.2 runtime from NDI Tools).
+
 ### packaging and updates (as built in M6)
 - Windows: electron-builder NSIS (one-click, per user) + portable; ffmpeg comes from `ffmpeg-static` in `app.asar.unpacked`.
 - macOS: dmg + zip for arm64 and x64 in one electron-builder run. `ffmpeg-static` only downloads the host's architecture, so `scripts/fetch-ffmpeg.mjs` pulls both binaries from the same release into `build/ffmpeg/mac-<arch>/` and `extraResources` ships the right one at `<resources>/ffmpeg/ffmpeg`; `ffmpegPath()` prefers that location. Ad-hoc signed unless a Developer ID is configured.

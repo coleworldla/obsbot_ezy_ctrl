@@ -17,9 +17,10 @@ Goals:
 |---|---|---|
 | Control | VISCA over IP | UDP port **52381**, Sony-compatible framing. Full command list in [docs/protocol/visca-over-ip.md](docs/protocol/visca-over-ip.md). |
 | Video (default) | RTSP | `rtsp://<camera-ip>:8554/live` — enable **RTSP mode** in OBSBOT Center / Start (Output → RTSP). |
-| Video (optional) | NDI / SRT | NDI needs a paid licence key; SRT listener defaults to port 5000. Only one output mode is active at a time. |
+| Video (NDI) | NDI | Camera in NDI mode (licence on the camera). The app receives the NDI **proxy stream** (640×360) directly through the NDI runtime installed on the computer (comes with [NDI Tools](https://ndi.video/tools/)), while the full-quality feed goes to your switcher or media server. Sources are discovered automatically; Auto picks the one at the camera's IP. |
+| Video (optional) | SRT | Camera in SRT listener mode (default port 5000); the app connects as caller. Only one camera output mode is active at a time. |
 | Web UI | HTTP | `http://<camera-ip>` (login `Admin` / `Admin` on first use) — network setup and a fallback preview. |
-| Video (NDI, via NDI Tools) | Webcam | No direct NDI decode yet. NDI Tools → **Webcam Input** exposes the camera's NDI source as a system webcam; pick it with the app's **Webcam** source. Same path works for the Tail 2 over USB-C (UVC). |
+| Video (USB) | Webcam | The Tail 2 over USB-C in UVC mode, or any other video device on the computer. |
 
 Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× hybrid (5× optical).
 
