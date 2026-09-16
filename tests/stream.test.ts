@@ -12,7 +12,7 @@ try {
 
 describe('ffmpegArgs', () => {
   it('uses TCP transport and stream copy for RTSP', () => {
-    const a = ffmpegArgs('rtsp', 'rtsp://10.0.0.5:8554/live');
+    const a = ffmpegArgs('rtsp', 'rtsp://<ip address>:8554/live');
     expect(a).toContain('-rtsp_transport');
     expect(a.slice(a.indexOf('-c:v'), a.indexOf('-c:v') + 2)).toEqual(['-c:v', 'copy']);
     expect(a[a.length - 1]).toBe('pipe:1');

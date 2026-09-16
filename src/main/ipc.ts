@@ -31,10 +31,17 @@ export interface IpcDeps {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** IPv4 addresses of this machine worth showing for OSC: LAN interfaces only. Loopback, link-local and the Tailscale / carrier-NAT range (<ip address>/10) are left out so a remote-access address never shows up in the UI or a screenshot. */
 export function localAddresses(): string[] {
   const out: string[] = [];
   for (const list of Object.values(os.networkInterfaces())) {
-    for (const i of list ?? []) if (i.family === 'IPv4' && !i.internal) out.push(i.address);
+    for (const i of list ?? []) {
+      if (i.family !== 'IPv4' || i.internal) continue;
+      const [a, b] = i.address.split('.').map(Number);
+      if (a === 169 && b === 254) continue;
+      if (a === 100 && b >= 64 && b <= 127) continue;
+      out.push(i.address);
+    }
   }
   return out;
 }

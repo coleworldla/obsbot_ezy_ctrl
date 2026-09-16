@@ -207,7 +207,7 @@ export function CameraDialog({ existing, onClose, onSaved }: Props) {
             <span className="lbl">IP address{monitor ? ' (optional)' : ''}</span>
             <input
               className="input mono"
-              placeholder={monitor ? '10.0.0.50' : '10.0.0.42'}
+              placeholder={monitor ? '<ip address>' : '<ip address>'}
               value={host}
               onChange={(e) => {
                 setHost(e.target.value);
