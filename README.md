@@ -74,7 +74,7 @@ On the camera: put the Tail 2 on the same LAN, find its IP (OBSBOT Center → De
 
 No camera at all? `npm run fake-camera` starts a fake Tail 2 that answers VISCA on `127.0.0.1:52381`; add a Demo camera with that IP and you get picture, position read-back and presets.
 
-Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits; `EZY_AUTOTEST=presets,log` runs a scripted interaction for those screenshots.
+Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_NDI_RUNTIME=<path to Processing.NDI.Lib.x64.dll / libndi.dylib>` overrides NDI runtime detection; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits; `EZY_AUTOTEST=presets,log` runs a scripted interaction for those screenshots.
 
 Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `I` camera settings · `L` log · `M` mapping.
 
@@ -119,9 +119,10 @@ src/
     store/mappings.ts    #   mappings.json (the mapping table)
     cameras.ts           #   one connection per camera + position polling
     video/               #   ffmpeg.ts (args, binary path) · stream.ts (process + restart) · mp4.ts (box splitter, codec) · manager.ts (fan-out over IPC)
+    ndi/                 #   runtime.ts (find the installed NDI runtime) · lib.ts (koffi bindings) · manager.ts (one receiver per camera, frames over IPC)
     ipc.ts               #   IPC handlers
   preload/               # window.ezy bridge
-  renderer/              # React UI (rack, stage, viewport, presets, mapping panel, log); video/player.ts = MediaSource player per camera
+  renderer/              # React UI (rack, stage, viewport, presets, mapping panel, log); video/player.ts = MediaSource player per camera · video/ndi.ts = NDI frames onto a canvas
     src/control/         #   midi.ts (Web MIDI inputs) · executor.ts (runs actions against the app)
   shared/types.ts
   shared/mapping.ts      # action registry, mapping model, MIDI/key/OSC matching, built-in OSC scheme
@@ -129,6 +130,7 @@ scripts/fake-tail2.mjs   # fake camera for development (npm run fake-camera)
 scripts/osc-send.mjs     # send a test OSC message (npm run osc-send -- /cam/1/home)
 scripts/fetch-ffmpeg.mjs # download ffmpeg per architecture for packaging (used by the macOS build)
 scripts/diagnose.mjs     # ask a real camera every inquiry the app uses + pull 3 s of video (npm run diagnose -- <ip>)
+scripts/ndi-probe.mjs    # list NDI sources and pull a few frames straight from the NDI runtime (npm run ndi-probe -- --ip <ip>)
 tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store, mapping logic, OSC codec
 docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit

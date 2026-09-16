@@ -52,6 +52,7 @@ const recvConnect = lib.func('void NDIlib_recv_connect(void *inst, const NDIlib_
 const recvCapture = lib.func('int NDIlib_recv_capture_v3(void *inst, _Out_ NDIlib_video_frame_v2_t *video, void *audio, void *meta, uint32_t timeout)');
 const recvFree = lib.func('void NDIlib_recv_free_video_v2(void *inst, const NDIlib_video_frame_v2_t *video)');
 const recvDestroy = lib.func('void NDIlib_recv_destroy(void *inst)');
+const destroy = lib.func('void NDIlib_destroy()');
 
 console.log('initialize:', init(), 'version:', version());
 const finder = findCreate({ show_local_sources: true, p_groups: null, p_extra_ips: ipArg ?? null });
@@ -92,4 +93,5 @@ if (sources.length) {
   console.log('no NDI sources found. Is the camera in NDI mode (OBSBOT Center -> More -> Output -> NDI) and on this network?');
 }
 findDestroy(finder);
+destroy(); // shut the runtime down before exiting, otherwise the process hangs while the DLL unloads
 process.exit(0);
