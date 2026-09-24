@@ -37,6 +37,7 @@ export interface ExecContext {
   toggleLog: () => void;
   toggleMapping: () => void;
   togglePanel: () => void;
+  toggleTrackBox: () => void;
 }
 
 const DIRS: Record<string, JogDir> = {
@@ -94,6 +95,9 @@ export class ActionExecutor {
         return;
       case 'panel.toggle':
         if (inv.phase === 'press') c.togglePanel();
+        return;
+      case 'trackbox.toggle':
+        if (inv.phase === 'press') c.toggleTrackBox();
         return;
     }
 

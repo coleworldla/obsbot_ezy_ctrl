@@ -8,7 +8,8 @@ Goals:
 
 - **Connect by IP** — type the camera's IP address, see the live picture, start driving.
 - **See the viewport** — the live camera feed is the centre of the app, not an afterthought.
-- **Easy controls** — pan/tilt jog, zoom, home, AI tracking, record, landscape/portrait — every control is a named *action*.
+- **Easy controls** — pan/tilt jog, zoom with adjustable speed, home, AI tracking, record, landscape/portrait — every control is a named *action*.
+- **See what the AI follows** — the camera's tracking box drawn over the live picture, like on the camera's own web page.
 - **Map anything** — any action can be bound to a **MIDI** note/CC or an **OSC** address (MIDI-learn style).
 - **Unlimited presets** — presets live in the app (pan, tilt, zoom, focus, thumbnail), not in the camera's fixed slots, so there is no cap. Recalled with absolute moves at a chosen speed.
 - **Multi-camera** — several Tail 2s side by side, each with its own presets and mappings.
@@ -23,6 +24,7 @@ Goals:
 | Video (NDI) | NDI | Camera in NDI mode (licence on the camera). The app receives the NDI **proxy stream** (640×360) directly through the NDI runtime installed on the computer (Windows: comes with [NDI Tools](https://ndi.video/tools/); macOS: install the [NDI Runtime for Apple](https://ndi.link/NDIRedistV6Apple)), while the full-quality feed goes to your switcher or media server. Sources are discovered automatically; Auto picks the one at the camera's IP. |
 | Video (optional) | SRT | Camera in SRT listener mode (default port 5000); the app connects as caller. Only one camera output mode is active at a time. |
 | Web UI | HTTP | `http://<camera-ip>` (login `Admin` / `Admin` on first use) — network setup and a fallback preview. |
+| Tracking box | WebSocket | `ws://<camera-ip>:9001`, the camera's web preview stream; the app reads only the AI target from it. See [docs/protocol/web-preview.md](docs/protocol/web-preview.md). |
 | Video (USB) | Webcam | The Tail 2 over USB-C in UVC mode, or any other video device on the computer. |
 
 Gimbal range: pan ±160°, tilt −65° to +32°, roll ±120°. Zoom 1×–12× hybrid (5× optical).
@@ -93,7 +95,7 @@ On the camera: put the Tail 2 on the same LAN, find its IP (OBSBOT Center → De
 
 Other sources: **Add camera → Video only**, then pick an NDI source by name (type the device's IP first if it does not show up; the app then asks it directly) or enter an RTSP / SRT address. Video-only sources take a rack slot and an OSC number like any camera but ignore PTZ, preset and settings actions.
 
-No camera at all? `npm run fake-camera` starts a fake Tail 2 that answers VISCA on `127.0.0.1:52381`; add a Demo camera with that IP and you get picture, position read-back and presets.
+No camera at all? `npm run fake-camera` starts a fake Tail 2 that answers VISCA on `127.0.0.1:52381`; add a Demo camera with that IP and you get picture, position read-back and presets. It also serves a preview stream with a wandering AI target on `ws://127.0.0.1:9001`: press **T** (tracking) and switch on **Tracking box** to see it.
 
 Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_NDI_RUNTIME=<path to Processing.NDI.Lib.x64.dll / libndi.dylib>` overrides NDI runtime detection; `EZY_CAPTURE=<file.png>` screenshots the window after `EZY_CAPTURE_DELAY` ms and quits; `EZY_AUTOTEST=presets,log` runs a scripted interaction for those screenshots.
 
@@ -102,6 +104,8 @@ Presets rail: click recalls, drag reorders, double-click renames. To delete seve
 Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `I` camera settings · `L` log · `M` mapping.
 
 **Zoom speed**: the **ZOOM SPD** slider under the zoom row sets how fast W / T, the `-` / `=` keys and MIDI / OSC tele / wide zoom, from 1 (slowest) to 8 (fastest); it is VISCA's variable zoom speed 0–7. The zoom-ratio slider and preset recalls jump to an exact ratio, which VISCA does at the camera's own speed. Jog and zoom speeds are remembered between launches.
+
+**Tracking box**: the button above the picture draws the target the camera's AI is following, the way the camera's own web page does: a frame with green corners that moves with the person, and **TARGET LOST** when the camera loses them. With tracking off nothing is drawn. It reads the camera's web preview stream (`ws://<camera-ip>:9001`, no login), only for the camera on stage and only while the button is on. That stream is a few Mbit/s, and the camera serves at most two web previews at a time, so an open camera web page counts as one. The setting is remembered; OSC `/app/trackbox` or a mapping toggles it. Not available for the Web UI source, which shows the camera's page with its own box.
 
 **Camera settings** (`I`): AI tracking mode, speed and auto-zoom framing, only-me; focus auto/manual with position; exposure auto/manual with compensation, shutter, gain, backlight and anti-flicker; white balance modes with colour temperature and R/B gain; image style, brightness, contrast, saturation, sharpness, hue. The drawer reads the camera's real values and re-reads after each change. Auto-zoom **Close-up** is a single-person framing: the Tail 2 has no close-up in Group mode, so the option is greyed out there (switch Mode to Single first).
 
@@ -151,20 +155,22 @@ src/
     ndi/                 #   runtime.ts (find the installed NDI runtime) · lib.ts (koffi bindings) · manager.ts (one receiver per camera, frames over IPC)
     ipc.ts               #   IPC handlers
   preload/               # window.ezy bridge
-  renderer/              # React UI (rack, stage, viewport, presets, mapping panel, log); video/player.ts = MediaSource player per camera · video/ndi.ts = NDI frames onto a canvas
+  renderer/              # React UI (rack, stage, viewport, presets, mapping panel, log); video/player.ts = MediaSource player per camera · video/ndi.ts = NDI frames onto a canvas · video/tracking.ts = AI target feed per camera
     src/control/         #   midi.ts (Web MIDI inputs) · executor.ts (runs actions against the app)
   shared/types.ts
   shared/mapping.ts      # action registry, mapping model, MIDI/key/OSC matching, built-in OSC scheme
+  shared/tracking.ts     # parser for the AI target in the camera's web preview stream
 scripts/fake-tail2.mjs   # fake camera for development (npm run fake-camera)
 scripts/osc-send.mjs     # send a test OSC message (npm run osc-send -- /cam/1/home)
 scripts/fetch-ffmpeg.mjs # download ffmpeg per architecture for packaging (used by the macOS build)
 scripts/diagnose.mjs     # ask a real camera every inquiry the app uses + pull 3 s of video (npm run diagnose -- <ip>)
 scripts/ndi-probe.mjs    # list NDI sources and pull a few frames straight from the NDI runtime (npm run ndi-probe -- --ip <ip>)
-tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store, mapping logic, OSC codec
+tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store, mapping logic, OSC codec, tracking-box parser
 docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit
   protocol/
     visca-over-ip.md     # command reference derived from OBSBOT's official spreadsheet
+    web-preview.md       # our notes on the camera's web preview stream (AI target) and status feed
 mockups/                 # UI mockup source (design-canvas artboards) + canvas.json layout
 ROADMAP.md               # milestones
 ```

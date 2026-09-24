@@ -3,6 +3,7 @@ import { viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
 import { isMonitor, type CameraConfig, type CameraStatus, type JogDir, type Tally, type ZoomDir } from '../../../shared/types';
 import type { CamState, Speed } from '../control/executor';
 import { TallyBadge } from './Rack';
+import { TrackingOverlay } from './TrackingOverlay';
 import { Viewport } from './Viewport';
 
 interface Props {
@@ -21,6 +22,9 @@ interface Props {
   tally: Tally;
   panelOpen: boolean;
   onTogglePanel: () => void;
+  /** Draw the camera's AI tracking target over the picture. */
+  trackBox: boolean;
+  onTrackBox: () => void;
 }
 
 const Arrow = ({ d }: { d: string }) => (
@@ -43,11 +47,12 @@ const JOG: { dir: JogDir; key: string; d: string }[] = [
 
 const fmt = (n: number | undefined) => (n === undefined ? '—' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}°`);
 
-export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, activePresetName, onManual, camState, onCamState, tally, panelOpen, onTogglePanel }: Props) {
+export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, activePresetName, onManual, camState, onCamState, tally, panelOpen, onTogglePanel, trackBox, onTrackBox }: Props) {
   const id = camera.id;
   const [zoomSlider, setZoomSlider] = useState(1);
   const zoomTimer = useRef<number | null>(null);
   const draggingZoom = useRef(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   // Follow the camera's real zoom while the user is not dragging the slider.
   useEffect(() => {
@@ -89,6 +94,8 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
   const online = status?.connected ?? false;
   const { tracking, recording, portrait } = camState;
   const live = status?.state;
+  /** The Web UI source shows the camera's own page, which draws its own box. */
+  const boxable = !!camera.host && camera.videoSource !== 'webui';
 
   if (isMonitor(camera)) {
     // Video only: picture and tally, no transport.
@@ -97,17 +104,18 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
         <div className="top">
           <h2>{camera.name}</h2>
           <TallyBadge tally={tally} />
-          <span className="mono muted" style={{ fontSize: 11 }}>
+          <span className="mono muted" style={{ fontSize: 11 }} title={`${camera.host ? `${camera.host} · ` : ''}${camera.videoSource.toUpperCase()} ${camera.videoSource === 'webcam' ? '' : camera.videoUrl}`}>
             {camera.host ? `${camera.host} · ` : ''}
             {camera.videoSource.toUpperCase()} {camera.videoSource === 'webcam' ? '' : camera.videoUrl}
           </span>
-          <span className="spacer" style={{ flex: 1 }} />
-          <button className="b sm" onClick={onEdit} title="Name, address and video source">
-            Edit
-          </button>
-          <button className="b sm" onClick={onRemove}>
-            Remove
-          </button>
+          <span className="topbtns">
+            <button className="b sm" onClick={onEdit} title="Name, address and video source">
+              Edit
+            </button>
+            <button className="b sm" onClick={onRemove}>
+              Remove
+            </button>
+          </span>
         </div>
         <div className="stagewrap">
           <Viewport camera={camera} />
@@ -123,24 +131,40 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
       <div className="top">
         <h2>{camera.name}</h2>
         <TallyBadge tally={tally} />
-        <span className="mono muted" style={{ fontSize: 11 }}>
+        <span className="mono muted" style={{ fontSize: 11 }} title={`${camera.host}:${camera.viscaPort} · ${camera.videoSource.toUpperCase()} ${camera.videoUrl}`}>
           {camera.host}:{camera.viscaPort} · {camera.videoSource.toUpperCase()} {camera.videoUrl}
           {status?.latencyMs !== undefined ? ` · ${status.latencyMs} ms` : ''}
         </span>
-        <span className="spacer" style={{ flex: 1 }} />
-        <button className={`b sm${panelOpen ? ' accent' : ''}`} onClick={onTogglePanel} title="Camera settings (I)">
-          Camera settings
-        </button>
-        <button className="b sm" onClick={onEdit} title="Name, IP address, video source and stream address">
-          Edit
-        </button>
-        <button className="b sm" onClick={onRemove}>
-          Remove
-        </button>
+        <span className="topbtns">
+          <button
+            className={`b sm${boxable && trackBox ? ' accent' : ''}`}
+            onClick={onTrackBox}
+            disabled={!boxable}
+            title={
+              boxable
+                ? "Draw the camera's AI tracking target over the picture. Reads the camera's web preview stream, which uses one of its two web preview slots."
+                : camera.videoSource === 'webui'
+                  ? 'The Web UI source already shows the camera page with its own tracking box'
+                  : 'Needs the camera address'
+            }
+          >
+            Tracking box
+          </button>
+          <button className={`b sm${panelOpen ? ' accent' : ''}`} onClick={onTogglePanel} title="Camera settings (I)">
+            Camera settings
+          </button>
+          <button className="b sm" onClick={onEdit} title="Name, IP address, video source and stream address">
+            Edit
+          </button>
+          <button className="b sm" onClick={onRemove}>
+            Remove
+          </button>
+        </span>
       </div>
 
-      <div className="stagewrap">
+      <div className="stagewrap" ref={wrapRef}>
         <Viewport camera={camera} />
+        {boxable && trackBox && <TrackingOverlay camera={camera} container={wrapRef} tracking={tracking} />}
         <div className={`ov tl${online ? '' : ' err'}`}>
           {online ? 'VISCA ONLINE' : status?.lastError ? `OFFLINE · ${status.lastError}${status.position ? '' : ' · is the camera on this network?'}` : 'CONNECTING…'}
         </div>

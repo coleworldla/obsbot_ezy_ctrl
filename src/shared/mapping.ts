@@ -148,6 +148,7 @@ export const ACTIONS: ActionDef[] = [
   { id: 'focus.push', label: 'One-push autofocus', group: 'AI & recording', kind: 'trigger', osc: '/cam/{i}/focus/push', key: k('f') },
 
   { id: 'panel.toggle', label: 'Show / hide camera settings', group: 'App', kind: 'trigger', osc: '/app/panel', key: k('i') },
+  { id: 'trackbox.toggle', label: 'Show / hide tracking box', group: 'App', kind: 'trigger', osc: '/app/trackbox' },
   { id: 'log.toggle', label: 'Show / hide log', group: 'App', kind: 'trigger', osc: '/app/log', key: k('l') },
   { id: 'mapping.toggle', label: 'Show / hide mapping', group: 'App', kind: 'trigger', osc: '/app/mapping', key: k('m') },
 ];
@@ -273,7 +274,7 @@ export const oscSlugUsable = (slug: string): boolean => slug !== '' && !/^\d+$/.
  *   /cam/<i>/zoom/tele [0|1]              /cam/<i>/zoom/wide [0|1]     /cam/<i>/zoom/speed <1..8>
  *   /cam/<i>/zoom/speed/up                /cam/<i>/zoom/speed/down     /cam/<i>/track [0|1]
  *   /cam/<i>/record [0|1]                 /cam/<i>/rotate [0|1]        /cam/<i>/focus/push
- *   /app/log                              /app/mapping
+ *   /app/log                              /app/mapping                 /app/panel      /app/trackbox
  * <i> is the camera's name slug (/cam/stage_left/…), its 1-based rack number, or "sel" for the selected camera.
  * Presets likewise: /cam/<i>/preset/<n> by rail position or /cam/<i>/preset/<name-slug>.
  */
@@ -282,7 +283,7 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
   const v = num(input.args[0]);
   const parts = input.address.split('/').filter(Boolean);
   if (parts[0] === 'app' && parts.length === 2) {
-    const id = parts[1] === 'log' ? 'log.toggle' : parts[1] === 'mapping' ? 'mapping.toggle' : parts[1] === 'panel' ? 'panel.toggle' : null;
+    const id = parts[1] === 'log' ? 'log.toggle' : parts[1] === 'mapping' ? 'mapping.toggle' : parts[1] === 'panel' ? 'panel.toggle' : parts[1] === 'trackbox' ? 'trackbox.toggle' : null;
     return id ? { actionId: id, phase: 'press' } : null;
   }
   // Switcher-style tally: /tally/pgm <i>, /tally/pvw <i>
@@ -383,7 +384,7 @@ export function oscAddressList(count: number): string[] {
       else out.push(addr);
     }
   }
-  out.push('/cam/<i>/tally <0|1|2>', '/tally/pgm <i>', '/tally/pvw <i>', '/app/panel', '/app/log', '/app/mapping');
+  out.push('/cam/<i>/tally <0|1|2>', '/tally/pgm <i>', '/tally/pvw <i>', '/app/panel', '/app/trackbox', '/app/log', '/app/mapping');
   return out;
 }
 
@@ -461,6 +462,7 @@ export function oscMapRows(cameras: { id: string; name: string; kind?: string }[
   push('Global', '/tally/pgm', byName ? '<name> or <i>' : '<i>', 'Camera program (switcher style)');
   push('Global', '/tally/pvw', byName ? '<name> or <i>' : '<i>', 'Camera preview');
   push('Global', '/app/panel', '', 'Toggle the camera settings drawer');
+  push('Global', '/app/trackbox', '', 'Toggle the AI tracking box over the picture');
   push('Global', '/app/log', '', 'Toggle the Log');
   push('Global', '/app/mapping', '', 'Toggle the Mapping panel');
 

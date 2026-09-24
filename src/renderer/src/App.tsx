@@ -21,6 +21,7 @@ export type { Speed } from './control/executor';
 
 const RECALL_KEY = 'ezy.recallSpeed';
 const SPEED_KEY = 'ezy.speed';
+const TRACKBOX_KEY = 'ezy.trackBox';
 const PRESET_TOLERANCE = { deg: 1.0, zoom: 0.15 };
 const DRIFT_GRACE_MS = 5000;
 const MONITOR_MAX = 80;
@@ -74,6 +75,7 @@ export default function App() {
   const [update, setUpdate] = useState<UpdateStatus | null>(null);
   const [tally, setTallyMap] = useState<Record<string, Tally>>({});
   const [speed, setSpeed] = useState<Speed>(loadSpeed);
+  const [trackBox, setTrackBox] = useState(() => localStorage.getItem(TRACKBOX_KEY) === '1');
   const [presets, setPresets] = useState<Preset[]>([]);
   const [active, setActive] = useState<Record<string, string | null>>({});
   const [recallSpeed, setRecallSpeed] = useState<RecallSpeed>(loadRecallSpeed);
@@ -136,6 +138,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(SPEED_KEY, JSON.stringify(speed));
   }, [speed]);
+
+  useEffect(() => {
+    localStorage.setItem(TRACKBOX_KEY, trackBox ? '1' : '0');
+  }, [trackBox]);
 
   // While the Log is open everything counts as seen; the header badge only shows what arrived since.
   useEffect(() => {
@@ -266,6 +272,7 @@ export default function App() {
     toggleLog: () => setShowLog((v) => !v),
     toggleMapping: () => setShowMapping((v) => !v),
     togglePanel: () => setShowPanel((v) => !v),
+    toggleTrackBox: () => setTrackBox((v) => !v),
   };
   const executor = useMemo(() => new ActionExecutor(() => ctxRef.current), []);
   const mappingsRef = useRef(mappings);
@@ -564,6 +571,8 @@ export default function App() {
             tally={tally[selected.id] ?? 0}
             panelOpen={showPanel}
             onTogglePanel={() => setShowPanel((v) => !v)}
+            trackBox={trackBox}
+            onTrackBox={() => setTrackBox((v) => !v)}
           />
         ) : (
           <div className="stage">
