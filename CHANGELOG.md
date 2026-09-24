@@ -2,7 +2,7 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.7] - 2026-09-24
 
 ### Added
 - **Tracking box.** A **Tracking box** button above the picture draws the target the camera's AI is following, like the Tail 2's own web page: a faint frame with green corners that moves with the person, and **TARGET LOST** when the camera loses them. It reads the AI target from the camera's web preview stream (`ws://<camera-ip>:9001`, no login needed), only for the camera on stage and only while the button is on. The camera serves at most two web previews at once, so an open camera web page counts as one. The choice is remembered; OSC `/app/trackbox` and a mappable *Show / hide tracking box* action toggle it. The fake camera serves a preview stream with a wandering target for trying it without hardware. Format notes: `docs/protocol/web-preview.md`.
