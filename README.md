@@ -135,7 +135,7 @@ Open **Mapping** (top right or `M`). Every control is a row.
 - **OSC feedback**: switch it on and point it at a host:port to receive `/cam/select <n> <name>`, `/cam/<i>/preset/active <n> <name>`, `/cam/<i>/tally <0|1|2>`, `/cam/<i>/online <0|1>` and `/cam/<i>/position <pan> <tilt> <zoom>` (4 Hz). `<i>` is the camera's name slug by default, or its number when the OSC map is set to By number.
 - Test from a terminal: `npm run osc-send -- /cam/1/preset/2` (add `host:port` first to target another machine).
 
-When something misbehaves, open **Log** (top right). It lists VISCA connection changes, ffmpeg errors, failed commands and app errors; "Open log file" reveals `logs/ezy-ctrl.log` in the config folder (`%APPDATA%\EZY CTRL` for the installed app).
+When something misbehaves, open **Log** (top right). It lists VISCA connection changes, ffmpeg errors, failed commands and app errors; "Open log file" reveals `logs/ezy-ctrl.log` in the config folder (`%APPDATA%\obsbot-ezy-ctrl` on Windows, `~/Library/Application Support/obsbot-ezy-ctrl` on macOS; the installed app and `npm run dev` share it).
 
 ## Repo layout
 

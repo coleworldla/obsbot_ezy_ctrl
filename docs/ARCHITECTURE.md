@@ -111,5 +111,5 @@ interface Preset {
 - Release workflow: `release` job creates the GitHub release from the CHANGELOG section, then `windows` and `macos` jobs build and upload their files; signing/notarization secrets are optional.
 
 ## Data on disk
-`%APPDATA%/EZY CTRL/` (installed) or `%APPDATA%/obsbot-ezy-ctrl/` (dev) — `cameras.json`, `presets.json`, `settings.json`, `mappings.json`, `logs/ezy-ctrl.log`. Presets import/export from the UI.
+`%APPDATA%/obsbot-ezy-ctrl/` for both the installed app and `npm run dev` (macOS: `~/Library/Application Support/obsbot-ezy-ctrl/`): the folder follows `name` in package.json, since `productName` lives only in the electron-builder config. `cameras.json`, `presets.json`, `settings.json`, `mappings.json`, `logs/ezy-ctrl.log`. Presets import/export from the UI.
 
