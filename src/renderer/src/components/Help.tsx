@@ -132,6 +132,10 @@ export function Help({ info, update, autoCheck, onAutoCheck, onCheck, onInstall,
                 <td>I / M / L</td>
                 <td>camera settings / mapping / log</td>
               </tr>
+              <tr>
+                <td>Ctrl+Shift+S / Ctrl+O</td>
+                <td>save show / open show (.ezy)</td>
+              </tr>
             </tbody>
           </table>
           <div className="note">

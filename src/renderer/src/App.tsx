@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { keyInputFrom, matchMappings, parseBuiltinOsc, ZOOM_SPEED_MAX, type Input, type Invocation, type Mapping } from '../../shared/mapping';
-import type { AppInfo, CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, Tally, UpdateStatus } from '../../shared/types';
+import type { AppInfo, CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, ShowStatus, Tally, UpdateStatus } from '../../shared/types';
 import { isMonitor } from '../../shared/types';
+import type { ShowOperator } from '../../shared/show';
 import { CameraDialog } from './components/CameraDialog';
 import { OscMapPanel } from './components/OscMapPanel';
 import { oscCameraKey, oscSlug } from '../../shared/mapping';
@@ -11,6 +12,7 @@ import { LogPanel } from './components/LogPanel';
 import { MappingPanel, mappingId, type LearnState, type MonitorEntry } from './components/MappingPanel';
 import { Presets } from './components/Presets';
 import { Rack } from './components/Rack';
+import { ShowMenu } from './components/ShowMenu';
 import { Stage } from './components/Stage';
 import { ActionExecutor, type CamState, type ExecContext, type Speed } from './control/executor';
 import { MidiManager, type MidiDeviceInfo } from './control/midi';
@@ -87,6 +89,7 @@ export default function App() {
   const [midiDevices, setMidiDevices] = useState<MidiDeviceInfo[]>([]);
   const [monitor, setMonitor] = useState<MonitorEntry[]>([]);
   const [learn, setLearn] = useState<LearnState | null>(null);
+  const [show, setShow] = useState<ShowStatus | null>(null);
   const connectedOnce = useRef(new Set<string>());
   const recalledAt = useRef<Record<string, number>>({});
   const monitorId = useRef(0);
@@ -142,6 +145,44 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(TRACKBOX_KEY, trackBox ? '1' : '0');
   }, [trackBox]);
+
+  // ---- shows (.ezy): the current show and whether the setup changed since it was saved ----
+  const refreshShow = useCallback(() => window.ezy.show.status().then(setShow).catch(() => undefined), []);
+  useEffect(() => {
+    void refreshShow();
+    const t = window.setInterval(() => void refreshShow(), 3000);
+    return () => window.clearInterval(t);
+  }, [refreshShow]);
+
+  useEffect(() => {
+    document.title = show?.path ? `${show.name}${show.dirty ? ' •' : ''} · EZY CTRL` : 'EZY CTRL';
+  }, [show]);
+
+  /** The operator's speeds and view choices travel with the show. */
+  const operatorRef = useRef<ShowOperator>({});
+  operatorRef.current = { recallSpeed, speed, trackBox };
+  const saveShow = useCallback(async (as = false) => {
+    const st = await (as ? window.ezy.show.saveAs(operatorRef.current) : window.ezy.show.save(operatorRef.current)).catch(() => null);
+    if (st) setShow(st);
+  }, []);
+  const openShow = useCallback((file?: string) => void window.ezy.show.open(file).catch(() => null), []);
+
+  // A show was opened (menu, key, OSC or a double-clicked .ezy): take its operator settings, then start
+  // the window over so no camera, stream or list from the previous setup lingers.
+  useEffect(
+    () =>
+      window.ezy.show.onLoaded(({ operator }) => {
+        try {
+          if (operator?.recallSpeed) localStorage.setItem(RECALL_KEY, JSON.stringify(operator.recallSpeed));
+          if (operator?.speed) localStorage.setItem(SPEED_KEY, JSON.stringify(operator.speed));
+          if (operator?.trackBox !== undefined) localStorage.setItem(TRACKBOX_KEY, operator.trackBox ? '1' : '0');
+        } catch {
+          /* keep the current ones */
+        }
+        window.setTimeout(() => window.location.reload(), 150);
+      }),
+    [],
+  );
 
   // While the Log is open everything counts as seen; the header badge only shows what arrived since.
   useEffect(() => {
@@ -273,6 +314,8 @@ export default function App() {
     toggleMapping: () => setShowMapping((v) => !v),
     togglePanel: () => setShowPanel((v) => !v),
     toggleTrackBox: () => setTrackBox((v) => !v),
+    saveShow: () => void saveShow(),
+    openShow: () => openShow(),
   };
   const executor = useMemo(() => new ActionExecutor(() => ctxRef.current), []);
   const mappingsRef = useRef(mappings);
@@ -515,6 +558,7 @@ export default function App() {
     <div className="app">
       <header className="hdr">
         <span className="brand">EZY CTRL</span>
+        <ShowMenu status={show} onSave={() => void saveShow()} onSaveAs={() => void saveShow(true)} onOpen={openShow} onBackups={() => void window.ezy.show.revealBackups()} />
         <span className="info">
           {ptzCameras.length} camera{ptzCameras.length === 1 ? '' : 's'} · {connectedCount} online{monitorCount ? ` · ${monitorCount} monitor${monitorCount === 1 ? '' : 's'}` : ''} · {presets.length} presets
         </span>

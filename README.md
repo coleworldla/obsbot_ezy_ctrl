@@ -13,6 +13,7 @@ Goals:
 - **Map anything** — any action can be bound to a **MIDI** note/CC or an **OSC** address (MIDI-learn style).
 - **Unlimited presets** — presets live in the app (pan, tilt, zoom, focus, thumbnail), not in the camera's fixed slots, so there is no cap. Recalled with absolute moves at a chosen speed.
 - **Multi-camera** — several Tail 2s side by side, each with its own presets and mappings.
+- **Shows** — save the whole setup (cameras, presets, mappings, OSC) as a `.ezy` show file and open it again for the next event.
 - **Eyes on everything** — anything that is not a Tail 2 (an SDI-to-NDI encoder, another camera, a media server output) can be added as a **video-only** source: picture and tally in the rack, no controls.
 
 ## How it talks to the camera
@@ -101,7 +102,9 @@ Dev / test switches: `EZY_USER_DATA=<dir>` uses a separate config folder; `EZY_N
 
 Presets rail: click recalls, drag reorders, double-click renames. To delete several at once press **Select** (or Ctrl-click a preset), pick the rows (Shift-click for a range, Ctrl+A for all), then **Delete** or the Delete key. One confirmation, one write.
 
-Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `I` camera settings · `L` log · `M` mapping.
+Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `I` camera settings · `L` log · `M` mapping · `Ctrl+Shift+S` save show · `Ctrl+O` open show.
+
+**Shows (`.ezy` files)**: the **SHOW** button in the header names the current show and opens its menu: **Save show** (`Ctrl+Shift+S`), **Save show as…**, **Open show…** (`Ctrl+O`), recent shows and the backups folder. A show file holds everything needed to bring a production back: the cameras (addresses and video sources), every preset with its thumbnail, the mapping table, the OSC setup (listen port, feedback target, naming) and the operator's jog, zoom and recall speeds and the tracking box choice. Shows go to `Documents\EZY CTRL Shows` by default; the file is JSON, so it can be backed up, mailed or kept in version control. A dot next to the name means the setup changed since the show was saved (the working setup itself is always kept, a show is a snapshot). Opening a show asks first, then replaces the cameras, presets, mappings and OSC setup; the setup it replaces is copied to the backups folder (the newest 20 are kept). Double-clicking a `.ezy` file opens it in EZY CTRL (installed app; a running EZY CTRL takes it over instead of starting a second copy). OSC: `/app/show/save`, `/app/show/open`.
 
 **Zoom speed**: the **ZOOM SPD** slider under the zoom row sets how fast W / T, the `-` / `=` keys and MIDI / OSC tele / wide zoom, from 1 (slowest) to 8 (fastest); it is VISCA's variable zoom speed 0–7. The zoom-ratio slider and preset recalls jump to an exact ratio, which VISCA does at the camera's own speed. Jog and zoom speeds are remembered between launches.
 
@@ -151,6 +154,7 @@ src/
     store/settings.ts    #   settings.json (OSC ports, feedback target, disabled MIDI devices)
     store/mappings.ts    #   mappings.json (the mapping table)
     cameras.ts           #   one connection per camera + position polling
+    show.ts              #   shows: save / open .ezy files, backups, current + recent show (show-dialogs.ts = file pickers and confirmation)
     video/               #   ffmpeg.ts (args, binary path) · stream.ts (process + restart) · mp4.ts (box splitter, codec) · manager.ts (fan-out over IPC)
     ndi/                 #   runtime.ts (find the installed NDI runtime) · lib.ts (koffi bindings) · manager.ts (one receiver per camera, frames over IPC)
     ipc.ts               #   IPC handlers
@@ -160,12 +164,13 @@ src/
   shared/types.ts
   shared/mapping.ts      # action registry, mapping model, MIDI/key/OSC matching, built-in OSC scheme
   shared/tracking.ts     # parser for the AI target in the camera's web preview stream
+  shared/show.ts         # the .ezy show format: build, validate, fingerprint for unsaved changes
 scripts/fake-tail2.mjs   # fake camera for development (npm run fake-camera)
 scripts/osc-send.mjs     # send a test OSC message (npm run osc-send -- /cam/1/home)
 scripts/fetch-ffmpeg.mjs # download ffmpeg per architecture for packaging (used by the macOS build)
 scripts/diagnose.mjs     # ask a real camera every inquiry the app uses + pull 3 s of video (npm run diagnose -- <ip>)
 scripts/ndi-probe.mjs    # list NDI sources and pull a few frames straight from the NDI runtime (npm run ndi-probe -- --ip <ip>)
-tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store, mapping logic, OSC codec, tracking-box parser
+tests/                   # vitest: framing, fake camera over loopback, mp4 parsing, ffmpeg demo stream, preset store, mapping logic and store, OSC codec, tracking-box parser, show files
 docs/
   ARCHITECTURE.md        # stack decision and how the pieces fit
   protocol/

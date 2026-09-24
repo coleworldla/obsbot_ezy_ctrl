@@ -57,6 +57,12 @@ export class PresetStore {
     return before - this.presets.length;
   }
 
+  /** Every preset at once (opening a show). */
+  replaceAll(presets: Preset[]): void {
+    this.presets = presets.map((p) => ({ ...p }));
+    this.write();
+  }
+
   removeForCamera(cameraId: string): void {
     this.presets = this.presets.filter((p) => p.cameraId !== cameraId);
     this.write();

@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } f
 import fs from 'node:fs';
 import os from 'node:os';
 import type { Mapping } from '../shared/mapping';
+import type { ShowOperator } from '../shared/show';
 import type { AppInfo, CameraConfig, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir, Preset } from '../shared/types';
 import type { Updater } from './updater';
 import type { NdiManager } from './ndi/manager';
@@ -9,6 +10,8 @@ import type { CameraManager } from './cameras';
 import { CameraManager as Manager } from './cameras';
 import { errMsg, logger } from './log';
 import type { OscServer } from './osc/server';
+import type { ShowService } from './show';
+import type { ShowActions } from './show-dialogs';
 import type { CameraStore } from './store/cameras';
 import type { MappingStore } from './store/mappings';
 import type { PresetStore } from './store/presets';
@@ -27,6 +30,8 @@ export interface IpcDeps {
   applyOsc: () => Promise<void>;
   updater: Updater;
   ndi: NdiManager;
+  shows: ShowService;
+  showActions: ShowActions;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -50,7 +55,7 @@ export function oscStatusOf(osc: OscServer): OscStatus {
   return { listening: osc.listening, port: osc.port, error: osc.lastError, addresses: localAddresses() };
 }
 
-export function registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater, ndi }: IpcDeps): void {
+export function registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater, ndi, shows, showActions }: IpcDeps): void {
   /** Register a handler whose failures are logged (and still rejected to the renderer). A handler that logged its own, clearer line marks the error `logged`. */
   const handle = <A extends unknown[], R>(channel: string, fn: (e: IpcMainInvokeEvent, ...args: A) => R | Promise<R>) => {
     ipcMain.handle(channel, async (e, ...args) => {
@@ -236,6 +241,13 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
     logger.info('preset', `imported ${n} presets from ${r.filePaths[0]}`, cameraId);
     return n;
   });
+
+  // ---- shows (.ezy) ----
+  handle('show:status', () => shows.status());
+  handle('show:save', (_e, operator?: ShowOperator) => showActions.save(operator));
+  handle('show:saveAs', (_e, operator?: ShowOperator) => showActions.saveAs(operator));
+  handle('show:open', (_e, file?: string) => showActions.open(file));
+  handle('show:revealBackups', () => showActions.revealBackups());
 
   // ---- settings, mappings, OSC ----
   handle('settings:get', () => settings.get());

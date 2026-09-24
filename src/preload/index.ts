@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { Mapping } from '../shared/mapping';
+import type { ShowOperator } from '../shared/show';
 import type {
   AppInfo,
   CameraConfig,
@@ -21,6 +22,7 @@ import type {
   PresetPatch,
   RecallSpeed,
   Settings,
+  ShowStatus,
   TestResult,
   UpdateStatus,
   VideoEvent,
@@ -90,6 +92,17 @@ export const api = {
     reveal: () => invoke<string | null>('log:reveal'),
     report: (level: LogLevel, message: string) => invoke<void>('log:report', level, message),
     onEntry: (cb: (e: LogEntry) => void) => on<LogEntry>('log:entry', cb),
+  },
+  /** Shows: the whole setup as one .ezy file. */
+  show: {
+    status: () => invoke<ShowStatus>('show:status'),
+    /** Resolves null when the user cancelled. */
+    save: (operator: ShowOperator) => invoke<ShowStatus | null>('show:save', operator),
+    saveAs: (operator: ShowOperator) => invoke<ShowStatus | null>('show:saveAs', operator),
+    /** Without a file, asks for one. Always confirms first; a loaded show arrives as onLoaded. */
+    open: (file?: string) => invoke<ShowStatus | null>('show:open', file),
+    revealBackups: () => invoke<void>('show:revealBackups'),
+    onLoaded: (cb: (e: { status: ShowStatus; operator: ShowOperator | null }) => void) => on<{ status: ShowStatus; operator: ShowOperator | null }>('show:loaded', cb),
   },
   settings: {
     get: () => invoke<Settings>('settings:get'),

@@ -43,6 +43,11 @@ export class CameraStore {
     this.write(data);
   }
 
+  /** The whole list at once (opening a show). */
+  replaceAll(cameras: CameraConfig[]): void {
+    this.write({ version: 1, cameras });
+  }
+
   private read(): FileShape {
     try {
       const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8')) as Partial<FileShape>;
