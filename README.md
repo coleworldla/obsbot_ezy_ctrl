@@ -101,7 +101,9 @@ Presets rail: click recalls, drag reorders, double-click renames. To delete seve
 
 Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` save preset · `Ctrl+1-9` select camera · `Q W E A D Z S C` jog · `H` home · `-` / `=` zoom · `[` / `]` jog speed · `T` track · `R` record · `O` rotate · `F` AF push · `I` camera settings · `L` log · `M` mapping.
 
-**Camera settings** (`I`): AI tracking mode, speed and auto-zoom framing, only-me; focus auto/manual with position; exposure auto/manual with compensation, shutter, gain, backlight and anti-flicker; white balance modes with colour temperature and R/B gain; image style, brightness, contrast, saturation, sharpness, hue. The drawer reads the camera's real values and re-reads after each change.
+**Zoom speed**: the **ZOOM SPD** slider under the zoom row sets how fast W / T, the `-` / `=` keys and MIDI / OSC tele / wide zoom, from 1 (slowest) to 8 (fastest); it is VISCA's variable zoom speed 0–7. The zoom-ratio slider and preset recalls jump to an exact ratio, which VISCA does at the camera's own speed. Jog and zoom speeds are remembered between launches.
+
+**Camera settings** (`I`): AI tracking mode, speed and auto-zoom framing, only-me; focus auto/manual with position; exposure auto/manual with compensation, shutter, gain, backlight and anti-flicker; white balance modes with colour temperature and R/B gain; image style, brightness, contrast, saturation, sharpness, hue. The drawer reads the camera's real values and re-reads after each change. Auto-zoom **Close-up** is a single-person framing: the Tail 2 has no close-up in Group mode, so the option is greyed out there (switch Mode to Single first).
 
 **Tally**: right-click a camera in the rack to mark it program (red) or preview (green), or drive it from a switcher over OSC (`/tally/pgm <i>`, `/tally/pvw <i>`, or `/cam/<i>/tally <0|1|2>`).
 
@@ -109,14 +111,15 @@ Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` sav
 
 Open **Mapping** (top right or `M`). Every control is a row.
 
-- **MIDI**: click *Learn* on a row, then press a button or move a knob on your controller. Buttons work with notes or CC (≥ 64 = press). Knobs and faders drive zoom level, jog speed, and the pan / tilt axes (centre = stop). For *Recall preset* the learned note becomes preset 1 and the next 63 notes follow; for *Select camera* the next 8 notes follow. Devices can be switched off individually.
+- **MIDI**: click *Learn* on a row, then press a button or move a knob on your controller. Buttons work with notes or CC (≥ 64 = press). Knobs and faders drive zoom level, zoom speed, jog speed, and the pan / tilt axes (centre = stop). For *Recall preset* the learned note becomes preset 1 and the next 63 notes follow; for *Select camera* the next 8 notes follow. Devices can be switched off individually.
 - **OSC in**: the app listens on UDP 9000 (change it in the panel). The address scheme is always on, no mapping needed:
 
   ```
   /cam/select <n>              /cam/<i>/preset/<n>        /cam/<i>/preset/save
   /cam/<i>/ptz/<dir> [0|1]     /cam/<i>/ptz/pan <-1..1>   /cam/<i>/ptz/tilt <-1..1>
   /cam/<i>/ptz/speed <1..24>   /cam/<i>/home              /cam/<i>/zoom <1..12>
-  /cam/<i>/zoom/tele [0|1]     /cam/<i>/zoom/wide [0|1]   /cam/<i>/track [0|1]
+  /cam/<i>/zoom/tele [0|1]     /cam/<i>/zoom/wide [0|1]   /cam/<i>/zoom/speed <1..8>
+  /cam/<i>/zoom/speed/up       /cam/<i>/zoom/speed/down   /cam/<i>/track [0|1]
   /cam/<i>/record [0|1]        /cam/<i>/rotate [0|1]      /cam/<i>/focus/push
   /cam/<i>/tally <0|1|2>       /tally/pgm <i>             /tally/pvw <i>
   ```

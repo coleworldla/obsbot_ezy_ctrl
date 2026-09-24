@@ -70,7 +70,7 @@ interface Preset {
 ### `actions` (as built in M4)
 - `shared/mapping.ts` holds the registry: `ActionDef { id, label, group, kind: trigger | momentary | toggle | continuous, arg?: preset | camera, osc, range?, key? }` and the mapping model `Mapping { id, actionId, arg?, camera?, trigger }` with `Trigger = midi | osc | key`.
 - Pure matching: `matchMappings(mappings, input)` turns a key / MIDI / OSC input into `Invocation { actionId, phase: press | release | value, arg?, camera?, value?, unit }`. Spans map a note or digit range onto preset / camera numbers.
-- `renderer/control/executor.ts` runs invocations against the app (jog + stop, axes with dead zone → 8-way drive with proportional speed, zoom fader coalesced to 80 ms, toggles with explicit 0/1 from OSC, preset recall by index, camera select).
+- `renderer/control/executor.ts` runs invocations against the app (jog + stop, axes with dead zone → 8-way drive with proportional speed, zoom fader coalesced to 80 ms, tele / wide at the shared zoom speed 1–8 = VISCA 0–7, toggles with explicit 0/1 from OSC, preset recall by index, camera select). Speed changes go through updater functions so bursts from an encoder all land.
 - Keyboard, MIDI and OSC all go through the same path; the on-screen buttons call the IPC directly.
 
 ### camera state and settings (as built in M5)

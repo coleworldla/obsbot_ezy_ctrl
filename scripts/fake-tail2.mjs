@@ -157,6 +157,11 @@ socket.on('message', (msg, rinfo) => {
     return;
   }
   if (cat === 0x8e) {
+    // Close-up (auto zoom 1) is a single-person framing; OBSBOT's table lists no close-up for multi-person tracking.
+    if (c === 0x03 && v === 0x01 && state.trackMulti) {
+      log('ai auto zoom close-up refused: multi-person mode');
+      return reply([0x90, 0x61, 0x41, 0xff]);
+    }
     if (c === 0x00) state.track = v === 0x02;
     else if (c === 0x01) state.trackMulti = v === 0x01;
     else if (c === 0x02) state.trackSpeed = [p[4], p[5], p[6], p[7], p[8]];
@@ -172,6 +177,7 @@ socket.on('message', (msg, rinfo) => {
         if (v === 0x00) state.vZoom = 0;
         else if (v === 0x02 || (v & 0xf0) === 0x20) state.vZoom = 400 * speed;
         else if (v === 0x03 || (v & 0xf0) === 0x30) state.vZoom = -400 * speed;
+        log(v === 0x00 ? 'zoom stop' : `zoom ${state.vZoom > 0 ? 'tele' : 'wide'} ${(v & 0xf0) ? `speed ${v & 0x0f} (0-7)` : 'standard speed'}`);
         return complete();
       }
       case 0x47: state.zoom = clamp(fromNib(p, 4), 1000, 12000); log(`zoom direct ${(state.zoom / 1000).toFixed(1)}x`); return complete();

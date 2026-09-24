@@ -2,6 +2,17 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Added
+- **Zoom speed.** A **ZOOM SPD** slider under the zoom row sets how fast the W / T buttons, the `-` / `=` keys and MIDI / OSC tele / wide zoom, from 1 (slowest) to 8 (fastest). Before, zoom always ran at speed 4, which is still the default. It is mappable like jog speed: *Zoom speed (1 … 8)* for a knob or fader, *Zoom speed −1 / +1* for buttons, and OSC `/cam/<i>/zoom/speed <1..8>`, `/cam/<i>/zoom/speed/up`, `/cam/<i>/zoom/speed/down`. The zoom-ratio slider and preset recalls still move at the camera's own speed, because VISCA's direct zoom has no speed.
+- Jog and zoom speeds are remembered between launches.
+
+### Fixed
+- **AI tracking auto-zoom "Close-up" failed with an error.** Close-up is a single-person framing: the Tail 2 has no close-up in Group mode and refuses the command. The option is now greyed out while Mode is Group ("Close-up (Single mode only)"), and if a camera still refuses it the panel says why in plain words instead of `Error invoking remote method 'camera:set' …`.
+- A setting the camera refuses is logged with the camera name, the setting and value, and the camera's reason (for example `set autoZoom = 1 failed (command not executable)`), instead of `camera:set failed: …`.
+- Several jog-speed messages arriving at once (a fast encoder) no longer overwrite each other.
+
 ## [0.8.6] - 2026-09-15
 
 ### Fixed

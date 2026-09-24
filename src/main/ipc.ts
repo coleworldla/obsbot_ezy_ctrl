@@ -51,13 +51,13 @@ export function oscStatusOf(osc: OscServer): OscStatus {
 }
 
 export function registerIpc({ store, presets, settings, mappings, manager, video, osc, applyOsc, updater, ndi }: IpcDeps): void {
-  /** Register a handler whose failures are logged (and still rejected to the renderer). */
+  /** Register a handler whose failures are logged (and still rejected to the renderer). A handler that logged its own, clearer line marks the error `logged`. */
   const handle = <A extends unknown[], R>(channel: string, fn: (e: IpcMainInvokeEvent, ...args: A) => R | Promise<R>) => {
     ipcMain.handle(channel, async (e, ...args) => {
       try {
         return await fn(e, ...(args as A));
       } catch (err) {
-        logger.warn('ipc', `${channel} failed: ${errMsg(err)}`);
+        if (!(err as { logged?: boolean } | null)?.logged) logger.warn('ipc', `${channel} failed: ${errMsg(err)}`);
         throw err;
       }
     });
@@ -139,8 +139,18 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
 
   // ---- camera settings (tracking / focus / exposure / white balance / image) ----
   handle('camera:set', async (_e, id: string, s: CameraSet) => {
-    await manager.get(id).set(s);
-    logger.info('visca', `${store.get(id)?.name ?? id}: set ${s.key}${'value' in s ? ` = ${String(s.value)}` : ''}`, id);
+    const name = store.get(id)?.name ?? id;
+    const what = `${s.key}${'value' in s ? ` = ${String(s.value)}` : ''}`;
+    try {
+      await manager.get(id).set(s);
+    } catch (err) {
+      const group = manager.statuses().find((x) => x.id === id)?.state?.trackMode === 'group';
+      const hint = s.key === 'autoZoom' && s.value === 1 && group ? '; Close-up exists only for single-person tracking' : '';
+      logger.warn('visca', `${name}: set ${what} failed (${errMsg(err)}${hint})`, id);
+      if (err && typeof err === 'object') (err as { logged?: boolean }).logged = true;
+      throw err;
+    }
+    logger.info('visca', `${name}: set ${what}`, id);
     // Live-state keys are re-read right away so the UI mirrors the camera.
     if (['track', 'trackMode', 'record', 'portrait', 'focusAuto', 'exposureAuto', 'wbMode'].includes(s.key)) await manager.refreshState(id).catch(() => undefined);
   });

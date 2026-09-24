@@ -107,6 +107,10 @@ export type Input = MidiInput | KeyInput | OscInput;
 
 const k = (key: string, extra: Partial<KeyTrigger> = {}): KeyTrigger => ({ type: 'key', key, ...extra });
 
+/** Zoom tele / wide speed as shown in the app and sent over OSC: 1 (slowest) … 8 (fastest). VISCA's variable zoom takes 0 … 7. */
+export const ZOOM_SPEED_MAX = 8;
+export const viscaZoomSpeed = (speed: number): number => Math.min(ZOOM_SPEED_MAX, Math.max(1, Math.round(speed))) - 1;
+
 export const ACTIONS: ActionDef[] = [
   { id: 'cam.select', label: 'Select camera', group: 'Cameras', kind: 'trigger', arg: 'camera', osc: '/cam/select', key: k('1', { ctrl: true, span: 9 }) },
   { id: 'tally.pgm', label: 'Tally: program', group: 'Cameras', kind: 'trigger', osc: '/cam/{i}/tally/pgm' },
@@ -131,6 +135,9 @@ export const ACTIONS: ActionDef[] = [
   { id: 'zoom.level', label: 'Zoom level (1 … 12×)', group: 'Zoom', kind: 'continuous', osc: '/cam/{i}/zoom', range: [1, 12] },
   { id: 'zoom.tele', label: 'Zoom tele (hold)', group: 'Zoom', kind: 'momentary', osc: '/cam/{i}/zoom/tele', key: k('=') },
   { id: 'zoom.wide', label: 'Zoom wide (hold)', group: 'Zoom', kind: 'momentary', osc: '/cam/{i}/zoom/wide', key: k('-') },
+  { id: 'zoom.speed', label: `Zoom speed (1 … ${ZOOM_SPEED_MAX})`, group: 'Zoom', kind: 'continuous', osc: '/cam/{i}/zoom/speed', range: [1, ZOOM_SPEED_MAX] },
+  { id: 'zoom.speed.down', label: 'Zoom speed −1', group: 'Zoom', kind: 'trigger', osc: '/cam/{i}/zoom/speed/down' },
+  { id: 'zoom.speed.up', label: 'Zoom speed +1', group: 'Zoom', kind: 'trigger', osc: '/cam/{i}/zoom/speed/up' },
 
   { id: 'preset.recall', label: 'Recall preset', group: 'Presets', kind: 'trigger', arg: 'preset', osc: '/cam/{i}/preset', key: k('1', { span: 9 }) },
   { id: 'preset.save', label: 'Save current position', group: 'Presets', kind: 'trigger', osc: '/cam/{i}/preset/save', key: k('s', { ctrl: true }) },
@@ -263,7 +270,8 @@ export const oscSlugUsable = (slug: string): boolean => slug !== '' && !/^\d+$/.
  *   /cam/select <i>                       /cam/<i>/preset/<n>          /cam/<i>/preset/save
  *   /cam/<i>/ptz/<dir> [0|1]              /cam/<i>/ptz/pan <-1..1>     /cam/<i>/ptz/tilt <-1..1>
  *   /cam/<i>/ptz/speed <1..24>            /cam/<i>/home                /cam/<i>/zoom <1..12>
- *   /cam/<i>/zoom/tele [0|1]              /cam/<i>/zoom/wide [0|1]     /cam/<i>/track [0|1]
+ *   /cam/<i>/zoom/tele [0|1]              /cam/<i>/zoom/wide [0|1]     /cam/<i>/zoom/speed <1..8>
+ *   /cam/<i>/zoom/speed/up                /cam/<i>/zoom/speed/down     /cam/<i>/track [0|1]
  *   /cam/<i>/record [0|1]                 /cam/<i>/rotate [0|1]        /cam/<i>/focus/push
  *   /app/log                              /app/mapping
  * <i> is the camera's name slug (/cam/stage_left/…), its 1-based rack number, or "sel" for the selected camera.
@@ -335,6 +343,9 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
   if (rest === 'zoom') return cont('zoom.level');
   if (rest === 'zoom/tele') return press('zoom.tele');
   if (rest === 'zoom/wide') return press('zoom.wide');
+  if (rest === 'zoom/speed') return cont('zoom.speed');
+  if (rest === 'zoom/speed/up') return press('zoom.speed.up');
+  if (rest === 'zoom/speed/down') return press('zoom.speed.down');
   if (rest === 'track') return press('ai.track');
   if (rest === 'record') return press('record');
   if (rest === 'rotate') return press('orientation');
@@ -410,6 +421,9 @@ const CAM_ROWS: { rest: string; args: string; desc: string }[] = [
   { rest: 'zoom', args: '<1..12>', desc: 'Zoom to this ratio (1x wide … 12x tele)' },
   { rest: 'zoom/tele', args: '1 | 0', desc: 'Zoom in while held' },
   { rest: 'zoom/wide', args: '1 | 0', desc: 'Zoom out while held' },
+  { rest: 'zoom/speed', args: '<1..8>', desc: 'Zoom speed for tele / wide: 1 slowest … 8 fastest' },
+  { rest: 'zoom/speed/up', args: '', desc: 'Zoom speed one step faster' },
+  { rest: 'zoom/speed/down', args: '', desc: 'Zoom speed one step slower' },
   { rest: 'preset/save', args: '', desc: 'Save the current position as a new preset' },
   { rest: 'preset', args: '<n>', desc: 'Recall preset n (number as the argument, for encoders)' },
   { rest: 'track', args: '1 | 0', desc: 'AI tracking on / off (no argument flips it)' },
