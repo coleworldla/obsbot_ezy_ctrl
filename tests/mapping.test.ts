@@ -11,6 +11,8 @@ import {
   oscMapRows,
   oscSlug,
   parseBuiltinOsc,
+  viscaZoomSpeed,
+  ZOOM_SPEED_MAX,
   type Mapping,
 } from '../src/shared/mapping';
 
@@ -119,6 +121,31 @@ describe('built-in OSC scheme', () => {
     expect(list).toContain('/cam/1/preset/<n>');
     expect(list).toContain('/cam/2/zoom <1..12>');
     expect(list).toContain('/cam/sel/track [0|1]');
+    expect(list).toContain('/cam/1/zoom/speed <1..8>');
+  });
+
+  it('parses zoom speed addresses', () => {
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/1/zoom/speed', args: [6] })).toEqual({ actionId: 'zoom.speed', phase: 'value', camera: 1, value: 6, unit: 'natural' });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/1/zoom/speed', args: [] })).toBeNull();
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/sel/zoom/speed/up', args: [] })).toMatchObject({ actionId: 'zoom.speed.up', phase: 'press', camera: null });
+    expect(parseBuiltinOsc({ type: 'osc', address: '/cam/stage_left/zoom/speed/down', args: [1] })).toMatchObject({ actionId: 'zoom.speed.down', phase: 'press', cameraName: 'stage_left' });
+    expect(oscMapRows([{ id: 'a', name: 'Stage Left' }], [], 'name').some((r) => r.address === '/cam/stage_left/zoom/speed' && r.args === '<1..8>')).toBe(true);
+  });
+
+  it('maps a MIDI fader onto zoom speed', () => {
+    const m: Mapping[] = [{ id: 'z', actionId: 'zoom.speed', trigger: { type: 'midi', channel: null, kind: 'cc', number: 22 } }];
+    expect(matchMappings(m, { type: 'midi', device: 'x', channel: 1, kind: 'cc', number: 22, value: 127 })).toEqual([{ actionId: 'zoom.speed', phase: 'value', value: 1, unit: 'normalized', arg: undefined, camera: null }]);
+  });
+});
+
+describe('zoom speed', () => {
+  it('maps the app scale 1..8 onto VISCA 0..7, clamped', () => {
+    expect(viscaZoomSpeed(1)).toBe(0);
+    expect(viscaZoomSpeed(4)).toBe(3);
+    expect(viscaZoomSpeed(ZOOM_SPEED_MAX)).toBe(7);
+    expect(viscaZoomSpeed(0)).toBe(0);
+    expect(viscaZoomSpeed(20)).toBe(7);
+    expect(viscaZoomSpeed(4.6)).toBe(4);
   });
 });
 

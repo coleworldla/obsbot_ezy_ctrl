@@ -2,13 +2,15 @@
  * Runs action invocations (from keyboard, MIDI or OSC) against the app: one place that knows
  * how to jog, zoom, recall presets, toggle tracking, set tally, and so on.
  */
-import { oscSlug } from '../../../shared/mapping';
+import { oscSlug, viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
 import type { Invocation } from '../../../shared/mapping';
 import type { CameraConfig, CameraStatus, JogDir, Preset, Tally } from '../../../shared/types';
 
 export interface Speed {
   pan: number;
   tilt: number;
+  /** Zoom tele / wide speed, 1 … ZOOM_SPEED_MAX (see viscaZoomSpeed). */
+  zoom: number;
 }
 
 export interface CamState {
@@ -23,7 +25,8 @@ export interface ExecContext {
   status: Record<string, CameraStatus>;
   presets: Preset[];
   speed: Speed;
-  setSpeed: (s: Speed) => void;
+  /** Takes an updater too, so several speed messages arriving before the next render all count. */
+  setSpeed: (s: Speed | ((prev: Speed) => Speed)) => void;
   selectCamera: (id: string) => void;
   recall: (p: Preset) => void;
   savePreset: (cameraId: string) => Promise<unknown>;
@@ -129,14 +132,27 @@ export class ActionExecutor {
       case 'ptz.speed': {
         if (inv.phase !== 'value' || inv.value === undefined) return;
         const pan = inv.unit === 'normalized' ? Math.round(1 + inv.value * 23) : clamp(Math.round(inv.value), 1, 24);
-        c.setSpeed({ pan, tilt: Math.max(1, Math.round((pan * 23) / 24)) });
+        c.setSpeed((s) => ({ ...s, pan, tilt: Math.max(1, Math.round((pan * 23) / 24)) }));
         return;
       }
       case 'ptz.speed.up':
       case 'ptz.speed.down': {
         if (inv.phase !== 'press') return;
         const d = inv.actionId === 'ptz.speed.up' ? 1 : -1;
-        c.setSpeed({ pan: clamp(c.speed.pan + d, 1, 24), tilt: clamp(c.speed.tilt + d, 1, 23) });
+        c.setSpeed((s) => ({ ...s, pan: clamp(s.pan + d, 1, 24), tilt: clamp(s.tilt + d, 1, 23) }));
+        return;
+      }
+      case 'zoom.speed': {
+        if (inv.phase !== 'value' || inv.value === undefined) return;
+        const zoom = inv.unit === 'normalized' ? Math.round(1 + inv.value * (ZOOM_SPEED_MAX - 1)) : clamp(Math.round(inv.value), 1, ZOOM_SPEED_MAX);
+        c.setSpeed((s) => ({ ...s, zoom }));
+        return;
+      }
+      case 'zoom.speed.up':
+      case 'zoom.speed.down': {
+        if (inv.phase !== 'press') return;
+        const d = inv.actionId === 'zoom.speed.up' ? 1 : -1;
+        c.setSpeed((s) => ({ ...s, zoom: clamp(s.zoom + d, 1, ZOOM_SPEED_MAX) }));
         return;
       }
       case 'zoom.level': {
@@ -149,7 +165,7 @@ export class ActionExecutor {
       case 'zoom.wide':
         if (inv.phase === 'value' || !online) return;
         c.clearActive(id);
-        fire(window.ezy.zoom.drive(id, inv.phase === 'press' ? (inv.actionId === 'zoom.tele' ? 'tele' : 'wide') : 'stop', 3));
+        fire(window.ezy.zoom.drive(id, inv.phase === 'press' ? (inv.actionId === 'zoom.tele' ? 'tele' : 'wide') : 'stop', viscaZoomSpeed(c.speed.zoom)));
         return;
       case 'preset.recall': {
         if (inv.phase !== 'press' || !online) return;

@@ -15,8 +15,20 @@ const SHUTTER: Record<number, string> = {
 const EV = [-3, -2.7, -2.3, -2, -1.7, -1.3, -1, -0.7, -0.3, 0, 0.3, 0.7, 1, 1.3, 1.7, 2, 2.3, 2.7, 3];
 const SPEEDS = ['Super lazy', 'Lazy', 'Slow', 'Fast', 'Crazy'];
 const AUTO_ZOOM = ['Off', 'Close-up', 'Half body', 'Above knees', 'Nine-head', 'Full body', 'Long shot 1', 'Long shot 2'];
+/** Auto-zoom framing that exists only for single-person tracking: the Tail 2 refuses it in group mode (OBSBOT's VISCA table). */
+const CLOSE_UP = 1;
 const WB = ['Auto', 'Daylight', 'Fluorescent', 'One-push', 'Tungsten', 'Manual', 'Cloudy'];
 const STYLES = ['Standard', 'Outdoor', 'Pastel', 'Custom'];
+
+/** Electron wraps errors thrown in the main process ("Error invoking remote method 'camera:set': Error: syntax error"); keep the camera's own words. */
+const ipcErrorText = (e: unknown): string =>
+  (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']*': /, '').replace(/^\w*Error: /, '');
+
+function describeSet(s: CameraSet): string {
+  if (s.key === 'autoZoom') return `auto-zoom "${AUTO_ZOOM[s.value] ?? s.value}"`;
+  if (s.key === 'trackSpeed') return `tracking speed "${SPEEDS[s.value] ?? s.value}"`;
+  return 'value' in s ? `${s.key} = ${String(s.value)}` : s.key;
+}
 
 const DEFAULTS: CameraFullState = {
   track: false, trackMode: 'single', record: false, portrait: false, focusAuto: true, exposureAuto: true, wbMode: 0,
@@ -79,7 +91,7 @@ export function CameraPanel({ camera, status, onClose }: Props) {
       setFull(await window.ezy.camera.fullState(id));
       setLoaded(true);
     } catch (e) {
-      showErr(`could not read the camera state: ${e instanceof Error ? e.message : String(e)}`);
+      showErr(`could not read the camera state: ${ipcErrorText(e)}`);
     } finally {
       setLoading(false);
     }
@@ -129,7 +141,10 @@ export function CameraPanel({ camera, status, onClose }: Props) {
   };
 
   const send = (s: CameraSet) =>
-    window.ezy.camera.set(id, s).catch((e: unknown) => showErr(`camera rejected ${s.key}: ${e instanceof Error ? e.message : String(e)}`));
+    window.ezy.camera.set(id, s).catch((e: unknown) => {
+      const why = ipcErrorText(e);
+      showErr(s.key === 'autoZoom' && s.value === CLOSE_UP && trackMode === 'group' ? `Close-up works only in Single mode (camera said: ${why}). Set Mode to Single first.` : `could not set ${describeSet(s)}: ${why}`);
+    });
 
   /** Image-state settings: update the local copy at once, send, then re-read. */
   const set = (s: CameraSet) => {
@@ -204,12 +219,21 @@ export function CameraPanel({ camera, status, onClose }: Props) {
             <Seg value={full.trackSpeed} disabled={!online} options={SPEEDS.map((label, v) => ({ v, label }))} onChange={(v) => set({ key: 'trackSpeed', value: v })} />
           </Row>
           <Row label="Auto-zoom">
-            <select className="input small sel" disabled={!online} value={full.autoZoom} onChange={(e) => set({ key: 'autoZoom', value: Number(e.target.value) })}>
-              {AUTO_ZOOM.map((label, v) => (
-                <option key={v} value={v}>
-                  {label}
-                </option>
-              ))}
+            <select
+              className="input small sel"
+              disabled={!online}
+              value={full.autoZoom}
+              title={trackMode === 'group' ? 'Group mode has no Close-up framing; switch Mode to Single for it' : undefined}
+              onChange={(e) => set({ key: 'autoZoom', value: Number(e.target.value) })}
+            >
+              {AUTO_ZOOM.map((label, v) => {
+                const singleOnly = v === CLOSE_UP && trackMode === 'group';
+                return (
+                  <option key={v} value={v} disabled={singleOnly}>
+                    {singleOnly ? `${label} (Single mode only)` : label}
+                  </option>
+                );
+              })}
             </select>
           </Row>
           <Row label="Only me">

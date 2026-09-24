@@ -106,7 +106,7 @@ export function Help({ info, update, autoCheck, onAutoCheck, onCheck, onInstall,
               </tr>
               <tr>
                 <td>− / =</td>
-                <td>zoom wide / tele</td>
+                <td>zoom wide / tele, at the ZOOM SPD speed</td>
               </tr>
               <tr>
                 <td>[ / ]</td>

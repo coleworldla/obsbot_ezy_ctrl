@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
 import { isMonitor, type CameraConfig, type CameraStatus, type JogDir, type Tally, type ZoomDir } from '../../../shared/types';
 import type { CamState, Speed } from '../control/executor';
 import { TallyBadge } from './Rack';
@@ -60,7 +61,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
   };
   const zoom = (dir: ZoomDir) => {
     if (dir !== 'stop') onManual();
-    return fire(window.ezy.zoom.drive(id, dir, 3));
+    return fire(window.ezy.zoom.drive(id, dir, viscaZoomSpeed(speed.zoom)));
   };
 
   const onZoomInput = (v: number) => {
@@ -178,6 +179,13 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
               T
             </button>
             <output>{zoomSlider.toFixed(1)}×</output>
+          </div>
+          <div className="row" title="Speed of the W / T buttons and the zoom keys, MIDI and OSC. The zoom slider and presets move at the camera's own speed.">
+            <label>ZOOM SPD</label>
+            <input type="range" min={1} max={ZOOM_SPEED_MAX} value={speed.zoom} onChange={(e) => onSpeed({ ...speed, zoom: Number(e.target.value) })} />
+            <output>
+              {speed.zoom} / {ZOOM_SPEED_MAX}
+            </output>
           </div>
           <div className="row">
             <label>PAN SPD [ / ]</label>

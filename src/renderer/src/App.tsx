@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { keyInputFrom, matchMappings, parseBuiltinOsc, type Input, type Invocation, type Mapping } from '../../shared/mapping';
+import { keyInputFrom, matchMappings, parseBuiltinOsc, ZOOM_SPEED_MAX, type Input, type Invocation, type Mapping } from '../../shared/mapping';
 import type { AppInfo, CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, Tally, UpdateStatus } from '../../shared/types';
 import { isMonitor } from '../../shared/types';
 import { CameraDialog } from './components/CameraDialog';
@@ -20,6 +20,7 @@ import { dispatchVideoEvent, dropPlayer, snapshotFor } from './video/player';
 export type { Speed } from './control/executor';
 
 const RECALL_KEY = 'ezy.recallSpeed';
+const SPEED_KEY = 'ezy.speed';
 const PRESET_TOLERANCE = { deg: 1.0, zoom: 0.15 };
 const DRIFT_GRACE_MS = 5000;
 const MONITOR_MAX = 80;
@@ -37,6 +38,20 @@ function loadRecallSpeed(): RecallSpeed {
     /* default below */
   }
   return { pan: 18, tilt: 17 };
+}
+
+/** Jog and zoom speeds survive a restart. Zoom 4 of 8 is the speed the W / T buttons always used before it was adjustable. */
+function loadSpeed(): Speed {
+  const speed: Speed = { pan: 12, tilt: 10, zoom: 4 };
+  try {
+    const v = JSON.parse(localStorage.getItem(SPEED_KEY) ?? '');
+    if (v && typeof v.pan === 'number') speed.pan = Math.min(24, Math.max(1, Math.round(v.pan)));
+    if (v && typeof v.tilt === 'number') speed.tilt = Math.min(23, Math.max(1, Math.round(v.tilt)));
+    if (v && typeof v.zoom === 'number') speed.zoom = Math.min(ZOOM_SPEED_MAX, Math.max(1, Math.round(v.zoom)));
+  } catch {
+    /* defaults above */
+  }
+  return speed;
 }
 
 const midi = new MidiManager();
@@ -58,7 +73,7 @@ export default function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [update, setUpdate] = useState<UpdateStatus | null>(null);
   const [tally, setTallyMap] = useState<Record<string, Tally>>({});
-  const [speed, setSpeed] = useState<Speed>({ pan: 12, tilt: 10 });
+  const [speed, setSpeed] = useState<Speed>(loadSpeed);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [active, setActive] = useState<Record<string, string | null>>({});
   const [recallSpeed, setRecallSpeed] = useState<RecallSpeed>(loadRecallSpeed);
@@ -117,6 +132,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(RECALL_KEY, JSON.stringify(recallSpeed));
   }, [recallSpeed]);
+
+  useEffect(() => {
+    localStorage.setItem(SPEED_KEY, JSON.stringify(speed));
+  }, [speed]);
 
   // While the Log is open everything counts as seen; the header badge only shows what arrived since.
   useEffect(() => {
