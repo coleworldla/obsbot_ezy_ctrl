@@ -140,6 +140,9 @@ export function Help({ info, update, autoCheck, onAutoCheck, onCheck, onInstall,
           <div className="note">
             Presets are unlimited and stored in this app with a thumbnail. Right-click a camera in the rack for program / preview tally. When something misbehaves, open <b>Log</b>.
           </div>
+          <div className="note">
+            <b>Tracking box</b> (above the picture) draws who the AI is following. It uses the camera&apos;s web preview, which allows two viewers at a time, so close the camera&apos;s web page if the box cannot connect.
+          </div>
         </section>
 
         <section className="helpcol">

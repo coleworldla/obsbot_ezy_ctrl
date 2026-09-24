@@ -3,11 +3,15 @@
  * A fake OBSBOT Tail 2 that answers VISCA over IP on UDP (default port 52381) for development.
  * It keeps pan/tilt/zoom plus tracking / focus / exposure / white balance / image state, moves at a
  * plausible speed, and answers every inquiry the app uses.
+ * It also serves the web preview WebSocket on TCP 9001 with the AI target only (no video): while
+ * tracking is on, a target box wanders around the frame, so the app's tracking box can be tried.
  *
  *   npm run fake-camera            # port 52381
- *   npm run fake-camera -- 52382   # another port for a second fake camera
+ *   npm run fake-camera -- 52382   # another port for a second fake camera (the preview port is shared, first one wins)
  */
+import crypto from 'node:crypto';
 import dgram from 'node:dgram';
+import http from 'node:http';
 
 const port = Number(process.argv[2] ?? 52381);
 const STEP_DEG = 0.075;
@@ -247,3 +251,76 @@ setInterval(() => {
 }, 20);
 
 socket.bind(port, '127.0.0.1', () => log(`fake Tail 2 listening on udp://127.0.0.1:${port} (VISCA over IP)`));
+
+// ---- web preview stream (ws://127.0.0.1:9001): 79-byte header + entries, see docs/protocol/web-preview.md ----
+const PREVIEW_PORT = 9001;
+const previewClients = new Set();
+
+function previewPacket() {
+  const HEADER = 79;
+  const b = Buffer.alloc(HEADER + 8 + 44);
+  b[0] = 0x5c;
+  b[1] = 1;
+  b.writeUInt32LE(8 + 44, 2);
+  b[6] = 3;
+  const entry = (i, kind, offset, len) => {
+    b[7 + i * 9] = kind;
+    b.writeUInt32LE(offset, 8 + i * 9);
+    b.writeUInt32LE(len, 12 + i * 9);
+  };
+  entry(0, 1, 0, 0); // video (none here)
+  entry(1, 3, 0, 8); // timestamp
+  entry(2, 5, 8, 44); // AI target
+  b.writeBigUInt64LE(BigInt(Date.now()) * 1000n, HEADER);
+  const p = HEADER + 8;
+  if (!state.track) {
+    b.writeUInt32LE(255, p); // no target
+    return b;
+  }
+  const t = Date.now() / 1000;
+  const cx = 0.5 + 0.28 * Math.sin(t * 0.7);
+  const cy = 0.52 + 0.12 * Math.sin(t * 1.3);
+  const lost = Math.floor(t) % 20 === 19; // one second in twenty the target is lost
+  b.writeUInt32LE(1, p);
+  b.writeUInt32LE(lost ? 0 : 1, p + 4);
+  [cx - 0.09, cy - 0.3, cx + 0.09, cy + 0.3, 2.5].forEach((x, i) => b.writeFloatLE(x, p + 20 + i * 4));
+  return b;
+}
+
+function wsFrame(payload) {
+  const len = payload.length;
+  const head = len < 126 ? Buffer.from([0x82, len]) : Buffer.from([0x82, 126, len >> 8, len & 0xff]);
+  return Buffer.concat([head, payload]);
+}
+
+const preview = http.createServer((_req, res) => {
+  res.writeHead(426, { 'content-type': 'text/plain' });
+  res.end('websocket only');
+});
+preview.on('upgrade', (req, sock) => {
+  const key = req.headers['sec-websocket-key'];
+  if (!key) return sock.destroy();
+  const accept = crypto.createHash('sha1').update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest('base64');
+  sock.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
+  previewClients.add(sock);
+  log(`preview client connected (${previewClients.size})`);
+  const drop = () => {
+    if (previewClients.delete(sock)) log(`preview client gone (${previewClients.size})`);
+  };
+  sock.on('data', (d) => {
+    // A close frame from the client: answer and hang up.
+    if ((d[0] & 0x0f) === 0x08) {
+      sock.end(Buffer.from([0x88, 0x00]));
+      drop();
+    }
+  });
+  sock.on('close', drop);
+  sock.on('error', drop);
+});
+preview.on('error', (e) => log(`preview stream not served: ${e.message}`));
+preview.listen(PREVIEW_PORT, '127.0.0.1', () => log(`web preview (AI target only) on ws://127.0.0.1:${PREVIEW_PORT}`));
+setInterval(() => {
+  if (previewClients.size === 0) return;
+  const f = wsFrame(previewPacket());
+  for (const c of previewClients) c.write(f);
+}, 40);

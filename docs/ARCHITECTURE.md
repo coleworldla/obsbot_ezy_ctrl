@@ -98,6 +98,12 @@ interface Preset {
 - Renderer `video/ndi.ts` paints frames into a `<canvas>` (alpha forced opaque, stride respected); the canvas doubles as the snapshot source for preset thumbnails.
 - Verified on 2026-09-15 with two Tail 2s in NDI mode (NDI 6.3.2 runtime from NDI Tools).
 
+### tracking box (AI target overlay)
+- Source: the Tail 2's web preview WebSocket, `ws://<camera>:9001` (format in `docs/protocol/web-preview.md`). No login, no request; one binary packet per video frame with the tracked target (id, alive, box in fractions of the frame) next to the video.
+- Runs in the renderer with Chromium's WebSocket (Electron 33's Node has no WebSocket client; the page's CSP allows `connect-src ws:` for this). `renderer/video/tracking.ts` keeps one connection per camera while something subscribes, parses only the header and the 44-byte target record (`shared/tracking.ts`), drops the video, coalesces updates to one per animation frame, reconnects every 3 s and treats 2.5 s of silence as a drop.
+- The camera serves at most two web previews, so the stage subscribes only for the camera on stage and only while **Tracking box** is on.
+- `components/TrackingOverlay.tsx` finds the picture inside the stage (video or NDI canvas, letterboxed by `object-fit: contain`) and places the box on it; `TARGET LOST` when alive != 1, nothing for id 255.
+
 ### packaging and updates (as built in M6)
 - Windows: electron-builder NSIS (one-click, per user) + portable; ffmpeg comes from `ffmpeg-static` in `app.asar.unpacked`.
 - macOS: dmg + zip for arm64 and x64 in one electron-builder run. `ffmpeg-static` only downloads the host's architecture, so `scripts/fetch-ffmpeg.mjs` pulls both binaries from the same release into `build/ffmpeg/mac-<arch>/` and `extraResources` ships the right one at `<resources>/ffmpeg/ffmpeg`; `ffmpegPath()` prefers that location. Ad-hoc signed unless a Developer ID is configured.

@@ -71,8 +71,12 @@ input, select { font: inherit; }
 
 /* stage */
 .stage { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 12px; min-width: 0; }
-.stage .top { display: flex; align-items: center; gap: 12px; }
-.stage .top h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.stage .top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
+.stage .top h2 { margin: 0; font-size: 15px; font-weight: 700; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* On a narrow window the address line gives way first (full text on hover), then the buttons move to a second row together. */
+.stage .top > .mono { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage .top .topbtns { display: flex; gap: 12px; flex: none; margin-left: auto; }
+.stage .top .b { white-space: nowrap; }
 .stagewrap { flex: 1; position: relative; min-height: 0; display: flex; }
 .viewport { flex: 1; position: relative; border-radius: 6px; overflow: hidden; background: #0f1215; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); min-height: 0; }
 .viewport video, .mini video, .viewport canvas, .mini canvas { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
@@ -87,6 +91,16 @@ webview { display: inline-flex; border: none; background: #fff; }
 .ov { position: absolute; font-family: var(--mono); font-size: 11px; padding: 3px 7px; border-radius: 3px; background: rgba(20, 23, 27, 0.85); border: 1px solid var(--line-3); color: var(--text); }
 .ov.tl { left: 10px; top: 10px; } .ov.tr { right: 10px; top: 10px; } .ov.bl { left: 10px; bottom: 10px; } .ov.br { right: 10px; bottom: 10px; }
 .ov.err { border-color: var(--pgm); color: #ffb3b6; }
+/* Below the top-left / top-right pills so it never covers them on a narrow stage. */
+.ov.tc { left: 50%; top: 42px; transform: translateX(-50%); white-space: nowrap; }
+
+/* AI tracking box, drawn like the Tail 2's web page: a faint frame with bright corner brackets */
+.trackbox { position: absolute; pointer-events: none; border: 1px solid rgba(255, 255, 255, 0.5); }
+.trackbox .tbc { position: absolute; width: 12px; height: 12px; border: 0 solid #39ffa8; }
+.trackbox .tbc.tl { left: -2px; top: -2px; border-left-width: 3px; border-top-width: 3px; }
+.trackbox .tbc.tr { right: -2px; top: -2px; border-right-width: 3px; border-top-width: 3px; }
+.trackbox .tbc.bl { left: -2px; bottom: -2px; border-left-width: 3px; border-bottom-width: 3px; }
+.trackbox .tbc.br { right: -2px; bottom: -2px; border-right-width: 3px; border-bottom-width: 3px; }
 
 .transport { height: 110px; flex: none; display: flex; gap: 10px; }
 .jog { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 6px; width: 200px; flex: none; }
