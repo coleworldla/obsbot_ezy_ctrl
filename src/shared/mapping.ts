@@ -149,6 +149,8 @@ export const ACTIONS: ActionDef[] = [
 
   { id: 'panel.toggle', label: 'Show / hide camera settings', group: 'App', kind: 'trigger', osc: '/app/panel', key: k('i') },
   { id: 'trackbox.toggle', label: 'Show / hide tracking box', group: 'App', kind: 'trigger', osc: '/app/trackbox' },
+  { id: 'show.save', label: 'Save show', group: 'App', kind: 'trigger', osc: '/app/show/save', key: k('s', { ctrl: true, shift: true }) },
+  { id: 'show.open', label: 'Open show…', group: 'App', kind: 'trigger', osc: '/app/show/open', key: k('o', { ctrl: true }) },
   { id: 'log.toggle', label: 'Show / hide log', group: 'App', kind: 'trigger', osc: '/app/log', key: k('l') },
   { id: 'mapping.toggle', label: 'Show / hide mapping', group: 'App', kind: 'trigger', osc: '/app/mapping', key: k('m') },
 ];
@@ -161,6 +163,12 @@ export const ACTION_GROUPS: string[] = [...new Set(ACTIONS.map((a) => a.group))]
 export function defaultMappings(): Mapping[] {
   return ACTIONS.filter((a) => a.key).map((a) => ({ id: `key:${a.id}`, actionId: a.id, trigger: a.key! }));
 }
+
+/** Shape check for mappings read from disk or a show file. */
+export const isMapping = (m: unknown): m is Mapping => {
+  const x = m as Partial<Mapping> | null;
+  return !!x && typeof x.id === 'string' && typeof x.actionId === 'string' && !!x.trigger && typeof x.trigger.type === 'string';
+};
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -275,6 +283,7 @@ export const oscSlugUsable = (slug: string): boolean => slug !== '' && !/^\d+$/.
  *   /cam/<i>/zoom/speed/up                /cam/<i>/zoom/speed/down     /cam/<i>/track [0|1]
  *   /cam/<i>/record [0|1]                 /cam/<i>/rotate [0|1]        /cam/<i>/focus/push
  *   /app/log                              /app/mapping                 /app/panel      /app/trackbox
+ *   /app/show/save                        /app/show/open
  * <i> is the camera's name slug (/cam/stage_left/…), its 1-based rack number, or "sel" for the selected camera.
  * Presets likewise: /cam/<i>/preset/<n> by rail position or /cam/<i>/preset/<name-slug>.
  */
@@ -285,6 +294,9 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
   if (parts[0] === 'app' && parts.length === 2) {
     const id = parts[1] === 'log' ? 'log.toggle' : parts[1] === 'mapping' ? 'mapping.toggle' : parts[1] === 'panel' ? 'panel.toggle' : parts[1] === 'trackbox' ? 'trackbox.toggle' : null;
     return id ? { actionId: id, phase: 'press' } : null;
+  }
+  if (parts[0] === 'app' && parts[1] === 'show' && parts.length === 3 && (parts[2] === 'save' || parts[2] === 'open')) {
+    return v === 0 ? null : { actionId: `show.${parts[2]}`, phase: 'press' };
   }
   // Switcher-style tally: /tally/pgm <i>, /tally/pvw <i>
   if (parts[0] === 'tally' && parts.length === 2 && (parts[1] === 'pgm' || parts[1] === 'pvw')) {
@@ -384,7 +396,7 @@ export function oscAddressList(count: number): string[] {
       else out.push(addr);
     }
   }
-  out.push('/cam/<i>/tally <0|1|2>', '/tally/pgm <i>', '/tally/pvw <i>', '/app/panel', '/app/trackbox', '/app/log', '/app/mapping');
+  out.push('/cam/<i>/tally <0|1|2>', '/tally/pgm <i>', '/tally/pvw <i>', '/app/panel', '/app/trackbox', '/app/log', '/app/mapping', '/app/show/save', '/app/show/open');
   return out;
 }
 
@@ -463,6 +475,8 @@ export function oscMapRows(cameras: { id: string; name: string; kind?: string }[
   push('Global', '/tally/pvw', byName ? '<name> or <i>' : '<i>', 'Camera preview');
   push('Global', '/app/panel', '', 'Toggle the camera settings drawer');
   push('Global', '/app/trackbox', '', 'Toggle the AI tracking box over the picture');
+  push('Global', '/app/show/save', '', 'Save the show to its .ezy file (asks for a file the first time)');
+  push('Global', '/app/show/open', '', 'Open a show: shows the file picker on this computer');
   push('Global', '/app/log', '', 'Toggle the Log');
   push('Global', '/app/mapping', '', 'Toggle the Mapping panel');
 

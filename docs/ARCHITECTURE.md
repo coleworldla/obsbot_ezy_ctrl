@@ -104,6 +104,13 @@ interface Preset {
 - The camera serves at most two web previews, so the stage subscribes only for the camera on stage and only while **Tracking box** is on.
 - `components/TrackingOverlay.tsx` finds the picture inside the stage (video or NDI canvas, letterboxed by `object-fit: contain`) and places the box on it; `TARGET LOST` when alive != 1, nothing for id 255.
 
+### shows (.ezy files)
+- `shared/show.ts` is the format: one JSON document `{ format: 'ezy-show', version: 1, app, appVersion, savedAt, name, cameras, presets, mappings, osc, operator }`. `parseShow` validates field by field and returns warnings for what it left out (presets for missing cameras, unreadable rows); a newer format version is refused with a readable message. A file without `mappings` or `osc` leaves the current ones alone.
+- `main/show.ts` (`ShowService`, no Electron imports, unit-tested with real stores in a temp folder) builds the content from the stores, writes through a temp file, and on open: backs up the current setup to `<config>/shows/backups` (newest 20), closes every camera (control, video, NDI), swaps cameras / presets / mappings / OSC, and records the show in `settings.show` (`path`, `savedPrint`, `recent`). `showFingerprint` (sorted-key JSON + a 53-bit hash of cameras, presets, mappings, OSC) against `savedPrint` gives the unsaved-changes dot; the renderer asks every 3 s.
+- `main/show-dialogs.ts` holds the file pickers and the confirmation, shared by the renderer (menu, keys, MIDI, OSC) and the OS (double-clicked file). After an open, main sends `show:loaded` with the operator block; the renderer writes the speeds / tracking box to local storage and reloads the window, so nothing from the previous setup lingers.
+- The installed app holds a single-instance lock: a second launch hands its command line to the running app (`second-instance`); a `.ezy` path in argv or macOS `open-file` goes through the same confirmation. `build.fileAssociations` registers `.ezy` (per user on Windows, `CFBundleDocumentTypes` on macOS).
+- `mappings.json` carries a format version; files older than 2 get the new default keys (Save / Open show) once, only where that key combination is free.
+
 ### packaging and updates (as built in M6)
 - Windows: electron-builder NSIS (one-click, per user) + portable; ffmpeg comes from `ffmpeg-static` in `app.asar.unpacked`.
 - macOS: dmg + zip for arm64 and x64 in one electron-builder run. `ffmpeg-static` only downloads the host's architecture, so `scripts/fetch-ffmpeg.mjs` pulls both binaries from the same release into `build/ffmpeg/mac-<arch>/` and `extraResources` ships the right one at `<resources>/ffmpeg/ffmpeg`; `ffmpegPath()` prefers that location. Ad-hoc signed unless a Developer ID is configured.
@@ -111,5 +118,5 @@ interface Preset {
 - Release workflow: `release` job creates the GitHub release from the CHANGELOG section, then `windows` and `macos` jobs build and upload their files; signing/notarization secrets are optional.
 
 ## Data on disk
-`%APPDATA%/obsbot-ezy-ctrl/` for both the installed app and `npm run dev` (macOS: `~/Library/Application Support/obsbot-ezy-ctrl/`): the folder follows `name` in package.json, since `productName` lives only in the electron-builder config. `cameras.json`, `presets.json`, `settings.json`, `mappings.json`, `logs/ezy-ctrl.log`. Presets import/export from the UI.
+`%APPDATA%/obsbot-ezy-ctrl/` for both the installed app and `npm run dev` (macOS: `~/Library/Application Support/obsbot-ezy-ctrl/`): the folder follows `name` in package.json, since `productName` lives only in the electron-builder config. `cameras.json`, `presets.json`, `settings.json`, `mappings.json`, `logs/ezy-ctrl.log`, `shows/backups/` (the setup as it was before each show was opened). Show files themselves live wherever the user saves them (default `Documents/EZY CTRL Shows`). Presets import/export from the UI.
 

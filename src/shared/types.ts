@@ -163,6 +163,23 @@ export interface Settings {
     /** Full path to the NDI runtime library when the app cannot find it on its own (Locate runtime…). */
     runtimePath?: string;
   };
+  /** The show file (.ezy) this setup was last saved to or opened from. */
+  show?: {
+    path?: string;
+    /** showFingerprint() of the setup at that moment, for the unsaved-changes dot. */
+    savedPrint?: string;
+    /** Most recent first. */
+    recent?: string[];
+  };
+}
+
+export interface ShowStatus {
+  /** The .ezy file this setup was last saved to or opened from; absent for an untitled setup. */
+  path?: string;
+  name: string;
+  /** Cameras, presets, mappings or the OSC setup changed since that file was written or opened. */
+  dirty: boolean;
+  recent: { path: string; name: string }[];
 }
 
 export interface UpdateStatus {

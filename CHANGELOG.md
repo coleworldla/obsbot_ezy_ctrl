@@ -2,6 +2,14 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Added
+- **Shows (`.ezy` files).** Save the whole setup as a show and open it again for the next event. A show holds the cameras, every preset with its thumbnail, the mapping table, the OSC setup, and the operator's jog, zoom and recall speeds and tracking box choice. The **SHOW** button in the header names the current show (a dot marks changes since it was saved) and has **Save show** (`Ctrl+Shift+S`), **Save show as…**, **Open show…** (`Ctrl+O`), recent shows and the backups folder. Shows go to `Documents\EZY CTRL Shows` by default.
+- Opening a show asks first. The setup it replaces is copied to a backups folder in the config folder, which keeps the newest 20.
+- Double-clicking a `.ezy` file opens it in EZY CTRL, on Windows and macOS. A running EZY CTRL takes the file instead of starting a second copy; the installed app now runs as a single copy.
+- Save show and Open show are mappable (MIDI, keys) and on OSC as `/app/show/save` and `/app/show/open`. Existing mapping files get the two new keys once, when those key combinations are free.
+
 ## [0.8.7] - 2026-09-24
 
 ### Added

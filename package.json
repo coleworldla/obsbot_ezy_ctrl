@@ -48,6 +48,14 @@
     "appId": "com.coleworldla.ezyctrl",
     "productName": "EZY CTRL",
     "copyright": "Copyright © 2026 coleworldla",
+    "fileAssociations": [
+      {
+        "ext": "ezy",
+        "name": "EZY CTRL show",
+        "description": "EZY CTRL show",
+        "role": "Editor"
+      }
+    ],
     "directories": {
       "output": "dist",
       "buildResources": "build"

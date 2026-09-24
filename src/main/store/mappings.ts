@@ -1,10 +1,38 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { defaultMappings, type Mapping } from '../../shared/mapping';
+import { defaultMappings, isMapping, type KeyTrigger, type Mapping } from '../../shared/mapping';
+
+/** Mapping file format. 2 = the Save show / Open show keys exist. */
+const VERSION = 2;
+
+/**
+ * Default keys that came after a mapping file could already exist. A file older than `since`
+ * gets them once, when that key combination is still free; deleting them later sticks.
+ */
+const ADDED_DEFAULTS: { since: number; actionIds: string[] }[] = [{ since: 2, actionIds: ['show.save', 'show.open'] }];
 
 interface FileShape {
-  version: 1;
+  version: number;
   mappings: Mapping[];
+}
+
+const sameKey = (a: KeyTrigger, b: KeyTrigger) => a.key === b.key && !!a.ctrl === !!b.ctrl && !!a.shift === !!b.shift && !!a.alt === !!b.alt;
+
+/** Add the defaults introduced after `version` whose key combination nobody uses yet. */
+export function upgradeMappings(list: Mapping[], version: number): Mapping[] {
+  const out = [...list];
+  const defaults = defaultMappings();
+  for (const added of ADDED_DEFAULTS) {
+    if (version >= added.since) continue;
+    for (const actionId of added.actionIds) {
+      const def = defaults.find((m) => m.actionId === actionId);
+      if (!def || def.trigger.type !== 'key' || out.some((m) => m.id === def.id)) continue;
+      const trigger = def.trigger;
+      if (out.some((m) => m.trigger.type === 'key' && sameKey(m.trigger, trigger))) continue;
+      out.push(def);
+    }
+  }
+  return out;
 }
 
 /** mappings.json: the whole mapping table; seeded with the keyboard defaults on first run. */
@@ -13,8 +41,15 @@ export class MappingStore {
 
   constructor(private readonly file: string) {
     const read = this.read();
-    this.mappings = read ?? defaultMappings();
-    if (!read) this.write();
+    if (!read) {
+      this.mappings = defaultMappings();
+      this.write();
+    } else if (read.version < VERSION) {
+      this.mappings = upgradeMappings(read.mappings, read.version);
+      this.write();
+    } else {
+      this.mappings = read.mappings;
+    }
   }
 
   list(): Mapping[] {
@@ -22,7 +57,7 @@ export class MappingStore {
   }
 
   save(list: Mapping[]): Mapping[] {
-    this.mappings = list.filter((m) => m && typeof m.id === 'string' && typeof m.actionId === 'string' && m.trigger && typeof m.trigger.type === 'string');
+    this.mappings = list.filter(isMapping);
     this.write();
     return this.list();
   }
@@ -33,10 +68,11 @@ export class MappingStore {
     return this.list();
   }
 
-  private read(): Mapping[] | null {
+  private read(): FileShape | null {
     try {
       const parsed = JSON.parse(fs.readFileSync(this.file, 'utf8')) as Partial<FileShape>;
-      return Array.isArray(parsed.mappings) ? parsed.mappings : null;
+      if (!Array.isArray(parsed.mappings)) return null;
+      return { version: typeof parsed.version === 'number' ? parsed.version : 1, mappings: parsed.mappings.filter(isMapping) };
     } catch {
       return null;
     }
@@ -44,7 +80,7 @@ export class MappingStore {
 
   private write(): void {
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    const data: FileShape = { version: 1, mappings: this.mappings };
+    const data: FileShape = { version: VERSION, mappings: this.mappings };
     fs.writeFileSync(this.file, JSON.stringify(data, null, 2));
   }
 }

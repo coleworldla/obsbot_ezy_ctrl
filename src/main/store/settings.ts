@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS: Settings = {
   midi: { disabledDevices: [] },
   updates: { autoCheck: true },
   ndi: {},
+  show: {},
 };
 
 /** settings.json: small, merged with defaults on read so new keys always exist. */
@@ -44,5 +45,6 @@ function merge(base: Settings, patch: Partial<Settings>): Settings {
     midi: { ...base.midi, ...(patch.midi ?? {}) },
     updates: { ...base.updates, ...(patch.updates ?? {}) },
     ndi: { ...base.ndi, ...(patch.ndi ?? {}) },
+    show: { ...base.show, ...(patch.show ?? {}) },
   };
 }

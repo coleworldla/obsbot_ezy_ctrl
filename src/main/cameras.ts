@@ -71,6 +71,15 @@ export class CameraManager {
     this.push({ id, connected: false, updatedAt: Date.now() });
   }
 
+  /** Close a camera that is leaving the rack (opening a show) and drop its status. */
+  forget(id: string): void {
+    this.cams.get(id)?.close();
+    this.cams.delete(id);
+    this.failures.delete(id);
+    this.status.delete(id);
+    this.stateWarned.delete(id);
+  }
+
   /** Reconnect with a fresh config (host/port may have changed). */
   async reconnect(cfg: CameraConfig): Promise<void> {
     this.disconnect(cfg.id);

@@ -1,10 +1,18 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 
 export interface MenuItem {
   label: string;
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
+  /** Shown on the right, e.g. a shortcut. */
+  hint?: string;
+  /** Tooltip, e.g. a full file path. */
+  title?: string;
+  /** Draw a divider above this item. */
+  divider?: boolean;
+  /** React key when labels can repeat. */
+  id?: string;
 }
 
 interface Props {
@@ -33,23 +41,27 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
   }, [onClose]);
 
   // Keep the menu on screen.
-  const left = Math.min(x, window.innerWidth - 220);
+  const left = Math.min(x, window.innerWidth - 240);
   const top = Math.min(y, window.innerHeight - items.length * 34 - 16);
 
   return (
     <div className="menu" ref={ref} style={{ left, top }}>
       {items.map((it) => (
-        <button
-          key={it.label}
-          className={`menu-item${it.danger ? ' danger' : ''}`}
-          disabled={it.disabled}
-          onClick={() => {
-            onClose();
-            it.onClick();
-          }}
-        >
-          {it.label}
-        </button>
+        <Fragment key={it.id ?? it.label}>
+          {it.divider && <div className="menu-sep" />}
+          <button
+            className={`menu-item${it.danger ? ' danger' : ''}`}
+            disabled={it.disabled}
+            title={it.title}
+            onClick={() => {
+              onClose();
+              it.onClick();
+            }}
+          >
+            <span className="menu-label">{it.label}</span>
+            {it.hint && <span className="menu-hint">{it.hint}</span>}
+          </button>
+        </Fragment>
       ))}
     </div>
   );
