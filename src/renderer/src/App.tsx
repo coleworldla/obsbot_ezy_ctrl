@@ -3,6 +3,7 @@ import { keyInputFrom, matchMappings, parseBuiltinOsc, ZOOM_SPEED_MAX, type Inpu
 import type { AppInfo, CameraConfig, CameraStatus, LogEntry, OscStatus, Preset, RecallSpeed, Settings, ShowStatus, Tally, UpdateStatus } from '../../shared/types';
 import { isMonitor } from '../../shared/types';
 import type { ShowOperator } from '../../shared/show';
+import { AskHost, confirmAsk } from './components/Ask';
 import { CameraDialog } from './components/CameraDialog';
 import { OscMapPanel } from './components/OscMapPanel';
 import { oscCameraKey, oscSlug } from '../../shared/mapping';
@@ -493,6 +494,8 @@ export default function App() {
           all.forEach((b) => b.textContent === 'NDI' && b.click());
         }, 5000),
       );
+    if (steps.includes('remove')) timers.push(window.setTimeout(() => [...document.querySelectorAll<HTMLElement>('.b')].find((b) => b.textContent === 'Remove')?.click(), 3000));
+    if (steps.includes('remove-cancel')) timers.push(window.setTimeout(() => [...document.querySelectorAll<HTMLElement>('.dialog.ask .b')].find((b) => b.textContent === 'Cancel')?.click(), 3600));
     if (steps.includes('skip')) timers.push(window.setTimeout(() => setWelcomeSkipped(true), 3000));
     if (steps.includes('edit')) timers.push(window.setTimeout(() => setEditCamera(ctxRef.current.cameras[0] ?? null), 3000));
     if (steps.includes('pselect'))
@@ -514,7 +517,8 @@ export default function App() {
   }, []);
 
   const removeCamera = async (id: string) => {
-    if (!window.confirm('Remove this camera from the rack? Its presets go with it.')) return;
+    const name = cameras.find((c) => c.id === id)?.name ?? 'this camera';
+    if (!(await confirmAsk({ title: `Remove "${name}" from the rack?`, detail: 'Its presets go with it.', ok: 'Remove', danger: true }))) return;
     await window.ezy.cameras.remove(id);
     connectedOnce.current.delete(id);
     dropPlayer(id);
@@ -717,6 +721,8 @@ export default function App() {
           }}
         />
       )}
+
+      <AskHost />
     </div>
   );
 }
