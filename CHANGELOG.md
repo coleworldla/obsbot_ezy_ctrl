@@ -2,6 +2,12 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Fixed
+- **Typing stopped working after removing a camera or deleting presets (Windows).** Those confirmations used the browser's built-in popup, which on Windows leaves the window's text fields unable to take typing until you switch to another window and back (an Electron bug). The next **Add camera** dialog then looked frozen: no name, no IP address. The confirmations are now drawn inside EZY CTRL, and shortcut keys no longer reach the cameras behind them.
+- **Store in camera slot…** in the preset menu did nothing, because Electron has no built-in input popup. It now asks for the slot number in the window and checks it is 0-255.
+
 ## [0.8.8] - 2026-09-24
 
 ### Added

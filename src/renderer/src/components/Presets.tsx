@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CameraConfig, Preset, RecallSpeed } from '../../../shared/types';
+import { ask, confirmAsk } from './Ask';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 
 interface Props {
@@ -135,8 +136,8 @@ export function Presets({ camera, online, monitor = false, presets, activeId, re
   const deleteMany = async (ids: string[]) => {
     if (!ids.length) return;
     const all = ids.length === presets.length && presets.length > 1;
-    const msg = ids.length === 1 ? `Delete preset "${presets.find((p) => p.id === ids[0])?.name ?? ''}"?` : `Delete ${ids.length} presets${all ? ' (all of them)' : ''}?`;
-    if (!window.confirm(msg)) return;
+    const title = ids.length === 1 ? `Delete preset "${presets.find((p) => p.id === ids[0])?.name ?? ''}"?` : `Delete ${ids.length} presets${all ? ' (all of them)' : ''}?`;
+    if (!(await confirmAsk({ title, ok: 'Delete', danger: true }))) return;
     await window.ezy.presets.removeMany(ids);
     exitSelect();
     await onChanged();
@@ -144,11 +145,11 @@ export function Presets({ camera, online, monitor = false, presets, activeId, re
 
   const deleteSelected = () => deleteMany(presets.filter((p) => selected.has(p.id)).map((p) => p.id));
 
-  // Delete / Backspace removes the selection, Escape leaves select mode (never while typing in a field).
+  // Delete / Backspace removes the selection, Escape leaves select mode (never while typing in a field or in a dialog).
   useEffect(() => {
     if (!selecting) return;
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target)) return;
+      if (isTyping(e.target) || (e.target as HTMLElement | null)?.closest?.('.backdrop')) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
@@ -191,12 +192,17 @@ export function Presets({ camera, online, monitor = false, presets, activeId, re
     {
       label: p.cameraSlot !== undefined ? `Store in camera slot… (now ${p.cameraSlot})` : 'Store in camera slot…',
       disabled: !online,
-      onClick: () => {
-        const v = window.prompt('Camera preset slot (0-255). Other controllers can recall it by this number.', String(p.cameraSlot ?? presets.indexOf(p) + 1));
+      onClick: async () => {
+        const v = await ask({
+          title: `Store "${p.name}" in a camera slot`,
+          detail: 'Other controllers can recall it by this number.',
+          label: 'Camera preset slot (0-255)',
+          value: String(p.cameraSlot ?? presets.indexOf(p) + 1),
+          ok: 'Store',
+          validate: (t) => (/^\d{1,3}$/.test(t.trim()) && Number(t) <= 255 ? null : 'A whole number from 0 to 255'),
+        });
         if (v === null) return;
-        const slot = Number(v);
-        if (!Number.isInteger(slot) || slot < 0 || slot > 255) return;
-        void window.ezy.presets.mirror(p.id, slot).then(onChanged);
+        void window.ezy.presets.mirror(p.id, Number(v)).then(onChanged);
       },
     },
     { label: selected.has(p.id) ? 'Deselect' : 'Select', onClick: () => toggle(p.id) },
