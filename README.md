@@ -110,7 +110,7 @@ Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` sav
 
 **Tracking box**: the button above the picture draws the target the camera's AI is following, the way the camera's own web page does: a frame with green corners that moves with the person, and **TARGET LOST** when the camera loses them. With tracking off nothing is drawn. It reads the camera's web preview stream (`ws://<camera-ip>:9001`, no login), only for the camera on stage and only while the button is on. That stream is a few Mbit/s, and the camera serves at most two web previews at a time, so an open camera web page counts as one. The setting is remembered; OSC `/app/trackbox` or a mapping toggles it. Not available for the Web UI source, which shows the camera's page with its own box.
 
-**Camera settings** (`I`): AI tracking mode, speed and auto-zoom framing, only-me; focus auto/manual with position; exposure auto/manual with compensation, shutter, gain, backlight and anti-flicker; white balance modes with colour temperature and R/B gain; image style, brightness, contrast, saturation, sharpness, hue. The drawer reads the camera's real values and re-reads after each change. Auto-zoom **Close-up** is a single-person framing: the Tail 2 has no close-up in Group mode, so the option is greyed out there (switch Mode to Single first).
+**Camera settings** (`I`): AI tracking mode, speed and auto-zoom framing, only-me; focus auto/manual with position; exposure auto/manual with compensation, shutter, ISO, backlight and anti-flicker; white balance modes with colour temperature and R/B gain; image style, brightness, contrast, saturation, sharpness, hue. The drawer reads the camera's real values when it opens and, after each change, reads back just the settings that change touched. If the camera stops answering partway, the drawer says so and keeps the last known values instead of waiting on every setting; **Refresh** reads everything again. With Exposure on **Manual**, pick a shutter speed (1/25 … 1/8000) or ISO (100 … 6400, a stop apart) from the list, or step with − / +. The Tail 2 only has one-notch shutter and gain commands, so the app steps the camera to the chosen value and shows where it landed (the value is dimmed until it gets there). Auto-zoom **Close-up** is a single-person framing: the Tail 2 has no close-up in Group mode, so the option is greyed out there (switch Mode to Single first).
 
 **Tally**: right-click a camera in the rack to mark it program (red) or preview (green), or drive it from a switcher over OSC (`/tally/pgm <i>`, `/tally/pvw <i>`, or `/cam/<i>/tally <0|1|2>`).
 
@@ -118,7 +118,7 @@ Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` sav
 
 Open **Mapping** (top right or `M`). Every control is a row.
 
-- **MIDI**: click *Learn* on a row, then press a button or move a knob on your controller. Buttons work with notes or CC (≥ 64 = press). Knobs and faders drive zoom level, zoom speed, jog speed, and the pan / tilt axes (centre = stop). For *Recall preset* the learned note becomes preset 1 and the next 63 notes follow; for *Select camera* the next 8 notes follow. Devices can be switched off individually.
+- **MIDI**: click *Learn* on a row, then press a button or move a knob on your controller. Buttons work with notes or CC (≥ 64 = press). Knobs and faders drive zoom level, zoom speed, jog speed, the pan / tilt axes (centre = stop), and shutter and ISO (exposure on Manual). For *Recall preset* the learned note becomes preset 1 and the next 63 notes follow; for *Select camera* the next 8 notes follow. Devices can be switched off individually.
 - **OSC in**: the app listens on UDP 9000 (change it in the panel). The address scheme is always on, no mapping needed:
 
   ```
@@ -129,7 +129,12 @@ Open **Mapping** (top right or `M`). Every control is a row.
   /cam/<i>/zoom/speed/up       /cam/<i>/zoom/speed/down   /cam/<i>/track [0|1]
   /cam/<i>/record [0|1]        /cam/<i>/rotate [0|1]      /cam/<i>/focus/push
   /cam/<i>/tally <0|1|2>       /tally/pgm <i>             /tally/pvw <i>
+  /cam/<i>/exposure/auto [0|1] /cam/<i>/shutter <25..8000> /cam/<i>/iso <100..6400>
+  /cam/<i>/shutter/faster      /cam/<i>/shutter/slower    /cam/<i>/iso/up
+  /cam/<i>/iso/down
   ```
+
+  `/cam/<i>/shutter 250` sets the nearest speed the camera has (1/240); `/cam/<i>/iso 800` sets ISO 800. Shutter and ISO only move while exposure is on Manual (`/cam/<i>/exposure/auto 0`).
 
   `<i>` is the camera's **name** as a slug (lower-case, anything that is not a letter or digit becomes `_`: "Stage Left" → `stage_left`), its rack number (1, 2, …), or `sel` for the camera on stage. Presets work the same way: `/cam/stage_left/preset/podium` or `/cam/1/preset/2`. Renaming a camera or preset renames its address; the OSC map always shows the current ones. `<dir>` is up, down, left, right, upleft, upright, downleft, downright. *Copy address list* in the panel gives you the full expanded list for TouchOSC or Bitfocus Companion (generic OSC module).
 - **Names**: the OSC map opens with a **Names** section (also from the presets footer's **Names** button or by clicking the OSC pill in the header): every camera and preset name you typed next to its OSC form and address. Copy the names, the OSC names, both side by side, or CSV; click any cell to copy just that one.

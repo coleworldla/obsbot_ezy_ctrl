@@ -42,13 +42,6 @@ const DIR: Record<JogDir, [number, number]> = {
   stop: [0x03, 0x03],
 };
 
-/** Shutter index -> label, from the OBSBOT inquiry table (0x09 … 0x22). */
-export const SHUTTER_LABELS: Record<number, string> = {
-  0x09: '1/8000', 0x0a: '1/6400', 0x0b: '1/5000', 0x0c: '1/4000', 0x0d: '1/3200', 0x0e: '1/2500', 0x0f: '1/2000', 0x10: '1/1600',
-  0x11: '1/1250', 0x12: '1/1000', 0x13: '1/800', 0x14: '1/640', 0x15: '1/500', 0x16: '1/400', 0x17: '1/320', 0x18: '1/240',
-  0x19: '1/200', 0x1a: '1/160', 0x1b: '1/120', 0x1c: '1/100', 0x1d: '1/80', 0x1e: '1/60', 0x1f: '1/50', 0x20: '1/40', 0x21: '1/30', 0x22: '1/25',
-};
-
 /** Exposure compensation index 0-18 -> EV. */
 export const EXP_COMP_EV = [-3, -2.7, -2.3, -2, -1.7, -1.3, -1, -0.7, -0.3, 0, 0.3, 0.7, 1, 1.3, 1.7, 2, 2.3, 2.7, 3];
 

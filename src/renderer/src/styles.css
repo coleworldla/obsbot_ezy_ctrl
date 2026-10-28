@@ -240,6 +240,9 @@ input[type='range'] { flex: 1; min-width: 40px; accent-color: var(--accent); hei
 .cpseg { flex: 1; }
 .cpseg .b { height: 28px; padding: 0 6px; font-size: 11px; }
 .input.sel { width: 140px; }
+/* shutter / ISO: dimmed while the camera is still stepping there */
+.input.expsel { width: 92px; flex: none; text-align: center; }
+.input.expsel.pending { opacity: 0.55; }
 select.input { padding: 0 6px; appearance: auto; }
 
 /* help / first run */
