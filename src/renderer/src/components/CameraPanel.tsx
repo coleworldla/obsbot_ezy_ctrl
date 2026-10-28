@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CameraConfig, CameraFullState, CameraLiveState, CameraSet, CameraStatus } from '../../../shared/types';
+import { isoChoices, isoLabel, SHUTTER_INDICES, shutterLabel, stepIso, stepShutter } from '../../../shared/exposure';
+import type { CameraConfig, CameraFullState, CameraImageState, CameraLiveState, CameraSet, CameraStatus } from '../../../shared/types';
+import { READBACK_EVENT, type Readback } from '../control/executor';
 
 interface Props {
   camera: CameraConfig;
@@ -7,11 +9,6 @@ interface Props {
   onClose: () => void;
 }
 
-const SHUTTER: Record<number, string> = {
-  0x09: '1/8000', 0x0a: '1/6400', 0x0b: '1/5000', 0x0c: '1/4000', 0x0d: '1/3200', 0x0e: '1/2500', 0x0f: '1/2000', 0x10: '1/1600',
-  0x11: '1/1250', 0x12: '1/1000', 0x13: '1/800', 0x14: '1/640', 0x15: '1/500', 0x16: '1/400', 0x17: '1/320', 0x18: '1/240',
-  0x19: '1/200', 0x1a: '1/160', 0x1b: '1/120', 0x1c: '1/100', 0x1d: '1/80', 0x1e: '1/60', 0x1f: '1/50', 0x20: '1/40', 0x21: '1/30', 0x22: '1/25',
-};
 const EV = [-3, -2.7, -2.3, -2, -1.7, -1.3, -1, -0.7, -0.3, 0, 0.3, 0.7, 1, 1.3, 1.7, 2, 2.3, 2.7, 3];
 const SPEEDS = ['Super lazy', 'Lazy', 'Slow', 'Fast', 'Crazy'];
 const AUTO_ZOOM = ['Off', 'Close-up', 'Half body', 'Above knees', 'Nine-head', 'Full body', 'Long shot 1', 'Long shot 2'];
@@ -27,6 +24,10 @@ const ipcErrorText = (e: unknown): string =>
 function describeSet(s: CameraSet): string {
   if (s.key === 'autoZoom') return `auto-zoom "${AUTO_ZOOM[s.value] ?? s.value}"`;
   if (s.key === 'trackSpeed') return `tracking speed "${SPEEDS[s.value] ?? s.value}"`;
+  if (s.key === 'shutter') return `shutter ${shutterLabel(s.value)}`;
+  if (s.key === 'gain') return isoLabel(s.value);
+  if (s.key === 'shutterStep') return `shutter ${s.value > 0 ? 'faster' : 'slower'}`;
+  if (s.key === 'gainStep') return `ISO ${s.value > 0 ? 'up' : 'down'}`;
   return 'value' in s ? `${s.key} = ${String(s.value)}` : s.key;
 }
 
@@ -80,23 +81,32 @@ export function CameraPanel({ camera, status, onClose }: Props) {
   /** Values the user just clicked, shown until the camera confirms or the timer runs out. */
   const [pending, setPending] = useState<Partial<CameraLiveState>>({});
   const pendingTimers = useRef<Record<string, number>>({});
-  const refreshTimer = useRef<number | null>(null);
   const sliderTimers = useRef<Record<string, number>>({});
   const errTimer = useRef<number | null>(null);
+  /** Shutter / ISO changes still on their way to the camera (the value shows dimmed meanwhile). */
+  const [busy, setBusy] = useState<Partial<Record<'shutter' | 'gain', number>>>({});
+  /** Bumped on every local change of a setting, so a reply to an older change does not overwrite a newer one. */
+  const edits = useRef<Partial<Record<string, number>>>({});
+  const reading = useRef(false);
 
-  const load = useCallback(async () => {
-    if (!online) return;
-    setLoading(true);
-    try {
-      setFull(await window.ezy.camera.fullState(id));
-      setLoaded(true);
-    } catch (e) {
-      showErr(`could not read the camera state: ${ipcErrorText(e)}`);
-    } finally {
-      setLoading(false);
-    }
+  const load = useCallback(
+    async (recheck = false) => {
+      if (!online || reading.current) return;
+      reading.current = true;
+      setLoading(true);
+      try {
+        setFull(await window.ezy.camera.fullState(id, recheck));
+        setLoaded(true);
+      } catch (e) {
+        showErr(`could not read the camera state: ${ipcErrorText(e)}`);
+      } finally {
+        reading.current = false;
+        setLoading(false);
+      }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, online]);
+    [id, online],
+  );
 
   useEffect(() => {
     setFull(DEFAULTS);
@@ -104,6 +114,16 @@ export function CameraPanel({ camera, status, onClose }: Props) {
     setPending({});
     void load();
   }, [load]);
+
+  // Shutter / ISO moved from a MIDI or OSC mapping: show where the camera ended up.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const { id: from, back } = (e as CustomEvent<Readback>).detail;
+      if (from === id && Object.keys(back).length) setFull((f) => ({ ...f, ...back }));
+    };
+    window.addEventListener(READBACK_EVENT, on);
+    return () => window.removeEventListener(READBACK_EVENT, on);
+  }, [id]);
 
   // Drop an optimistic value as soon as the camera reports the same thing.
   useEffect(() => {
@@ -127,11 +147,6 @@ export function CameraPanel({ camera, status, onClose }: Props) {
     errTimer.current = window.setTimeout(() => setErr(null), 6000);
   };
 
-  const scheduleRefresh = () => {
-    if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
-    refreshTimer.current = window.setTimeout(() => void load(), 600);
-  };
-
   const optimistic = (patch: Partial<CameraLiveState>) => {
     setPending((p) => ({ ...p, ...patch }));
     for (const k of Object.keys(patch)) {
@@ -140,35 +155,64 @@ export function CameraPanel({ camera, status, onClose }: Props) {
     }
   };
 
-  const send = (s: CameraSet) =>
-    window.ezy.camera.set(id, s).catch((e: unknown) => {
+  /** Show values at once; they count as the newest change of those settings. */
+  const show = (patch: Partial<CameraFullState>) => {
+    for (const k of Object.keys(patch)) edits.current[k] = (edits.current[k] ?? 0) + 1;
+    setFull((f) => ({ ...f, ...patch }));
+  };
+
+  /** Take what the camera reports, except for settings changed again here since `before`. */
+  const take = (back: Partial<CameraImageState>, before: Partial<Record<string, number>>) => {
+    const fresh = Object.fromEntries(Object.entries(back).filter(([k]) => (edits.current[k] ?? 0) === (before[k] ?? 0)));
+    if (Object.keys(fresh).length) setFull((f) => ({ ...f, ...fresh }));
+  };
+
+  /** Send a change and take what the camera reports back for the settings it affects. */
+  const send = async (s: CameraSet, busyKey?: 'shutter' | 'gain') => {
+    const before = { ...edits.current };
+    if (busyKey) setBusy((b) => ({ ...b, [busyKey]: (b[busyKey] ?? 0) + 1 }));
+    try {
+      take(await window.ezy.camera.set(id, s), before);
+    } catch (e) {
       const why = ipcErrorText(e);
       showErr(s.key === 'autoZoom' && s.value === CLOSE_UP && trackMode === 'group' ? `Close-up works only in Single mode (camera said: ${why}). Set Mode to Single first.` : `could not set ${describeSet(s)}: ${why}`);
-    });
+      // Refused: put back what the camera really has.
+      if (busyKey) void window.ezy.camera.fullState(id).then((st) => take({ [busyKey]: st[busyKey] }, before), () => undefined);
+    } finally {
+      if (busyKey) setBusy((b) => ({ ...b, [busyKey]: Math.max(0, (b[busyKey] ?? 0) - 1) }));
+    }
+  };
 
-  /** Image-state settings: update the local copy at once, send, then re-read. */
+  /** Image-state settings: update the local copy at once, send, then take the camera's read-back. */
   const set = (s: CameraSet) => {
-    if ('value' in s) setFull((f) => ({ ...f, [s.key]: s.value }) as CameraFullState);
+    if ('value' in s) show({ [s.key]: s.value } as Partial<CameraFullState>);
     void send(s);
-    scheduleRefresh();
+  };
+
+  /** Shutter and ISO: the camera steps there one notch at a time; the value stays dimmed until it arrives. */
+  const setExposure = (key: 'shutter' | 'gain', value: number) => {
+    show({ [key]: value });
+    void send({ key, value }, key);
+  };
+
+  /** − / +: one step from wherever the camera is heading; the guess shows at once and the camera's reply corrects it. */
+  const stepExposure = (key: 'shutter' | 'gain', dir: 1 | -1) => {
+    show({ [key]: key === 'shutter' ? stepShutter(full.shutter, dir > 0) : stepIso(full.gain, dir > 0) });
+    void send({ key: key === 'shutter' ? 'shutterStep' : 'gainStep', value: dir }, key);
   };
 
   /** Live-state settings (tracking, focus/exposure/WB mode): show the click immediately, confirm from the poll. */
   const setLive = (s: CameraSet, patch: Partial<CameraLiveState>) => {
     optimistic(patch);
-    setFull((f) => ({ ...f, ...patch }));
+    show(patch);
     void send(s);
-    scheduleRefresh();
   };
 
   /** Sliders: send at most every 120 ms while dragging. */
   const setSlider = (key: Extract<CameraSet, { value: number }>['key'], value: number) => {
-    setFull((f) => ({ ...f, [key]: value }));
+    show({ [key]: value });
     if (sliderTimers.current[key]) window.clearTimeout(sliderTimers.current[key]);
-    sliderTimers.current[key] = window.setTimeout(() => {
-      void send({ key, value } as CameraSet);
-      scheduleRefresh();
-    }, 120);
+    sliderTimers.current[key] = window.setTimeout(() => void send({ key, value } as CameraSet), 120);
   };
 
   const track = pending.track ?? live?.track ?? full.track;
@@ -185,9 +229,11 @@ export function CameraPanel({ camera, status, onClose }: Props) {
         ? err
         : !loaded
           ? 'showing defaults until the camera answers'
-          : full.unsupported.length
-            ? `live · not reported by this camera: ${full.unsupported.join(', ')}`
-            : 'live';
+          : full.stale
+            ? 'the camera stopped answering; showing the last known values'
+            : full.unsupported.length
+              ? `live · not reported by this camera: ${full.unsupported.join(', ')}`
+              : 'live';
 
   return (
     <div className="campanel">
@@ -197,7 +243,7 @@ export function CameraPanel({ camera, status, onClose }: Props) {
           {statusText}
         </span>
         <span className="spacer" />
-        <button className="b sm" disabled={!online} onClick={() => void load()}>
+        <button className="b sm" disabled={!online} onClick={() => void load(true)} title="Read every setting again, including ones this camera did not answer before">
           Refresh
         </button>
         <button className="b sm" onClick={onClose}>
@@ -267,20 +313,32 @@ export function CameraPanel({ camera, status, onClose }: Props) {
           ) : (
             <>
               <Row label="Shutter">
-                <button className="b sm" disabled={!online} onClick={() => set({ key: 'shutterDown' })}>
+                <button className="b sm" disabled={!online} onClick={() => stepExposure('shutter', -1)} title="One step slower (brighter, more motion blur)">
                   −
                 </button>
-                <output className="mono">{SHUTTER[full.shutter] ?? full.shutter}</output>
-                <button className="b sm" disabled={!online} onClick={() => set({ key: 'shutterUp' })}>
+                <select className={`input small expsel mono${busy.shutter ? ' pending' : ''}`} disabled={!online} value={full.shutter} onChange={(e) => setExposure('shutter', Number(e.target.value))}>
+                  {(SHUTTER_INDICES.includes(full.shutter) ? SHUTTER_INDICES : [full.shutter, ...SHUTTER_INDICES]).map((i) => (
+                    <option key={i} value={i}>
+                      {shutterLabel(i)}
+                    </option>
+                  ))}
+                </select>
+                <button className="b sm" disabled={!online} onClick={() => stepExposure('shutter', 1)} title="One step faster (darker, less motion blur)">
                   +
                 </button>
               </Row>
-              <Row label="Gain">
-                <button className="b sm" disabled={!online} onClick={() => set({ key: 'gainDown' })}>
+              <Row label="ISO">
+                <button className="b sm" disabled={!online} onClick={() => stepExposure('gain', -1)} title="One stop lower (darker, cleaner)">
                   −
                 </button>
-                <output className="mono">{`ISO ${full.gain * 100}`}</output>
-                <button className="b sm" disabled={!online} onClick={() => set({ key: 'gainUp' })}>
+                <select className={`input small expsel mono${busy.gain ? ' pending' : ''}`} disabled={!online} value={full.gain} onChange={(e) => setExposure('gain', Number(e.target.value))}>
+                  {isoChoices(full.gain).map((g) => (
+                    <option key={g} value={g}>
+                      {g * 100}
+                    </option>
+                  ))}
+                </select>
+                <button className="b sm" disabled={!online} onClick={() => stepExposure('gain', 1)} title="One stop higher (brighter, noisier)">
                   +
                 </button>
               </Row>

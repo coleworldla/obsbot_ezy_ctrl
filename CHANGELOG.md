@@ -2,6 +2,16 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Added
+- **Pick a shutter speed or ISO.** With Exposure on Manual, Camera settings has a list for each (shutter 1/25 … 1/8000, ISO 100 … 6400 a stop apart) next to the − / + buttons. The Tail 2 only takes one-notch shutter and gain commands, so EZY CTRL steps the camera to the chosen value, reading it back as it goes, and stops at the nearest value the camera has. The value shows at once, dimmed until the camera gets there.
+- **Shutter, ISO and exposure mode on MIDI and OSC.** New mappable actions in a new *Exposure* group: *Shutter* and *ISO* for a knob or fader, one step faster / slower and one stop up / down for buttons, and *Exposure auto / manual*. OSC: `/cam/<i>/shutter <25..8000>` (the x of 1/x), `/cam/<i>/iso <100..6400>`, `/cam/<i>/shutter/faster`, `/cam/<i>/shutter/slower`, `/cam/<i>/iso/up`, `/cam/<i>/iso/down`, `/cam/<i>/exposure/auto [0|1]`. An open Camera settings drawer follows these changes.
+
+### Fixed
+- **Camera settings felt slow.** Every click waited 600 ms and then re-read all 25 settings one after another before showing anything; a camera that stopped answering made that take up to 37 s, with *reading…* the whole time. Changes now show at once and read back only what they touch. When the camera stops answering, a read gives up after one unanswered setting (about 3 s) and keeps the last known values, and a setting a camera never answers is skipped until **Refresh**. Settings changes go to the camera one at a time, so quick clicks cannot overflow its command buffer.
+- **A camera that was off showed another camera's picture.** On NDI Auto, an entry whose own camera did not answer could borrow "the one Tail 2 left" on the network, often a neighbour's. It now borrows only while its own camera answers, and never takes a source another camera is receiving or that is advertised from another camera's address.
+
 ## [0.8.9] - 2026-10-14
 
 ### Fixed

@@ -147,6 +147,15 @@ export const ACTIONS: ActionDef[] = [
   { id: 'orientation', label: 'Portrait / landscape', group: 'AI & recording', kind: 'toggle', osc: '/cam/{i}/rotate', key: k('o') },
   { id: 'focus.push', label: 'One-push autofocus', group: 'AI & recording', kind: 'trigger', osc: '/cam/{i}/focus/push', key: k('f') },
 
+  // Shutter and ISO move only while exposure is on Manual.
+  { id: 'exp.auto', label: 'Exposure auto / manual', group: 'Exposure', kind: 'toggle', osc: '/cam/{i}/exposure/auto' },
+  { id: 'exp.shutter', label: 'Shutter (1/25 … 1/8000)', group: 'Exposure', kind: 'continuous', osc: '/cam/{i}/shutter', range: [25, 8000] },
+  { id: 'exp.shutter.faster', label: 'Shutter one step faster', group: 'Exposure', kind: 'trigger', osc: '/cam/{i}/shutter/faster' },
+  { id: 'exp.shutter.slower', label: 'Shutter one step slower', group: 'Exposure', kind: 'trigger', osc: '/cam/{i}/shutter/slower' },
+  { id: 'exp.iso', label: 'ISO (100 … 6400)', group: 'Exposure', kind: 'continuous', osc: '/cam/{i}/iso', range: [100, 6400] },
+  { id: 'exp.iso.up', label: 'ISO one stop up', group: 'Exposure', kind: 'trigger', osc: '/cam/{i}/iso/up' },
+  { id: 'exp.iso.down', label: 'ISO one stop down', group: 'Exposure', kind: 'trigger', osc: '/cam/{i}/iso/down' },
+
   { id: 'panel.toggle', label: 'Show / hide camera settings', group: 'App', kind: 'trigger', osc: '/app/panel', key: k('i') },
   { id: 'trackbox.toggle', label: 'Show / hide tracking box', group: 'App', kind: 'trigger', osc: '/app/trackbox' },
   { id: 'show.save', label: 'Save show', group: 'App', kind: 'trigger', osc: '/app/show/save', key: k('s', { ctrl: true, shift: true }) },
@@ -363,6 +372,13 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
   if (rest === 'record') return press('record');
   if (rest === 'rotate') return press('orientation');
   if (rest === 'focus/push') return press('focus.push');
+  if (rest === 'exposure/auto') return press('exp.auto');
+  if (rest === 'shutter') return cont('exp.shutter');
+  if (rest === 'shutter/faster') return press('exp.shutter.faster');
+  if (rest === 'shutter/slower') return press('exp.shutter.slower');
+  if (rest === 'iso') return cont('exp.iso');
+  if (rest === 'iso/up') return press('exp.iso.up');
+  if (rest === 'iso/down') return press('exp.iso.down');
   if (rest === 'tally') {
     if (v === undefined) return null;
     return { actionId: v === 1 ? 'tally.pgm' : v === 2 ? 'tally.pvw' : 'tally.clear', phase: 'press', ...target };

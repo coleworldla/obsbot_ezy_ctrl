@@ -8,6 +8,7 @@ import type { CameraConfig, NdiFrame, NdiSource, NdiStateMessage, NdiStatus } fr
 import { errMsg, logger } from '../log';
 import { BANDWIDTH_HIGHEST, BANDWIDTH_LOWEST, COLOR_RGBX_RGBA, NDI_FRAME_ERROR, NDI_FRAME_VIDEO, NdiLib, type RawSource } from './lib';
 import { findNdiRuntime, ndiNotFoundMessage, ndiRuntimeDownloadUrl } from './runtime';
+import { pickAutoSource } from './pick';
 
 const CAPTURE_TIMEOUT_MS = 500;
 const STOP_TIMEOUT_MS = 2500; // how long quitting waits for receivers to be destroyed
@@ -42,6 +43,8 @@ export class NdiManager {
   private focusedId: string | null = null;
 
   private lastLogged: string | null = null;
+  /** Whether a camera's VISCA control answers (set by the app); gates the "one Tail 2 left" fallback. */
+  isOnline: (id: string) => boolean = () => true;
 
   constructor(private runtimeOverride?: string) {}
 
@@ -200,16 +203,8 @@ export class NdiManager {
     if (wanted) {
       match = list.find((s) => s.name === wanted);
     } else {
-      // Auto: 1. the source advertised from the camera's IP; 2. an NDI name that carries the camera's name;
-      // 3. a Tail 2 with Ethernet and Wi-Fi both up may advertise NDI from its other address, so fall back to
-      //    the one Tail 2 no other camera in the app has claimed.
-      const claimed = new Set([...this.receivers.values()].filter((o) => o !== r).map((o) => o.source?.name).filter((n): n is string => !!n));
-      const free = list.filter((s) => !claimed.has(s.name));
-      const tails = free.filter((s) => /TAIL/i.test(s.name));
-      match =
-        free.find((s) => s.url.split(':')[0] === r.cfg.host) ??
-        free.find((s) => s.name.toUpperCase().includes(r.cfg.name.toUpperCase())) ??
-        (tails.length === 1 && r.cfg.kind !== 'monitor' ? tails[0] : undefined);
+      const others = [...this.receivers.values()].filter((o) => o !== r).map((o) => ({ host: o.cfg.host, source: o.source?.name ?? null }));
+      match = pickAutoSource(list, r.cfg, others, this.isOnline(r.cfg.id));
     }
     if (!match) return null;
     r.source = match;

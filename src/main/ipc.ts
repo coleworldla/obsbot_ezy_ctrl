@@ -1,9 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron';
 import fs from 'node:fs';
 import os from 'node:os';
+import { shutterLabel } from '../shared/exposure';
 import type { Mapping } from '../shared/mapping';
 import type { ShowOperator } from '../shared/show';
-import type { AppInfo, CameraConfig, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir, Preset } from '../shared/types';
+import type { AppInfo, CameraConfig, CameraImageState, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir, Preset } from '../shared/types';
 import type { Updater } from './updater';
 import type { NdiManager } from './ndi/manager';
 import type { CameraManager } from './cameras';
@@ -17,6 +18,32 @@ import type { MappingStore } from './store/mappings';
 import type { PresetStore } from './store/presets';
 import type { SettingsStore } from './store/settings';
 import type { VideoManager } from './video/manager';
+
+/** Shutter / ISO changes; the Tail 2 ignores or refuses them while exposure is on Auto. */
+const EXPOSURE_KEYS = new Set<CameraSet['key']>(['shutter', 'gain', 'shutterStep', 'gainStep', 'shutterUp', 'shutterDown', 'gainUp', 'gainDown']);
+
+/** "shutter 1/250", "ISO one stop up", "backlight = true" for the log. */
+function describeSet(s: CameraSet): string {
+  switch (s.key) {
+    case 'shutter':
+      return `shutter ${shutterLabel(s.value)}`;
+    case 'gain':
+      return `ISO ${s.value * 100}`;
+    case 'shutterStep':
+      return `shutter one stop ${s.value > 0 ? 'faster' : 'slower'}`;
+    case 'gainStep':
+      return `ISO one stop ${s.value > 0 ? 'up' : 'down'}`;
+    default:
+      return `${s.key}${'value' in s ? ` = ${String(s.value)}` : ''}`;
+  }
+}
+
+/** Where a shutter / ISO change ended up, when the camera stopped short of the request or it was relative. */
+function reachedText(s: CameraSet, back: Partial<CameraImageState>): string {
+  if (back.shutter !== undefined && (s.key === 'shutterStep' || (s.key === 'shutter' && back.shutter !== s.value))) return ` (camera at ${shutterLabel(back.shutter)})`;
+  if (back.gain !== undefined && (s.key === 'gainStep' || (s.key === 'gain' && back.gain !== s.value))) return ` (camera at ISO ${back.gain * 100})`;
+  return '';
+}
 
 export interface IpcDeps {
   store: CameraStore;
@@ -145,9 +172,11 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
   // ---- camera settings (tracking / focus / exposure / white balance / image) ----
   handle('camera:set', async (_e, id: string, s: CameraSet) => {
     const name = store.get(id)?.name ?? id;
-    const what = `${s.key}${'value' in s ? ` = ${String(s.value)}` : ''}`;
+    const what = describeSet(s);
+    let back: Partial<CameraImageState>;
     try {
-      await manager.get(id).set(s);
+      if (EXPOSURE_KEYS.has(s.key) && manager.statuses().find((x) => x.id === id)?.state?.exposureAuto) throw new Error('exposure is on Auto; set Exposure to Manual to change shutter or ISO');
+      back = await manager.get(id).set(s);
     } catch (err) {
       const group = manager.statuses().find((x) => x.id === id)?.state?.trackMode === 'group';
       const hint = s.key === 'autoZoom' && s.value === 1 && group ? '; Close-up exists only for single-person tracking' : '';
@@ -155,11 +184,12 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
       if (err && typeof err === 'object') (err as { logged?: boolean }).logged = true;
       throw err;
     }
-    logger.info('visca', `${name}: set ${what}`, id);
+    logger.info('visca', `${name}: set ${what}${reachedText(s, back)}`, id);
     // Live-state keys are re-read right away so the UI mirrors the camera.
     if (['track', 'trackMode', 'record', 'portrait', 'focusAuto', 'exposureAuto', 'wbMode'].includes(s.key)) await manager.refreshState(id).catch(() => undefined);
+    return back;
   });
-  handle('camera:fullState', (_e, id: string) => manager.get(id).fullState(manager.statuses().find((s) => s.id === id)?.state));
+  handle('camera:fullState', (_e, id: string, recheck?: boolean) => manager.get(id).fullState(manager.statuses().find((s) => s.id === id)?.state, !!recheck));
 
   // ---- other actions ----
   handle('focus:push', (_e, id: string) => manager.get(id).focusOnePush());

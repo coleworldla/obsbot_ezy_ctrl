@@ -2,9 +2,10 @@
  * Runs action invocations (from keyboard, MIDI or OSC) against the app: one place that knows
  * how to jog, zoom, recall presets, toggle tracking, set tally, and so on.
  */
+import { GAIN_MAX, GAIN_MIN, ISO_STEPS, SHUTTER_INDICES, shutterIndexFor } from '../../../shared/exposure';
 import { oscSlug, viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
 import type { Invocation } from '../../../shared/mapping';
-import type { CameraConfig, CameraStatus, JogDir, Preset, Tally } from '../../../shared/types';
+import type { CameraConfig, CameraImageState, CameraSet, CameraStatus, JogDir, Preset, Tally } from '../../../shared/types';
 
 export interface Speed {
   pan: number;
@@ -57,6 +58,15 @@ const DEAD_ZONE = 0.08;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const fire = (p: Promise<unknown>) => p.catch(() => undefined);
 
+/** Fired on window with what the camera reported after a mapped change, so an open camera panel can follow. */
+export const READBACK_EVENT = 'ezy:camera-readback';
+export interface Readback {
+  id: string;
+  back: Partial<CameraImageState>;
+}
+const setCamera = (id: string, s: CameraSet) =>
+  fire(window.ezy.camera.set(id, s).then((back) => window.dispatchEvent(new CustomEvent<Readback>(READBACK_EVENT, { detail: { id, back } }))));
+
 function dirFrom(px: number, ty: number): JogDir {
   if (px === 0 && ty === 0) return 'stop';
   if (px === 0) return ty > 0 ? 'up' : 'down';
@@ -77,6 +87,8 @@ export class ActionExecutor {
   private readonly axes = new Map<string, Axis>();
   private readonly zoomTimers = new Map<string, number>();
   private readonly zoomPending = new Map<string, number>();
+  private readonly exposureTimers = new Map<string, number>();
+  private readonly exposurePending = new Map<string, number>();
 
   constructor(private readonly ctx: () => ExecContext) {}
 
@@ -207,7 +219,51 @@ export class ActionExecutor {
       case 'focus.push':
         if (inv.phase === 'press' && online) fire(window.ezy.focusPush(id));
         return;
+      case 'exp.auto': {
+        if ((inv.phase === 'release' && inv.value === undefined) || !online) return;
+        const cur = c.status[id]?.state?.exposureAuto ?? true;
+        const next = inv.value !== undefined ? inv.value > 0 : !cur;
+        if (next !== cur || inv.value === undefined) setCamera(id, { key: 'exposureAuto', value: next });
+        return;
+      }
+      case 'exp.shutter': {
+        if (inv.phase !== 'value' || inv.value === undefined || !online) return;
+        // A knob sweeps slowest → fastest; OSC sends the x of 1/x (250 for 1/250).
+        const index = inv.unit === 'normalized' ? SHUTTER_INDICES[Math.round(clamp(inv.value, 0, 1) * (SHUTTER_INDICES.length - 1))] : shutterIndexFor(inv.value);
+        this.exposureTo(id, 'shutter', index);
+        return;
+      }
+      case 'exp.iso': {
+        if (inv.phase !== 'value' || inv.value === undefined || !online) return;
+        // A knob sweeps the ISO stops; OSC sends the ISO itself.
+        const gain = inv.unit === 'normalized' ? ISO_STEPS[Math.round(clamp(inv.value, 0, 1) * (ISO_STEPS.length - 1))] / 100 : clamp(Math.round(inv.value / 100), GAIN_MIN, GAIN_MAX);
+        this.exposureTo(id, 'gain', gain);
+        return;
+      }
+      case 'exp.shutter.faster':
+      case 'exp.shutter.slower':
+        if (inv.phase === 'press' && online) setCamera(id, { key: 'shutterStep', value: inv.actionId === 'exp.shutter.faster' ? 1 : -1 });
+        return;
+      case 'exp.iso.up':
+      case 'exp.iso.down':
+        if (inv.phase === 'press' && online) setCamera(id, { key: 'gainStep', value: inv.actionId === 'exp.iso.up' ? 1 : -1 });
+        return;
     }
+  }
+
+  /** Coalesce a turning knob into one target every 100 ms; the camera steps toward the newest one. */
+  private exposureTo(id: string, key: 'shutter' | 'gain', value: number): void {
+    const k = `${id}:${key}`;
+    this.exposurePending.set(k, value);
+    if (this.exposureTimers.has(k)) return;
+    this.exposureTimers.set(
+      k,
+      window.setTimeout(() => {
+        this.exposureTimers.delete(k);
+        const v = this.exposurePending.get(k);
+        if (v !== undefined) setCamera(id, { key, value: v });
+      }, 100),
+    );
   }
 
   private axis(c: ExecContext, id: string, which: 'pan' | 'tilt', v: number, online: boolean): void {

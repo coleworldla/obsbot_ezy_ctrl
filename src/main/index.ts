@@ -167,6 +167,8 @@ app.whenReady().then(() => {
   updater.on('status', (s) => win?.webContents.send('update:status', s));
 
   ndi = new NdiManager(process.env.EZY_NDI_RUNTIME ?? settings.get().ndi.runtimePath);
+  // Auto NDI matching only borrows "the one Tail 2 left" for a camera whose control answers.
+  ndi.isOnline = (id) => manager?.statuses().find((x) => x.id === id)?.connected ?? false;
 
   const backupsDir = join(userData, 'shows', 'backups');
   const shows = new ShowService({

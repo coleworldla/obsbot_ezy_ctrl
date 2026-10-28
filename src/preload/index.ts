@@ -5,6 +5,7 @@ import type {
   AppInfo,
   CameraConfig,
   CameraFullState,
+  CameraImageState,
   CameraInput,
   CameraSet,
   CameraStatus,
@@ -50,8 +51,10 @@ export const api = {
     disconnect: (id: string) => invoke<void>('camera:disconnect', id),
     statuses: () => invoke<CameraStatus[]>('camera:statuses'),
     position: (id: string) => invoke<Position>('camera:position', id),
-    set: (id: string, s: CameraSet) => invoke<void>('camera:set', id, s),
-    fullState: (id: string) => invoke<CameraFullState>('camera:fullState', id),
+    /** Resolves with what the camera reports afterwards for the settings the change affects. */
+    set: (id: string, s: CameraSet) => invoke<Partial<CameraImageState>>('camera:set', id, s),
+    /** `recheck` asks again for settings the camera has not answered before. */
+    fullState: (id: string, recheck?: boolean) => invoke<CameraFullState>('camera:fullState', id, recheck),
   },
   ptz: {
     drive: (id: string, dir: JogDir, pan: number, tilt: number) => invoke<void>('ptz:drive', id, dir, pan, tilt),

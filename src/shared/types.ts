@@ -51,7 +51,7 @@ export interface CameraImageState {
   expComp: number; // index 0-18 (-3 … +3 EV)
   backlight: boolean;
   flicker: number; // 0 off, 1 50 Hz, 2 60 Hz
-  shutter: number; // shutter index (see SHUTTER_LABELS)
+  shutter: number; // shutter index (see SHUTTER_LABELS in shared/exposure)
   gain: number; // ISO / 100
   colorTemp: number; // K
   rGain: number;
@@ -68,12 +68,18 @@ export type CameraFullState = CameraLiveState &
   CameraImageState & {
     /** Inquiries this camera did not answer; their values above are defaults or last commanded values. */
     unsupported: string[];
+    /** The camera stopped answering partway through: what it was not asked for is the last known value. */
+    stale?: boolean;
   };
 
 export type CameraSet =
   | { key: 'track' | 'onlyMe' | 'focusAuto' | 'exposureAuto' | 'backlight' | 'record' | 'portrait'; value: boolean }
   | { key: 'trackMode'; value: 'single' | 'group' }
   | { key: 'trackSpeed' | 'autoZoom' | 'flicker' | 'wbMode' | 'style' | 'expComp' | 'focusPos' | 'colorTemp' | 'bright' | 'contrast' | 'saturation' | 'sharpness' | 'hue'; value: number }
+  /** Shutter index / ISO ÷ 100: the camera is stepped there one notch at a time (OBSBOT has no direct command for either). */
+  | { key: 'shutter' | 'gain'; value: number }
+  /** One stop: +1 = faster shutter / higher ISO, -1 = slower / lower, from where the camera is (or is already heading). */
+  | { key: 'shutterStep' | 'gainStep'; value: 1 | -1 }
   | { key: 'focusPush' | 'wbPush' | 'shutterUp' | 'shutterDown' | 'gainUp' | 'gainDown' | 'rGainUp' | 'rGainDown' | 'bGainUp' | 'bGainDown' | 'expCompReset' | 'colorTempReset' };
 
 /** 0 = off, 1 = program (red), 2 = preview (green). */
