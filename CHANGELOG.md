@@ -10,6 +10,7 @@ All notable changes to EZY CTRL. Each version here has a matching GitHub Release
 
 ### Fixed
 - **Camera settings felt slow.** Every click waited 600 ms and then re-read all 25 settings one after another before showing anything; a camera that stopped answering made that take up to 37 s, with *reading…* the whole time. Changes now show at once and read back only what they touch. When the camera stops answering, a read gives up after one unanswered setting (about 3 s) and keeps the last known values, and a setting a camera never answers is skipped until **Refresh**. Settings changes go to the camera one at a time, so quick clicks cannot overflow its command buffer.
+- **"unhandled rejection: Object has been destroyed" in the log on every quit.** Closing the window left the app sending camera status to it while the cameras shut down (a camera that did not answer made it certain), and the app exited with code 7. Messages to the window now stop once it closes, and quitting is clean.
 - **A camera that was off showed another camera's picture.** On NDI Auto, an entry whose own camera did not answer could borrow "the one Tail 2 left" on the network, often a neighbour's. It now borrows only while its own camera answers, and never takes a source another camera is receiving or that is advertised from another camera's address.
 
 ## [0.8.9] - 2026-10-14

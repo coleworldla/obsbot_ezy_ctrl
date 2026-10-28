@@ -39,6 +39,14 @@ let pendingShow: string | null = showFileFromArgv(process.argv.slice(1));
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** The window, unless it is closing or gone. */
+const liveWindow = (): BrowserWindow | null => (win && !win.isDestroyed() && !win.webContents.isDestroyed() ? win : null);
+
+/** Send to the renderer. Cameras, OSC and the logger keep reporting while the app quits, after the window has closed. */
+function toWindow(channel: string, ...args: unknown[]): void {
+  liveWindow()?.webContents.send(channel, ...args);
+}
+
 /** Open a .ezy handed over by the OS, once the window has loaded; always asks first. */
 function openShowFromOs(file: string): void {
   const w = win;
@@ -90,6 +98,9 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' };
   });
   w.webContents.on('render-process-gone', (_e, details) => logger.error('app', `renderer gone: ${details.reason}`));
+  w.on('closed', () => {
+    if (win === w) win = null;
+  });
   if (process.env.ELECTRON_RENDERER_URL) {
     void w.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
@@ -124,7 +135,7 @@ app.whenReady().then(() => {
   logger.attachFile(join(userData, 'logs', 'ezy-ctrl.log'));
   logger.info('app', `EZY CTRL ${app.getVersion()} · Electron ${process.versions.electron} · ${process.platform} ${process.arch}`);
   logger.info('app', `config folder ${userData}`);
-  logger.on('entry', (entry) => win?.webContents.send('log:entry', entry));
+  logger.on('entry', (entry) => toWindow('log:entry', entry));
 
   // Web MIDI (and clipboard for "copy address list") need explicit permission in Electron.
   // 'media' = webcam capture for the Webcam video source (UVC / NDI Tools Webcam Input).
@@ -136,16 +147,14 @@ app.whenReady().then(() => {
   const presets = new PresetStore(join(userData, 'presets.json'));
   const settings = new SettingsStore(join(userData, 'settings.json'));
   const mappings = new MappingStore(join(userData, 'mappings.json'));
-  manager = new CameraManager(store, (status) => {
-    win?.webContents.send('camera:status', status);
-  });
+  manager = new CameraManager(store, (status) => toWindow('camera:status', status));
   video = new VideoManager(
     (line) => logger.info('video', line),
     (line) => logger.error('video', line),
   );
 
   osc = new OscServer();
-  osc.on('message', (m: OscIncoming) => win?.webContents.send('osc:message', m));
+  osc.on('message', (m: OscIncoming) => toWindow('osc:message', m));
   osc.on('error', (e: Error) => logger.warn('osc', e.message));
   osc.on('listening', (port: number) => logger.info('osc', `listening on udp port ${port}`));
   const applyOsc = async () => {
@@ -160,11 +169,11 @@ app.whenReady().then(() => {
       osc!.stop();
       logger.info('osc', 'listener stopped');
     }
-    win?.webContents.send('osc:status', oscStatusOf(osc!));
+    toWindow('osc:status', oscStatusOf(osc!));
   };
 
   const updater = new Updater();
-  updater.on('status', (s) => win?.webContents.send('update:status', s));
+  updater.on('status', (s) => toWindow('update:status', s));
 
   ndi = new NdiManager(process.env.EZY_NDI_RUNTIME ?? settings.get().ndi.runtimePath);
   // Auto NDI matching only borrows "the one Tail 2 left" for a camera whose control answers.
@@ -186,7 +195,7 @@ app.whenReady().then(() => {
   });
   showActions = createShowActions({
     shows,
-    window: () => win,
+    window: liveWindow,
     // Test runs with their own config folder keep their shows there, away from the real Documents folder.
     showsDir: process.env.EZY_USER_DATA ? join(userData, 'shows') : join(app.getPath('documents'), 'EZY CTRL Shows'),
     backupsDir,
