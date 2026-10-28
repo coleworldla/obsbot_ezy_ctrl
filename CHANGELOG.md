@@ -2,7 +2,7 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.10] - 2026-10-28
 
 ### Added
 - **Pick a shutter speed or ISO.** With Exposure on Manual, Camera settings has a list for each (shutter 1/25 … 1/8000, ISO 100 … 6400 a stop apart) next to the − / + buttons. The Tail 2 only takes one-notch shutter and gain commands, so EZY CTRL steps the camera to the chosen value, reading it back as it goes, and stops at the nearest value the camera has. The value shows at once, dimmed until the camera gets there.
