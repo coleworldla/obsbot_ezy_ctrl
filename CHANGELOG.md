@@ -2,7 +2,7 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.11] - 2026-10-30
 
 ### Changed
 - **Shutter and ISO are always in Camera settings.** Before, they only appeared once Exposure was set to Manual, so on Auto (the camera's default) there was no sign of them. Now they always show: on Auto, greyed, with the values auto exposure picked; choosing a value or pressing − / + switches Exposure to Manual and applies it. Exposure compensation still shows on Auto only.
