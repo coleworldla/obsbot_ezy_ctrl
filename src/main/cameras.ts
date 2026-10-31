@@ -1,7 +1,7 @@
 /**
  * Owns one Tail2 connection per configured camera and polls position for the UI.
  */
-import type { CameraConfig, CameraStatus, TestResult } from '../shared/types';
+import type { CameraConfig, CameraLiveState, CameraStatus, TestResult } from '../shared/types';
 import { errMsg, logger } from './log';
 import type { CameraStore } from './store/cameras';
 import { Tail2 } from './visca/tail2';
@@ -152,6 +152,12 @@ export class CameraManager {
         updatedAt: Date.now(),
       });
     }
+  }
+
+  /** Fold values a settings change just read back into the polled state, so the stage shows them at once. */
+  noteState(id: string, patch: Partial<CameraLiveState>): void {
+    const s = this.status.get(id);
+    if (s?.state) this.push({ ...s, state: { ...s.state, ...patch }, updatedAt: Date.now() });
   }
 
   /** Re-read the live state right away (after the panel changed something). */

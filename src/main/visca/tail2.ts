@@ -82,6 +82,8 @@ interface Pass {
 
 /** No reply at all (or the socket closed), as opposed to the camera answering with an error. */
 const isSilence = (e: unknown) => e instanceof ViscaError && e.code === undefined;
+/** Shutter / gain commands that only do something on Manual exposure. */
+const MANUAL_ONLY = new Set<CameraSet['key']>(['shutterUp', 'shutterDown', 'gainUp', 'gainDown']);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class Tail2 {
@@ -227,11 +229,20 @@ export class Tail2 {
           : (await this.serial(async () => ({ done: this.stepTo(key, next(this.targets.get(key) ?? (await this.readStep(key)))) }))).done;
       return { [key]: await done };
     }
-    await this.serial(() => this.send(s as CommandSet));
-    // Remember what we asked for, in case the camera cannot report it back.
-    if ('value' in s) (this.known as Record<string, unknown>)[s.key] = s.value;
+    await this.serial(async () => {
+      if (MANUAL_ONLY.has(s.key)) this.manualOnly();
+      await this.send(s as CommandSet);
+      // Remember what we asked for, in case the camera cannot report it back. Inside the queue, so a change
+      // queued behind this one (shutter after "exposure to Manual") already sees it.
+      if ('value' in s) (this.known as Record<string, unknown>)[s.key] = s.value;
+    });
     const keys = READ_AFTER[s.key] ?? [];
     return keys.length ? this.serial(() => this.readImage(keys, { dead: false })) : {};
+  }
+
+  /** Checked in queue order, so "Manual, then shutter" sent back to back works. */
+  private manualOnly(): void {
+    if (this.known.exposureAuto === true) throw new Error('exposure is on Auto; set Exposure to Manual to change shutter or ISO');
   }
 
   private async readStep(key: StepKey): Promise<number> {
@@ -255,6 +266,7 @@ export class Tail2 {
   }
 
   private async stepLoop(key: StepKey): Promise<number> {
+    this.manualOnly();
     const st = STEPPERS[key];
     let v = await this.readStep(key);
     let flipped = false;
@@ -384,6 +396,9 @@ export class Tail2 {
       focusAuto: await this.tryQ('focusAuto', inq.focusMode(), parse.onOff23, d.focusAuto, pass),
       exposureAuto: await this.tryQ('exposureAuto', inq.exposureMode(), (b) => parse.byte(b) === 0x00, d.exposureAuto, pass),
       wbMode: await this.tryQ('wbMode', inq.wbMode(), parse.byte, d.wbMode, pass),
+      // Shown under the picture: what auto exposure picked, or what was set by hand.
+      shutter: await this.tryQ<number | undefined>('shutter', inq.shutter(), parse.nib2, d.shutter, pass),
+      gain: await this.tryQ<number | undefined>('gain', inq.gain(), parse.nib2, d.gain, pass),
     };
   }
 

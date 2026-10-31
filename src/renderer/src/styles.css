@@ -243,6 +243,8 @@ input[type='range'] { flex: 1; min-width: 40px; accent-color: var(--accent); hei
 /* shutter / ISO: dimmed while the camera is still stepping there */
 .input.expsel { width: 92px; flex: none; text-align: center; }
 .input.expsel.pending { opacity: 0.55; }
+/* on Auto exposure: the camera's own pick, shown quieter */
+.input.expsel.auto { color: var(--muted); }
 select.input { padding: 0 6px; appearance: auto; }
 
 /* help / first run */
