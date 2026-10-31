@@ -485,6 +485,16 @@ export default function App() {
     if (steps.includes('oscmap')) timers.push(window.setTimeout(() => setShowOscMap(true), 3000));
     if (steps.includes('oscmap-scroll')) timers.push(window.setTimeout(() => document.querySelector('.oscmap-body')?.scrollTo({ top: 1500 }), 4500));
     if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
+    // Pick 1/500 from the camera panel's shutter list, as a user would (React listens for 'change').
+    if (steps.includes('exp-pick'))
+      timers.push(
+        window.setTimeout(() => {
+          const sel = document.querySelector<HTMLSelectElement>('.campanel select.expsel');
+          if (!sel) return;
+          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(sel, String(0x15));
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }, 6000),
+      );
     if (steps.includes('help')) timers.push(window.setTimeout(() => setShowHelp(true), 3000));
     if (steps.includes('add')) timers.push(window.setTimeout(() => setShowAdd(true), 4000));
     if (steps.includes('add-ndi'))

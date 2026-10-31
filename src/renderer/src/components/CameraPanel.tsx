@@ -167,17 +167,19 @@ export function CameraPanel({ camera, status, onClose }: Props) {
     if (Object.keys(fresh).length) setFull((f) => ({ ...f, ...fresh }));
   };
 
-  /** Send a change and take what the camera reports back for the settings it affects. */
-  const send = async (s: CameraSet, busyKey?: 'shutter' | 'gain') => {
+  /** Send a change and take what the camera reports back for the settings it affects; false when it was refused. */
+  const send = async (s: CameraSet, busyKey?: 'shutter' | 'gain'): Promise<boolean> => {
     const before = { ...edits.current };
     if (busyKey) setBusy((b) => ({ ...b, [busyKey]: (b[busyKey] ?? 0) + 1 }));
     try {
       take(await window.ezy.camera.set(id, s), before);
+      return true;
     } catch (e) {
       const why = ipcErrorText(e);
       showErr(s.key === 'autoZoom' && s.value === CLOSE_UP && trackMode === 'group' ? `Close-up works only in Single mode (camera said: ${why}). Set Mode to Single first.` : `could not set ${describeSet(s)}: ${why}`);
       // Refused: put back what the camera really has.
       if (busyKey) void window.ezy.camera.fullState(id).then((st) => take({ [busyKey]: st[busyKey] }, before), () => undefined);
+      return false;
     } finally {
       if (busyKey) setBusy((b) => ({ ...b, [busyKey]: Math.max(0, (b[busyKey] ?? 0) - 1) }));
     }
@@ -189,15 +191,28 @@ export function CameraPanel({ camera, status, onClose }: Props) {
     void send(s);
   };
 
+  /** Shutter and ISO only move on Manual: on Auto, switch first, then change. */
+  const toManual = async (busyKey: 'shutter' | 'gain'): Promise<boolean> => {
+    if (!exposureAuto) return true;
+    optimistic({ exposureAuto: false });
+    show({ exposureAuto: false });
+    return send({ key: 'exposureAuto', value: false }, busyKey);
+  };
+
   /** Shutter and ISO: the camera steps there one notch at a time; the value stays dimmed until it arrives. */
-  const setExposure = (key: 'shutter' | 'gain', value: number) => {
+  const setExposure = async (key: 'shutter' | 'gain', value: number) => {
     show({ [key]: value });
+    if (!(await toManual(key))) return;
+    show({ [key]: value }); // switching to Manual read back the camera's own value; the pick still wins
     void send({ key, value }, key);
   };
 
   /** − / +: one step from wherever the camera is heading; the guess shows at once and the camera's reply corrects it. */
-  const stepExposure = (key: 'shutter' | 'gain', dir: 1 | -1) => {
-    show({ [key]: key === 'shutter' ? stepShutter(full.shutter, dir > 0) : stepIso(full.gain, dir > 0) });
+  const stepExposure = async (key: 'shutter' | 'gain', dir: 1 | -1) => {
+    const guess = key === 'shutter' ? stepShutter(shutter, dir > 0) : stepIso(gain, dir > 0);
+    show({ [key]: guess });
+    if (!(await toManual(key))) return;
+    show({ [key]: guess });
     void send({ key: key === 'shutter' ? 'shutterStep' : 'gainStep', value: dir }, key);
   };
 
@@ -220,6 +235,10 @@ export function CameraPanel({ camera, status, onClose }: Props) {
   const focusAuto = pending.focusAuto ?? live?.focusAuto ?? full.focusAuto;
   const exposureAuto = pending.exposureAuto ?? live?.exposureAuto ?? full.exposureAuto;
   const wbMode = pending.wbMode ?? live?.wbMode ?? full.wbMode;
+  // On Auto the camera keeps changing these; the 2 s poll has its latest picks.
+  const shutter = exposureAuto ? (live?.shutter ?? full.shutter) : full.shutter;
+  const gain = exposureAuto ? (live?.gain ?? full.gain) : full.gain;
+  const autoTitle = exposureAuto ? 'Picked by auto exposure. Choose a value or press − / + to switch to Manual.' : undefined;
 
   const statusText = !online
     ? 'camera offline'
@@ -305,44 +324,41 @@ export function CameraPanel({ camera, status, onClose }: Props) {
           <Row label="Exposure">
             <Seg value={exposureAuto ? 'auto' : 'manual'} disabled={!online} options={[{ v: 'auto', label: 'Auto' }, { v: 'manual', label: 'Manual' }]} onChange={(v) => setLive({ key: 'exposureAuto', value: v === 'auto' }, { exposureAuto: v === 'auto' })} />
           </Row>
-          {exposureAuto ? (
+          <Row label="Shutter">
+            <button className="b sm" disabled={!online} onClick={() => void stepExposure('shutter', -1)} title={autoTitle ?? 'One step slower (brighter, more motion blur)'}>
+              −
+            </button>
+            <select className={`input small expsel mono${busy.shutter ? ' pending' : ''}${exposureAuto ? ' auto' : ''}`} disabled={!online} value={shutter} title={autoTitle} onChange={(e) => void setExposure('shutter', Number(e.target.value))}>
+              {(SHUTTER_INDICES.includes(shutter) ? SHUTTER_INDICES : [shutter, ...SHUTTER_INDICES]).map((i) => (
+                <option key={i} value={i}>
+                  {shutterLabel(i)}
+                </option>
+              ))}
+            </select>
+            <button className="b sm" disabled={!online} onClick={() => void stepExposure('shutter', 1)} title={autoTitle ?? 'One step faster (darker, less motion blur)'}>
+              +
+            </button>
+          </Row>
+          <Row label="ISO">
+            <button className="b sm" disabled={!online} onClick={() => void stepExposure('gain', -1)} title={autoTitle ?? 'One stop lower (darker, cleaner)'}>
+              −
+            </button>
+            <select className={`input small expsel mono${busy.gain ? ' pending' : ''}${exposureAuto ? ' auto' : ''}`} disabled={!online} value={gain} title={autoTitle} onChange={(e) => void setExposure('gain', Number(e.target.value))}>
+              {isoChoices(gain).map((g) => (
+                <option key={g} value={g}>
+                  {g * 100}
+                </option>
+              ))}
+            </select>
+            <button className="b sm" disabled={!online} onClick={() => void stepExposure('gain', 1)} title={autoTitle ?? 'One stop higher (brighter, noisier)'}>
+              +
+            </button>
+          </Row>
+          {exposureAuto && (
             <Row label="Exp. comp">
               <input type="range" min={0} max={18} value={full.expComp} disabled={!online} onChange={(e) => setSlider('expComp', Number(e.target.value))} />
               <output className="mono">{`${(EV[full.expComp] ?? 0) >= 0 ? '+' : ''}${EV[full.expComp] ?? 0} EV`}</output>
             </Row>
-          ) : (
-            <>
-              <Row label="Shutter">
-                <button className="b sm" disabled={!online} onClick={() => stepExposure('shutter', -1)} title="One step slower (brighter, more motion blur)">
-                  −
-                </button>
-                <select className={`input small expsel mono${busy.shutter ? ' pending' : ''}`} disabled={!online} value={full.shutter} onChange={(e) => setExposure('shutter', Number(e.target.value))}>
-                  {(SHUTTER_INDICES.includes(full.shutter) ? SHUTTER_INDICES : [full.shutter, ...SHUTTER_INDICES]).map((i) => (
-                    <option key={i} value={i}>
-                      {shutterLabel(i)}
-                    </option>
-                  ))}
-                </select>
-                <button className="b sm" disabled={!online} onClick={() => stepExposure('shutter', 1)} title="One step faster (darker, less motion blur)">
-                  +
-                </button>
-              </Row>
-              <Row label="ISO">
-                <button className="b sm" disabled={!online} onClick={() => stepExposure('gain', -1)} title="One stop lower (darker, cleaner)">
-                  −
-                </button>
-                <select className={`input small expsel mono${busy.gain ? ' pending' : ''}`} disabled={!online} value={full.gain} onChange={(e) => setExposure('gain', Number(e.target.value))}>
-                  {isoChoices(full.gain).map((g) => (
-                    <option key={g} value={g}>
-                      {g * 100}
-                    </option>
-                  ))}
-                </select>
-                <button className="b sm" disabled={!online} onClick={() => stepExposure('gain', 1)} title="One stop higher (brighter, noisier)">
-                  +
-                </button>
-              </Row>
-            </>
           )}
           <Row label="Backlight">
             <Toggle on={full.backlight} disabled={!online} onChange={(v) => set({ key: 'backlight', value: v })} />

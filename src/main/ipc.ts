@@ -19,9 +19,6 @@ import type { PresetStore } from './store/presets';
 import type { SettingsStore } from './store/settings';
 import type { VideoManager } from './video/manager';
 
-/** Shutter / ISO changes; the Tail 2 ignores or refuses them while exposure is on Auto. */
-const EXPOSURE_KEYS = new Set<CameraSet['key']>(['shutter', 'gain', 'shutterStep', 'gainStep', 'shutterUp', 'shutterDown', 'gainUp', 'gainDown']);
-
 /** "shutter 1/250", "ISO one stop up", "backlight = true" for the log. */
 function describeSet(s: CameraSet): string {
   switch (s.key) {
@@ -175,7 +172,6 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
     const what = describeSet(s);
     let back: Partial<CameraImageState>;
     try {
-      if (EXPOSURE_KEYS.has(s.key) && manager.statuses().find((x) => x.id === id)?.state?.exposureAuto) throw new Error('exposure is on Auto; set Exposure to Manual to change shutter or ISO');
       back = await manager.get(id).set(s);
     } catch (err) {
       const group = manager.statuses().find((x) => x.id === id)?.state?.trackMode === 'group';
@@ -185,6 +181,7 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
       throw err;
     }
     logger.info('visca', `${name}: set ${what}${reachedText(s, back)}`, id);
+    if (back.shutter !== undefined || back.gain !== undefined) manager.noteState(id, { ...(back.shutter !== undefined ? { shutter: back.shutter } : {}), ...(back.gain !== undefined ? { gain: back.gain } : {}) });
     // Live-state keys are re-read right away so the UI mirrors the camera.
     if (['track', 'trackMode', 'record', 'portrait', 'focusAuto', 'exposureAuto', 'wbMode'].includes(s.key)) await manager.refreshState(id).catch(() => undefined);
     return back;

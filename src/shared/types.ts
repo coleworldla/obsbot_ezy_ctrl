@@ -40,6 +40,9 @@ export interface CameraLiveState {
   focusAuto: boolean;
   exposureAuto: boolean;
   wbMode: number;
+  /** Shutter index and ISO ÷ 100 as the camera has them now: picked by auto exposure, or set by hand. */
+  shutter?: number;
+  gain?: number;
 }
 
 /** Everything else, fetched when the camera panel opens and after each change. */

@@ -2,6 +2,13 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Changed
+- **Shutter and ISO are always in Camera settings.** Before, they only appeared once Exposure was set to Manual, so on Auto (the camera's default) there was no sign of them. Now they always show: on Auto, greyed, with the values auto exposure picked; choosing a value or pressing − / + switches Exposure to Manual and applies it. Exposure compensation still shows on Auto only.
+- **Shutter and ISO under the picture.** The status line on the stage now reads e.g. `AE 1/60 ISO 400` or `ME 1/500 ISO 400`, from the 2-second poll and right after a change.
+- Shutter / ISO changes on Auto are refused in the camera's command queue instead of up front, so "switch to Manual, then set the shutter" sent back to back always works. MIDI and OSC shutter / ISO still do nothing on Auto (the log says so); `/cam/<i>/exposure/auto 0` or the *Exposure auto / manual* action switches first.
+
 ## [0.8.10] - 2026-10-28
 
 ### Added

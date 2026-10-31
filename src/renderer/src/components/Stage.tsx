@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { shutterLabel } from '../../../shared/exposure';
 import { viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
 import { isMonitor, type CameraConfig, type CameraStatus, type JogDir, type Tally, type ZoomDir } from '../../../shared/types';
 import type { CamState, Speed } from '../control/executor';
@@ -171,7 +172,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
         <div className="ov bl">
           PAN {fmt(p?.panDeg)} &nbsp; TILT {fmt(p?.tiltDeg)} &nbsp; ZOOM {p ? `${p.zoomRatio.toFixed(1)}×` : '—'} &nbsp;·&nbsp; TRACK {tracking ? (live?.trackMode === 'group' ? 'group' : 'on') : 'off'}{' '}
           · REC {recording ? 'on' : 'off'} · {portrait ? 'PORTRAIT' : 'LANDSCAPE'}
-          {live ? ` · ${live.focusAuto ? 'AF' : 'MF'} · ${live.exposureAuto ? 'AE' : 'ME'}` : ''}
+          {live ? ` · ${live.focusAuto ? 'AF' : 'MF'} · ${live.exposureAuto ? 'AE' : 'ME'}${live.shutter !== undefined ? ` ${shutterLabel(live.shutter)}` : ''}${live.gain !== undefined ? ` ISO ${live.gain * 100}` : ''}` : ''}
         </div>
         {activePresetName && <div className="ov br preset">{activePresetName}</div>}
       </div>

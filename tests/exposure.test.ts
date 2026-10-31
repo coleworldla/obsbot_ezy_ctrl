@@ -163,6 +163,21 @@ describe('Tail2 shutter / ISO against a fake camera', () => {
     expect(cam.maxOutstanding).toBe(1);
   });
 
+  it('refuses shutter / ISO on Auto, and "Manual, then shutter" sent back to back works', async () => {
+    await t.set({ key: 'exposureAuto', value: true });
+    await expect(t.set({ key: 'shutter', value: 0x15 })).rejects.toThrow(/Manual/);
+    await expect(t.set({ key: 'gainUp' })).rejects.toThrow(/Manual/);
+    expect(cam.commands.filter((c) => c === '04:0a' || c === '04:0c')).toHaveLength(0);
+    const [, back] = await Promise.all([t.set({ key: 'exposureAuto', value: false }), t.set({ key: 'shutter', value: 0x15 })]);
+    expect(back).toEqual({ shutter: 0x15 });
+  });
+
+  it('reports shutter and ISO with the polled live state', async () => {
+    cam.shutter = 0x15;
+    cam.gain = 8;
+    expect(await t.liveState()).toMatchObject({ shutter: 0x15, gain: 8 });
+  });
+
   it('reads back only what a change affects', async () => {
     cam.inquiries.length = 0;
     const back = await t.set({ key: 'exposureAuto', value: false });
