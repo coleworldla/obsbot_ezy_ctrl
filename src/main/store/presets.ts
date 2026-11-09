@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { Preset, PresetExport, PresetInput, PresetPatch } from '../../shared/types';
+import { presetFocusFrom, type Preset, type PresetExport, type PresetInput, type PresetPatch } from '../../shared/types';
 
 interface FileShape {
   version: 1;
@@ -99,6 +99,7 @@ export class PresetStore {
         tiltDeg: p.tiltDeg,
         zoomRatio: p.zoomRatio,
         thumbnail: typeof p.thumbnail === 'string' && p.thumbnail.startsWith('data:image/') ? p.thumbnail : undefined,
+        focus: presetFocusFrom(p.focus),
       });
       n += 1;
     }

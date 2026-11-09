@@ -29,6 +29,12 @@ const PRESET_TOLERANCE = { deg: 1.0, zoom: 0.15 };
 const DRIFT_GRACE_MS = 5000;
 const MONITOR_MAX = 80;
 
+/** "F key", "Ctrl+Shift+S key" for the log. */
+function keyLabel(k: { key: string; ctrl?: boolean; shift?: boolean; alt?: boolean }): string {
+  const name = k.key.length === 1 ? k.key.toUpperCase() : k.key[0].toUpperCase() + k.key.slice(1);
+  return `${[k.ctrl && 'Ctrl', k.shift && 'Shift', k.alt && 'Alt', name].filter(Boolean).join('+')} key`;
+}
+
 function isTyping(e: KeyboardEvent): boolean {
   const t = e.target as HTMLElement | null;
   return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
@@ -329,10 +335,11 @@ export default function App() {
     void window.ezy.mappings.save(list);
   }, []);
 
+  /** `via` says what sent the input; camera commands carry it into the log. */
   const runInput = useCallback(
-    (input: Input, extra: Invocation[] = []) => {
+    (input: Input, extra: Invocation[] = [], via?: string) => {
       const invs = [...extra, ...matchMappings(mappingsRef.current, input)];
-      for (const inv of invs) executor.run(inv);
+      for (const inv of invs) executor.run(via ? { ...inv, via } : inv);
       return invs.length;
     },
     [executor],
@@ -358,7 +365,7 @@ export default function App() {
         setLearn(null);
         return;
       }
-      runInput(m);
+      runInput(m, [], `MIDI ${m.device} ${label}`);
     });
   }, [addMonitor, runInput, saveMappings]);
 
@@ -368,7 +375,7 @@ export default function App() {
       addMonitor('osc', `${m.address} ${m.args.join(' ')}  ← ${m.from}`);
       const input: Input = { type: 'osc', address: m.address, args: m.args };
       const builtin = parseBuiltinOsc(input);
-      runInput(input, builtin ? [builtin] : []);
+      runInput(input, builtin ? [builtin] : [], `OSC ${m.address}${m.args.length ? ` ${m.args.join(' ')}` : ''} from ${m.from}`);
     });
   }, [addMonitor, runInput]);
 
@@ -396,7 +403,7 @@ export default function App() {
         e.preventDefault();
         return;
       }
-      if (runInput(input) > 0) e.preventDefault();
+      if (runInput(input, [], keyLabel(input)) > 0) e.preventDefault();
     };
     const up = (e: KeyboardEvent) => {
       if (isTyping(e)) return;

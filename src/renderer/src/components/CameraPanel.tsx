@@ -172,7 +172,7 @@ export function CameraPanel({ camera, status, onClose }: Props) {
     const before = { ...edits.current };
     if (busyKey) setBusy((b) => ({ ...b, [busyKey]: (b[busyKey] ?? 0) + 1 }));
     try {
-      take(await window.ezy.camera.set(id, s), before);
+      take(await window.ezy.camera.set(id, s, 'camera settings'), before);
       return true;
     } catch (e) {
       const why = ipcErrorText(e);

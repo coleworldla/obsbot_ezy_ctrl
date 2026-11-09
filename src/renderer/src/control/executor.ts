@@ -64,8 +64,8 @@ export interface Readback {
   id: string;
   back: Partial<CameraImageState>;
 }
-const setCamera = (id: string, s: CameraSet) =>
-  fire(window.ezy.camera.set(id, s).then((back) => window.dispatchEvent(new CustomEvent<Readback>(READBACK_EVENT, { detail: { id, back } }))));
+const setCamera = (id: string, s: CameraSet, via?: string) =>
+  fire(window.ezy.camera.set(id, s, via).then((back) => window.dispatchEvent(new CustomEvent<Readback>(READBACK_EVENT, { detail: { id, back } }))));
 
 function dirFrom(px: number, ty: number): JogDir {
   if (px === 0 && ty === 0) return 'stop';
@@ -213,46 +213,46 @@ export class ActionExecutor {
         if (next === cur && inv.value !== undefined) return;
         c.setCamState(id, { [key]: next });
         const setKey = inv.actionId === 'ai.track' ? 'track' : inv.actionId === 'record' ? 'record' : 'portrait';
-        fire(window.ezy.camera.set(id, { key: setKey, value: next }));
+        fire(window.ezy.camera.set(id, { key: setKey, value: next }, inv.via));
         return;
       }
       case 'focus.push':
-        if (inv.phase === 'press' && online) fire(window.ezy.focusPush(id));
+        if (inv.phase === 'press' && online) fire(window.ezy.focusPush(id, inv.via));
         return;
       case 'exp.auto': {
         if ((inv.phase === 'release' && inv.value === undefined) || !online) return;
         const cur = c.status[id]?.state?.exposureAuto ?? true;
         const next = inv.value !== undefined ? inv.value > 0 : !cur;
-        if (next !== cur || inv.value === undefined) setCamera(id, { key: 'exposureAuto', value: next });
+        if (next !== cur || inv.value === undefined) setCamera(id, { key: 'exposureAuto', value: next }, inv.via);
         return;
       }
       case 'exp.shutter': {
         if (inv.phase !== 'value' || inv.value === undefined || !online) return;
         // A knob sweeps slowest → fastest; OSC sends the x of 1/x (250 for 1/250).
         const index = inv.unit === 'normalized' ? SHUTTER_INDICES[Math.round(clamp(inv.value, 0, 1) * (SHUTTER_INDICES.length - 1))] : shutterIndexFor(inv.value);
-        this.exposureTo(id, 'shutter', index);
+        this.exposureTo(id, 'shutter', index, inv.via);
         return;
       }
       case 'exp.iso': {
         if (inv.phase !== 'value' || inv.value === undefined || !online) return;
         // A knob sweeps the ISO stops; OSC sends the ISO itself.
         const gain = inv.unit === 'normalized' ? ISO_STEPS[Math.round(clamp(inv.value, 0, 1) * (ISO_STEPS.length - 1))] / 100 : clamp(Math.round(inv.value / 100), GAIN_MIN, GAIN_MAX);
-        this.exposureTo(id, 'gain', gain);
+        this.exposureTo(id, 'gain', gain, inv.via);
         return;
       }
       case 'exp.shutter.faster':
       case 'exp.shutter.slower':
-        if (inv.phase === 'press' && online) setCamera(id, { key: 'shutterStep', value: inv.actionId === 'exp.shutter.faster' ? 1 : -1 });
+        if (inv.phase === 'press' && online) setCamera(id, { key: 'shutterStep', value: inv.actionId === 'exp.shutter.faster' ? 1 : -1 }, inv.via);
         return;
       case 'exp.iso.up':
       case 'exp.iso.down':
-        if (inv.phase === 'press' && online) setCamera(id, { key: 'gainStep', value: inv.actionId === 'exp.iso.up' ? 1 : -1 });
+        if (inv.phase === 'press' && online) setCamera(id, { key: 'gainStep', value: inv.actionId === 'exp.iso.up' ? 1 : -1 }, inv.via);
         return;
     }
   }
 
   /** Coalesce a turning knob into one target every 100 ms; the camera steps toward the newest one. */
-  private exposureTo(id: string, key: 'shutter' | 'gain', value: number): void {
+  private exposureTo(id: string, key: 'shutter' | 'gain', value: number, via?: string): void {
     const k = `${id}:${key}`;
     this.exposurePending.set(k, value);
     if (this.exposureTimers.has(k)) return;
@@ -261,7 +261,7 @@ export class ActionExecutor {
       window.setTimeout(() => {
         this.exposureTimers.delete(k);
         const v = this.exposurePending.get(k);
-        if (v !== undefined) setCamera(id, { key, value: v });
+        if (v !== undefined) setCamera(id, { key, value: v }, via);
       }, 100),
     );
   }

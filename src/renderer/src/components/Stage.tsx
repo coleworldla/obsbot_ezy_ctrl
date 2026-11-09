@@ -230,7 +230,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
             disabled={!online}
             onClick={() => {
               onCamState({ tracking: !tracking });
-              fire(window.ezy.camera.set(id, { key: 'track', value: !tracking }));
+              fire(window.ezy.camera.set(id, { key: 'track', value: !tracking }, 'TRACK button'));
             }}
           >
             TRACK · T
@@ -240,7 +240,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
             disabled={!online}
             onClick={() => {
               onCamState({ recording: !recording });
-              fire(window.ezy.camera.set(id, { key: 'record', value: !recording }));
+              fire(window.ezy.camera.set(id, { key: 'record', value: !recording }, 'REC button'));
             }}
           >
             REC · R
@@ -250,12 +250,12 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
             disabled={!online}
             onClick={() => {
               onCamState({ portrait: !portrait });
-              fire(window.ezy.camera.set(id, { key: 'portrait', value: !portrait }));
+              fire(window.ezy.camera.set(id, { key: 'portrait', value: !portrait }, 'ROTATE button'));
             }}
           >
             ROTATE · O
           </button>
-          <button className="b" disabled={!online} onClick={() => fire(window.ezy.focusPush(id))}>
+          <button className="b" disabled={!online} onClick={() => fire(window.ezy.focusPush(id, 'AF PUSH button'))}>
             AF PUSH · F
           </button>
         </div>
