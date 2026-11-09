@@ -4,6 +4,7 @@ import os from 'node:os';
 import { shutterLabel } from '../shared/exposure';
 import type { Mapping } from '../shared/mapping';
 import type { ShowOperator } from '../shared/show';
+import { presetFocusFrom, type PresetFocus } from '../shared/types';
 import type { AppInfo, CameraConfig, CameraImageState, CameraInput, CameraSet, JogDir, LogLevel, OscStatus, PresetPatch, RecallSpeed, Settings, ZoomDir, Preset } from '../shared/types';
 import type { Updater } from './updater';
 import type { NdiManager } from './ndi/manager';
@@ -30,10 +31,19 @@ function describeSet(s: CameraSet): string {
       return `shutter one stop ${s.value > 0 ? 'faster' : 'slower'}`;
     case 'gainStep':
       return `ISO one stop ${s.value > 0 ? 'up' : 'down'}`;
+    case 'focusPush':
+      return 'one-push autofocus';
+    case 'focusAuto':
+      return `focus ${s.value ? 'Auto' : 'Manual'}`;
+    case 'focusPos':
+      return `focus position ${s.value}`;
     default:
       return `${s.key}${'value' in s ? ` = ${String(s.value)}` : ''}`;
   }
 }
+
+/** ", focus locked at 42" / ", focus Auto" for the preset log lines. */
+const focusText = (f: PresetFocus | undefined): string => (f === undefined ? '' : f === 'auto' ? ', focus Auto' : `, focus locked at ${f}`);
 
 /** Where a shutter / ISO change ended up, when the camera stopped short of the request or it was relative. */
 function reachedText(s: CameraSet, back: Partial<CameraImageState>): string {
@@ -167,7 +177,7 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
   handle('zoom:direct', (_e, id: string, ratio: number) => manager.get(id).zoomTo(ratio));
 
   // ---- camera settings (tracking / focus / exposure / white balance / image) ----
-  handle('camera:set', async (_e, id: string, s: CameraSet) => {
+  handle('camera:set', async (_e, id: string, s: CameraSet, via?: string) => {
     const name = store.get(id)?.name ?? id;
     const what = describeSet(s);
     let back: Partial<CameraImageState>;
@@ -180,7 +190,7 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
       if (err && typeof err === 'object') (err as { logged?: boolean }).logged = true;
       throw err;
     }
-    logger.info('visca', `${name}: set ${what}${reachedText(s, back)}`, id);
+    logger.info('visca', `${name}: ${s.key === 'focusPush' ? '' : 'set '}${what}${reachedText(s, back)}${via ? ` (${via})` : ''}`, id);
     if (back.shutter !== undefined || back.gain !== undefined) manager.noteState(id, { ...(back.shutter !== undefined ? { shutter: back.shutter } : {}), ...(back.gain !== undefined ? { gain: back.gain } : {}) });
     // Live-state keys are re-read right away so the UI mirrors the camera.
     if (['track', 'trackMode', 'record', 'portrait', 'focusAuto', 'exposureAuto', 'wbMode'].includes(s.key)) await manager.refreshState(id).catch(() => undefined);
@@ -189,7 +199,18 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
   handle('camera:fullState', (_e, id: string, recheck?: boolean) => manager.get(id).fullState(manager.statuses().find((s) => s.id === id)?.state, !!recheck));
 
   // ---- other actions ----
-  handle('focus:push', (_e, id: string) => manager.get(id).focusOnePush());
+  // Every one-push goes in the log with what sent it, so a camera that keeps refocusing can be told apart from
+  // something that keeps asking it to.
+  handle('focus:push', async (_e, id: string, via?: string) => {
+    const name = store.get(id)?.name ?? id;
+    try {
+      await manager.get(id).focusOnePush();
+    } catch (err) {
+      logger.warn('visca', `${name}: one-push autofocus failed (${errMsg(err)})${via ? ` (${via})` : ''}`, id);
+      throw err;
+    }
+    logger.info('visca', `${name}: one-push autofocus${via ? ` (${via})` : ''}`, id);
+  });
   handle('ai:track', (_e, id: string, on: boolean) => manager.get(id).track(on));
   handle('record', (_e, id: string, on: boolean) => manager.get(id).record(on));
   handle('orientation', (_e, id: string, vertical: boolean) => manager.get(id).orientation(vertical));
@@ -197,26 +218,52 @@ export function registerIpc({ store, presets, settings, mappings, manager, video
   handle('preset:set', (_e, id: string, n: number) => manager.get(id).presetSet(n));
 
   // ---- app-side presets (unlimited) ----
+  /** What a preset saved now stores for focus; undefined (focus left alone on recall) when the camera does not say. */
+  const presetFocus = async (cameraId: string, presetName: string): Promise<PresetFocus | undefined> => {
+    try {
+      const f = await manager.get(cameraId).focusState();
+      if (f.auto) return 'auto';
+      const pos = presetFocusFrom(f.pos);
+      if (pos === undefined) logger.warn('preset', `"${presetName}": the camera reported focus position ${f.pos}, outside 0-100; focus not saved with it`, cameraId);
+      return pos;
+    } catch (err) {
+      logger.warn('preset', `"${presetName}": could not read the focus (${errMsg(err)}); focus not saved with it`, cameraId);
+      return undefined;
+    }
+  };
+
   handle('presets:list', (_e, cameraId?: string) => presets.list(cameraId));
   handle('presets:save', async (_e, cameraId: string, name: string, thumbnail?: string) => {
-    const pos = await manager.get(cameraId).position();
-    const p = presets.add({ cameraId, name, panDeg: pos.panDeg, tiltDeg: pos.tiltDeg, zoomRatio: pos.zoomRatio, thumbnail });
-    logger.info('preset', `saved "${p.name}" at pan ${p.panDeg} tilt ${p.tiltDeg} zoom ${p.zoomRatio}x`, cameraId);
+    const cam = manager.get(cameraId);
+    const pos = await cam.position();
+    const focus = await presetFocus(cameraId, name);
+    const p = presets.add({ cameraId, name, panDeg: pos.panDeg, tiltDeg: pos.tiltDeg, zoomRatio: pos.zoomRatio, thumbnail, ...(focus !== undefined ? { focus } : {}) });
+    logger.info('preset', `saved "${p.name}" at pan ${p.panDeg} tilt ${p.tiltDeg} zoom ${p.zoomRatio}x${focusText(p.focus)}`, cameraId);
     return p;
   });
   handle('presets:recall', async (_e, id: string, speed: RecallSpeed) => {
     const p = presets.get(id);
     if (!p) throw new Error('preset not found');
-    const cam = manager.get(p.cameraId);
-    await Promise.all([cam.moveTo(p.panDeg, p.tiltDeg, speed.pan, speed.tilt), cam.zoomTo(p.zoomRatio)]);
+    const camName = store.get(p.cameraId)?.name ?? p.cameraId;
+    try {
+      const did = await manager.get(p.cameraId).recall(p, speed.pan, speed.tilt);
+      if (did) {
+        logger.info('visca', `${camName}: ${did} (preset "${p.name}")`, p.cameraId);
+        manager.noteState(p.cameraId, { focusAuto: p.focus === 'auto' });
+      }
+    } catch (err) {
+      logger.warn('visca', `${camName}: recalling preset "${p.name}" failed (${errMsg(err)})`, p.cameraId);
+      throw err;
+    }
   });
   handle('presets:update', (_e, id: string, patch: PresetPatch) => presets.update(id, patch));
   handle('presets:updatePosition', async (_e, id: string) => {
     const p = presets.get(id);
     if (!p) throw new Error('preset not found');
     const pos = await manager.get(p.cameraId).position();
-    logger.info('preset', `updated "${p.name}" to pan ${pos.panDeg} tilt ${pos.tiltDeg} zoom ${pos.zoomRatio}x`, p.cameraId);
-    return presets.update(id, { panDeg: pos.panDeg, tiltDeg: pos.tiltDeg, zoomRatio: pos.zoomRatio });
+    const focus = await presetFocus(p.cameraId, p.name);
+    logger.info('preset', `updated "${p.name}" to pan ${pos.panDeg} tilt ${pos.tiltDeg} zoom ${pos.zoomRatio}x${focusText(focus)}`, p.cameraId);
+    return presets.update(id, { panDeg: pos.panDeg, tiltDeg: pos.tiltDeg, zoomRatio: pos.zoomRatio, ...(focus !== undefined ? { focus } : {}) });
   });
   handle('presets:remove', (_e, id: string) => {
     const p = presets.get(id);

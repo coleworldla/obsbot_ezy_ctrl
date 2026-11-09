@@ -2,7 +2,7 @@
  * High-level Tail 2 wrapper: friendly methods over the raw VISCA client.
  */
 import { stepIso, stepShutter } from '../../shared/exposure';
-import type { CameraFullState, CameraImageState, CameraLiveState, CameraSet, JogDir, Position, ZoomDir } from '../../shared/types';
+import type { CameraFullState, CameraImageState, CameraLiveState, CameraSet, JogDir, Position, Preset, ZoomDir } from '../../shared/types';
 import { ViscaClient, ViscaError, type ViscaClientOptions } from './client';
 import { cmd, inq, parse } from './commands';
 
@@ -189,6 +189,36 @@ export class Tail2 {
 
   focusOnePush(): Promise<void> {
     return this.client.command(cmd.focusOnePush());
+  }
+
+  /** Focus mode, and the position when on Manual (OBSBOT: 0-100; reported only on Manual). */
+  async focusState(): Promise<{ auto: boolean; pos?: number }> {
+    const auto = parse.onOff23(await this.client.inquiry(inq.focusMode()));
+    this.known.focusAuto = auto;
+    return auto ? { auto } : { auto, pos: parse.nib4(await this.client.inquiry(inq.focusPosition())) };
+  }
+
+  /**
+   * Move to a preset with its focus. A locked focus goes to Manual as the move starts (so the camera does not hunt
+   * on the way) and to its position once there; 'auto' hands focus back to the camera once there. Resolves with
+   * what it did to focus, for the log.
+   */
+  async recall(p: Pick<Preset, 'panDeg' | 'tiltDeg' | 'zoomRatio' | 'focus'>, panSpeed: number, tiltSpeed: number): Promise<string | null> {
+    const lock = typeof p.focus === 'number' ? p.focus : null;
+    await Promise.all([
+      lock !== null ? this.set({ key: 'focusAuto', value: false }) : null,
+      this.moveTo(p.panDeg, p.tiltDeg, panSpeed, tiltSpeed),
+      this.zoomTo(p.zoomRatio),
+    ]);
+    if (lock !== null) {
+      await this.set({ key: 'focusPos', value: lock });
+      return `focus Manual at ${lock}`;
+    }
+    if (p.focus === 'auto' && this.known.focusAuto !== true) {
+      await this.set({ key: 'focusAuto', value: true });
+      return 'focus Auto';
+    }
+    return null;
   }
 
   track(on: boolean): Promise<void> {

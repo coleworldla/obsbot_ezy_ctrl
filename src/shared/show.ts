@@ -4,7 +4,7 @@
  * operator's speeds. Pure code, unit-tested; the main process reads and writes the files.
  */
 import { isMapping, type Mapping } from './mapping';
-import { DEFAULT_VISCA_PORT, type CameraConfig, type Preset, type RecallSpeed, type Settings, type VideoSource } from './types';
+import { DEFAULT_VISCA_PORT, presetFocusFrom, type CameraConfig, type Preset, type RecallSpeed, type Settings, type VideoSource } from './types';
 
 export const SHOW_EXTENSION = 'ezy';
 export const SHOW_FORMAT = 'ezy-show';
@@ -122,6 +122,7 @@ function readPresets(list: unknown[], cameraIds: Set<string>, warnings: string[]
       ...(isStr(raw.thumbnail) && raw.thumbnail.startsWith('data:image/') ? { thumbnail: raw.thumbnail } : {}),
       order: isNum(raw.order) ? raw.order : i,
       ...(isNum(raw.cameraSlot) && Number.isInteger(raw.cameraSlot) && raw.cameraSlot >= 0 && raw.cameraSlot <= 255 ? { cameraSlot: raw.cameraSlot } : {}),
+      ...(presetFocusFrom(raw.focus) !== undefined ? { focus: presetFocusFrom(raw.focus) } : {}),
       createdAt: isNum(raw.createdAt) ? raw.createdAt : now,
       updatedAt: isNum(raw.updatedAt) ? raw.updatedAt : now,
     });

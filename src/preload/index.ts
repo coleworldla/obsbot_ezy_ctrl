@@ -52,7 +52,7 @@ export const api = {
     statuses: () => invoke<CameraStatus[]>('camera:statuses'),
     position: (id: string) => invoke<Position>('camera:position', id),
     /** Resolves with what the camera reports afterwards for the settings the change affects. */
-    set: (id: string, s: CameraSet) => invoke<Partial<CameraImageState>>('camera:set', id, s),
+    set: (id: string, s: CameraSet, via?: string) => invoke<Partial<CameraImageState>>('camera:set', id, s, via),
     /** `recheck` asks again for settings the camera has not answered before. */
     fullState: (id: string, recheck?: boolean) => invoke<CameraFullState>('camera:fullState', id, recheck),
   },
@@ -66,7 +66,8 @@ export const api = {
     drive: (id: string, dir: ZoomDir, speed: number) => invoke<void>('zoom:drive', id, dir, speed),
     direct: (id: string, ratio: number) => invoke<void>('zoom:direct', id, ratio),
   },
-  focusPush: (id: string) => invoke<void>('focus:push', id),
+  /** `via` (what sent it) goes into the log line. */
+  focusPush: (id: string, via?: string) => invoke<void>('focus:push', id, via),
   track: (id: string, on: boolean) => invoke<void>('ai:track', id, on),
   record: (id: string, on: boolean) => invoke<void>('record', id, on),
   orientation: (id: string, vertical: boolean) => invoke<void>('orientation', id, vertical),

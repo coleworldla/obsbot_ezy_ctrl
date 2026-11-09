@@ -131,12 +131,25 @@ export interface Preset {
   order: number;
   /** Set when the preset has also been stored into one of the camera's own VISCA slots (0-255). */
   cameraSlot?: number;
+  /**
+   * Focus as saved: a number is a Manual focus position (0-100) that recall locks; 'auto' hands focus back to
+   * the camera on recall; absent (presets from before 0.8.12) leaves focus alone.
+   */
+  focus?: PresetFocus;
   createdAt: number;
   updatedAt: number;
 }
 
-export type PresetInput = Pick<Preset, 'cameraId' | 'name' | 'panDeg' | 'tiltDeg' | 'zoomRatio' | 'thumbnail'>;
-export type PresetPatch = Partial<Pick<Preset, 'name' | 'panDeg' | 'tiltDeg' | 'zoomRatio' | 'thumbnail' | 'cameraSlot'>>;
+export type PresetFocus = number | 'auto';
+
+/** A stored preset focus, or undefined when `raw` is not one (files from older versions, hand edits). */
+export function presetFocusFrom(raw: unknown): PresetFocus | undefined {
+  if (raw === 'auto') return 'auto';
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 0 && raw <= 100 ? raw : undefined;
+}
+
+export type PresetInput = Pick<Preset, 'cameraId' | 'name' | 'panDeg' | 'tiltDeg' | 'zoomRatio' | 'thumbnail' | 'focus'>;
+export type PresetPatch = Partial<Pick<Preset, 'name' | 'panDeg' | 'tiltDeg' | 'zoomRatio' | 'thumbnail' | 'cameraSlot' | 'focus'>>;
 
 export interface RecallSpeed {
   pan: number;

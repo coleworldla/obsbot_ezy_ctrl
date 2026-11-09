@@ -2,6 +2,12 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Added
+- **Focus in presets.** Saving or updating a preset now stores the focus: with Focus on Manual, the position (0-100); on Auto, that it was Auto. Recalling a preset with a locked focus sets Manual focus as the move starts, so the camera does not hunt on the way, and the saved position once it arrives; an Auto preset hands focus back to the camera. The presets rail shows `MF 42` on presets that lock focus, and right-click → **Unlock focus** lets the camera focus again. Presets saved before this version leave focus alone. Show files and preset exports keep the focus. (The README already said presets stored focus; until now they did not.)
+- **The log says what sent each camera change.** Every one-push autofocus is logged, whether it came from the Camera settings button, the **AF PUSH** button, the `F` key, MIDI or OSC, with the source: `obsbot_cam_b: one-push autofocus (OSC /cam/2/focus/push from <sender>)`. Other settings changed from keys, MIDI, OSC or the stage buttons carry the source too, as do focus changes made by a preset recall. A camera that keeps refocusing can now be told apart from something that keeps asking it to.
+
 ## [0.8.11] - 2026-10-30
 
 ### Changed

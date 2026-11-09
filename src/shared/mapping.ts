@@ -76,6 +76,8 @@ export interface Invocation {
   value?: number;
   /** 'normalized' = 0..1 (MIDI), 'natural' = the action's own units (OSC). */
   unit?: 'normalized' | 'natural';
+  /** What sent it, for the log: "F key", "MIDI <device> ch1 note 36", "OSC /cam/2/focus/push from <sender>". */
+  via?: string;
 }
 
 export interface MidiInput {

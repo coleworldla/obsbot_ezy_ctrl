@@ -182,6 +182,9 @@ export function Presets({ camera, online, monitor = false, presets, activeId, re
       disabled: !online,
       onClick: () => void window.ezy.presets.updatePosition(p.id).then(onChanged),
     },
+    ...(typeof p.focus === 'number'
+      ? [{ label: `Unlock focus (now locked at ${p.focus})`, onClick: () => void window.ezy.presets.update(p.id, { focus: 'auto' }).then(onChanged) }]
+      : []),
     {
       label: 'Update thumbnail',
       onClick: () => {
@@ -317,8 +320,9 @@ export function Presets({ camera, online, monitor = false, presets, activeId, re
                     {p.name}
                   </div>
                 )}
-                <div className="pmeta mono">
-                  {deg(p.panDeg)} {deg(p.tiltDeg)} {p.zoomRatio.toFixed(1)}×{p.cameraSlot !== undefined ? ` · slot ${p.cameraSlot}` : ''}
+                <div className="pmeta mono" title={typeof p.focus === 'number' ? `Recall locks Manual focus at ${p.focus}` : p.focus === 'auto' ? 'Recall hands focus to the camera (Auto)' : undefined}>
+                  {deg(p.panDeg)} {deg(p.tiltDeg)} {p.zoomRatio.toFixed(1)}×{typeof p.focus === 'number' ? ` · MF ${p.focus}` : ''}
+                  {p.cameraSlot !== undefined ? ` · slot ${p.cameraSlot}` : ''}
                 </div>
               </div>
               {i < 9 && !selecting && <span className="kbd">{i + 1}</span>}
