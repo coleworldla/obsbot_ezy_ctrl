@@ -2,7 +2,7 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.12] - 2026-11-09
 
 ### Added
 - **Focus in presets.** Saving or updating a preset now stores the focus: with Focus on Manual, the position (0-100); on Auto, that it was Auto. Recalling a preset with a locked focus sets Manual focus as the move starts, so the camera does not hunt on the way, and the saved position once it arrives; an Auto preset hands focus back to the camera. The presets rail shows `MF 42` on presets that lock focus, and right-click → **Unlock focus** lets the camera focus again. Presets saved before this version leave focus alone. Show files and preset exports keep the focus. (The README already said presets stored focus; until now they did not.)
