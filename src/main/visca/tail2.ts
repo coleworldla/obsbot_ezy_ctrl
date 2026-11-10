@@ -199,7 +199,7 @@ export class Tail2 {
   }
 
   /**
-   * Move to a preset with its focus. A locked focus goes to Manual as the move starts (so the camera does not hunt
+   * Move to a preset with its focus. A locked focus goes to Manual alongside the move (so the camera does not hunt
    * on the way) and to its position once there; 'auto' hands focus back to the camera once there. Resolves with
    * what it did to focus, for the log.
    */
