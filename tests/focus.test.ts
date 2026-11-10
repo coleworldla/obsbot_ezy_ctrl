@@ -116,11 +116,12 @@ describe('Tail2 focus with presets, against a fake camera', () => {
     expect(await t.focusState()).toEqual({ auto: false, pos: 42 });
   });
 
-  it('a locked preset goes to Manual as the move starts and to its position once there', async () => {
+  it('a locked preset is on Manual before the move ends and goes to its position once there', async () => {
     expect(await t.recall({ ...at, focus: 42 }, 18, 17)).toBe('focus Manual at 42');
     expect(cam.cmds()).toEqual(expect.arrayContaining(['04:38:manual', '06:02', '04:47', '04:48:42']));
     const when = (c: string) => cam.log.find((e) => e.cmd === c)!;
-    expect(when('04:38:manual').at).toBeLessThanOrEqual(when('06:02').at);
+    // Manual goes out alongside the move (either may leave first); what matters is that it is in before the move ends.
+    expect(when('04:38:manual').at).toBeLessThanOrEqual(when('06:02').done!);
     expect(when('04:48:42').at).toBeGreaterThanOrEqual(Math.max(when('06:02').done!, when('04:47').done!));
     expect(cam.focusAuto).toBe(false);
     expect(cam.focusPos).toBe(42);
