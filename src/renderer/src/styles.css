@@ -102,10 +102,17 @@ webview { display: inline-flex; border: none; background: #fff; }
 .trackbox .tbc.bl { left: -2px; bottom: -2px; border-left-width: 3px; border-bottom-width: 3px; }
 .trackbox .tbc.br { right: -2px; bottom: -2px; border-right-width: 3px; border-bottom-width: 3px; }
 
-.transport { height: 110px; flex: none; display: flex; gap: 10px; }
-.jog { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 6px; width: 200px; flex: none; }
-.jog .b { height: auto; padding: 0; }
-.jog .b span { margin-left: 5px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.transport { height: 124px; flex: none; display: flex; gap: 10px; }
+/* pan / tilt joystick: the keys sit on an ellipse outside the ring, so they never overlap it */
+.joy { position: relative; width: 150px; flex: none; border-radius: 4px; background: var(--panel); border: 1px solid var(--line-2); }
+.joy.off { opacity: 0.45; }
+.joykey { position: absolute; transform: translate(-50%, -50%); font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--text-2); pointer-events: none; transition: color 0.1s; }
+.joykey.hot { color: var(--accent); }
+.joyring { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%; background: var(--bg-deep); border: 1px solid var(--line-3); touch-action: none; cursor: grab; }
+.joy.off .joyring { cursor: default; }
+.joyknob { position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: var(--panel-2); border: 1.5px solid var(--accent); transition: transform 0.12s ease-out; pointer-events: none; }
+.joyring.grab { cursor: grabbing; }
+.joyring.grab .joyknob { transition: none; }
 .sliders { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 4px; background: var(--panel); border: 1px solid var(--line-2); overflow: hidden; }
 .sliders .row { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--text-2); min-width: 0; }
 .sliders .row label { width: 92px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -113,7 +120,9 @@ webview { display: inline-flex; border: none; background: #fff; }
 .sliders .row .b.sm { padding: 0 8px; flex: none; }
 input[type='range'] { flex: 1; min-width: 40px; accent-color: var(--accent); height: 6px; }
 .zoomrow { display: flex; flex-direction: column; gap: 6px; width: 120px; }
-.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px; width: 220px; flex: none; }
+.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 60px; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px; width: 262px; flex: none; }
+.actions .home { grid-column: 3; grid-row: 1 / 3; flex-direction: column; gap: 4px; padding: 0; }
+.actions .home .key { font-family: var(--mono); font-size: 11px; opacity: 0.8; }
 .actions .b { height: auto; white-space: nowrap; padding: 0 8px; }
 
 /* presets rail */

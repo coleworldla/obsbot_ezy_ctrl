@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { shutterLabel } from '../../../shared/exposure';
 import { viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
-import { isMonitor, type CameraConfig, type CameraStatus, type JogDir, type Tally, type ZoomDir } from '../../../shared/types';
+import { isMonitor, type CameraConfig, type CameraStatus, type Tally, type ZoomDir } from '../../../shared/types';
 import type { CamState, Speed } from '../control/executor';
+import { Joystick } from './Joystick';
 import { TallyBadge } from './Rack';
 import { TrackingOverlay } from './TrackingOverlay';
 import { Viewport } from './Viewport';
@@ -28,24 +29,6 @@ interface Props {
   onTrackBox: () => void;
 }
 
-const Arrow = ({ d }: { d: string }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
-  </svg>
-);
-
-const JOG: { dir: JogDir; key: string; d: string }[] = [
-  { dir: 'upleft', key: 'Q', d: 'M17 17 7 7M7 15V7h8' },
-  { dir: 'up', key: 'W', d: 'M12 19V5M5 12l7-7 7 7' },
-  { dir: 'upright', key: 'E', d: 'M7 17 17 7M9 7h8v8' },
-  { dir: 'left', key: 'A', d: 'M19 12H5M12 19l-7-7 7-7' },
-  { dir: 'stop', key: 'H', d: '' },
-  { dir: 'right', key: 'D', d: 'M5 12h14M12 5l7 7-7 7' },
-  { dir: 'downleft', key: 'Z', d: 'M17 7 7 17M15 17H7V9' },
-  { dir: 'down', key: 'S', d: 'M12 5v14M19 12l-7 7-7-7' },
-  { dir: 'downright', key: 'C', d: 'M7 7l10 10M17 9v8H9' },
-];
-
 const fmt = (n: number | undefined) => (n === undefined ? '—' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}°`);
 
 export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, activePresetName, onManual, camState, onCamState, tally, panelOpen, onTogglePanel, trackBox, onTrackBox }: Props) {
@@ -61,10 +44,6 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
   }, [status?.position]);
 
   const fire = (p: Promise<unknown>) => p.catch(() => undefined);
-  const jog = (dir: JogDir) => {
-    if (dir !== 'stop') onManual();
-    return fire(window.ezy.ptz.drive(id, dir, speed.pan, speed.tilt));
-  };
   const zoom = (dir: ZoomDir) => {
     if (dir !== 'stop') onManual();
     return fire(window.ezy.zoom.drive(id, dir, viscaZoomSpeed(speed.zoom)));
@@ -178,20 +157,7 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
       </div>
 
       <div className="transport">
-        <div className="jog">
-          {JOG.map((j) =>
-            j.dir === 'stop' ? (
-              <button key="home" className="b accent" disabled={!online} onClick={() => { onManual(); fire(window.ezy.ptz.home(id)); }}>
-                HOME
-              </button>
-            ) : (
-              <button key={j.dir} className="b" disabled={!online} {...hold(() => jog(j.dir), () => jog('stop'))}>
-                <Arrow d={j.d} />
-                <span>{j.key}</span>
-              </button>
-            ),
-          )}
-        </div>
+        <Joystick cameraId={id} online={online} speed={speed} onManual={onManual} />
 
         <div className="sliders">
           <div className="row">
@@ -257,6 +223,17 @@ export function Stage({ camera, status, speed, onSpeed, onRemove, onEdit, active
           </button>
           <button className="b" disabled={!online} onClick={() => fire(window.ezy.focusPush(id, 'AF PUSH button'))}>
             AF PUSH · F
+          </button>
+          <button
+            className="b accent home"
+            disabled={!online}
+            onClick={() => {
+              onManual();
+              fire(window.ezy.ptz.home(id));
+            }}
+          >
+            <span>HOME</span>
+            <span className="key">H</span>
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { GAIN_MAX, GAIN_MIN, ISO_STEPS, SHUTTER_INDICES, shutterIndexFor } from 
 import { oscSlug, viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
 import type { Invocation } from '../../../shared/mapping';
 import type { CameraConfig, CameraImageState, CameraSet, CameraStatus, JogDir, Preset, Tally } from '../../../shared/types';
+import { jogBus } from './jog';
 
 export interface Speed {
   pan: number;
@@ -129,7 +130,7 @@ export class ActionExecutor {
     if (inv.actionId in DIRS) {
       if (inv.phase === 'value' || !online) return;
       c.clearActive(id);
-      fire(window.ezy.ptz.drive(id, inv.phase === 'press' ? DIRS[inv.actionId] : 'stop', c.speed.pan, c.speed.tilt));
+      fire(jogBus.drive(id, inv.phase === 'press' ? DIRS[inv.actionId] : 'stop', c.speed.pan, c.speed.tilt));
       return;
     }
 
@@ -280,7 +281,7 @@ export class ActionExecutor {
       a.ts = ts;
       if (online) {
         c.clearActive(id);
-        fire(window.ezy.ptz.drive(id, dir, ps, ts));
+        fire(jogBus.drive(id, dir, ps, ts));
       }
     }
     this.axes.set(id, a);
