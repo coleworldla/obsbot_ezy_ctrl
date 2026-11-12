@@ -2,7 +2,7 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.13] - 2026-11-12
 
 ### Added
 - **Pan / tilt joystick.** The 3 × 3 jog grid under the picture is now a joystick. Drag the knob to move in any direction, diagonals included; the further you push, the faster the camera moves, up to the PAN SPD / TILT SPD sliders, so a full push matches the keys and a small push is fine control. Letting go springs it back and stops the camera. Commands go out only when the direction or speed changes, at most every 60 ms, and stop always goes at once. The joystick also follows moves from the keys, MIDI and OSC (a jog key pushes it fully that way, a MIDI pan / tilt fader as far as the fader), and the key letters Q W E A D Z S C sit around it, the active one lit.
