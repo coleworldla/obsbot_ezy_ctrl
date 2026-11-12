@@ -78,7 +78,10 @@ app.on('open-file', (e, file) => {
 });
 
 function createWindow(): BrowserWindow {
+  // Screenshot runs open without taking keyboard focus, so typing elsewhere cannot jog their cameras.
+  const quiet = !!process.env.EZY_CAPTURE;
   const w = new BrowserWindow({
+    show: !quiet,
     width: 1440,
     height: 900,
     minWidth: 1100,
@@ -106,6 +109,7 @@ function createWindow(): BrowserWindow {
   } else {
     void w.loadFile(join(__dirname, '../renderer/index.html'));
   }
+  if (quiet) w.once('ready-to-show', () => w.showInactive());
   return w;
 }
 

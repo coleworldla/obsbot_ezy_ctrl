@@ -492,6 +492,23 @@ export default function App() {
     if (steps.includes('oscmap')) timers.push(window.setTimeout(() => setShowOscMap(true), 3000));
     if (steps.includes('oscmap-scroll')) timers.push(window.setTimeout(() => document.querySelector('.oscmap-body')?.scrollTo({ top: 1500 }), 4500));
     if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
+    // Hold E (jog up-right) for 3 s: the joystick should follow the key.
+    if (steps.includes('joy-key')) {
+      timers.push(window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' })), 4000));
+      timers.push(window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e' })), 7000));
+    }
+    // Drag the joystick half way down-left for 3 s.
+    if (steps.includes('joy-drag')) {
+      const at = (type: string, dx: number, dy: number) => {
+        const ring = document.querySelector<HTMLElement>('.joyring');
+        if (!ring) return;
+        const r = ring.getBoundingClientRect();
+        ring.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 1, button: 0, buttons: 1, clientX: r.left + r.width / 2 + dx, clientY: r.top + r.height / 2 + dy }));
+      };
+      timers.push(window.setTimeout(() => at('pointerdown', 0, 0), 4000));
+      timers.push(window.setTimeout(() => at('pointermove', -12, 18), 4100));
+      timers.push(window.setTimeout(() => at('pointerup', -12, 18), 7000));
+    }
     // Pick 1/500 from the camera panel's shutter list, as a user would (React listens for 'change').
     if (steps.includes('exp-pick'))
       timers.push(
