@@ -2,7 +2,7 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.14] - 2026-11-23
 
 ### Added
 - **Cycle cameras from MIDI and OSC.** New *Next camera* and *Previous camera* actions in Mapping's Cameras group (map them to a MIDI button, a CC button or a key), and OSC `/cam/next` and `/cam/prev`. They step through every source in the rack in order, video-only sources included, and wrap at the ends; the new camera goes on stage as if its tile was clicked, and OSC feedback sends `/cam/select <n> <name>` as usual. A `0` argument (button release) does nothing, so a TouchOSC button steps once. Both addresses are in the OSC map and the copied address list.
