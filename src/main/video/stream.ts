@@ -3,6 +3,7 @@
  * Events: 'init' (Buffer, codec), 'segment' (Buffer), 'exit' (reason), 'log' (string).
  */
 import { spawn, type ChildProcessByStdio } from 'node:child_process';
+import { stopSocketInheritance } from '../handles';
 import { EventEmitter } from 'node:events';
 import type { Readable } from 'node:stream';
 import type { VideoSource } from '../../shared/types';
@@ -89,6 +90,8 @@ export class VideoStream extends EventEmitter {
       args.splice(i, 0, ...this.opts.extraInputArgs);
     }
     const session = this.session;
+    // ffmpeg must not inherit sockets native libraries opened (NDI): a copy keeps NDI from shutting down. See handles.ts.
+    stopSocketInheritance();
     const proc = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     this.proc = proc;
     this.emit('log', `ffmpeg[${session}] ${args.join(' ')}`);

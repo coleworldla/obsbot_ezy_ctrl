@@ -2,6 +2,11 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Fixed
+- **Windows: the app froze at startup with an RTSP (or SRT / demo) camera next to NDI cameras.** The window went Not Responding right after "connecting" and stayed that way. Windows hands a new child process copies of every inheritable handle, and the NDI runtime's network sockets are inheritable, so ffmpeg (started for the RTSP camera) kept copies of them; NDI then waited forever to shut down its source search, which it rebuilds at startup once a second NDI camera's address is known. EZY CTRL now clears inheritance on its sockets just before starting ffmpeg, so ffmpeg never holds them. Reproduced, and confirmed by killing only ffmpeg (the frozen app woke at once); after the fix the same three-camera setup starts normally.
+
 ## [0.8.14] - 2026-11-23
 
 ### Added
