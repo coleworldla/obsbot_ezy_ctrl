@@ -3,7 +3,7 @@
  * how to jog, zoom, recall presets, toggle tracking, set tally, and so on.
  */
 import { GAIN_MAX, GAIN_MIN, ISO_STEPS, SHUTTER_INDICES, shutterIndexFor } from '../../../shared/exposure';
-import { oscSlug, viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
+import { cycleCamera, oscSlug, viscaZoomSpeed, ZOOM_SPEED_MAX } from '../../../shared/mapping';
 import type { Invocation } from '../../../shared/mapping';
 import type { CameraConfig, CameraImageState, CameraSet, CameraStatus, JogDir, Preset, Tally } from '../../../shared/types';
 import { jogBus } from './jog';
@@ -100,6 +100,17 @@ export class ActionExecutor {
         if (inv.phase !== 'press') return;
         const target = inv.cameraName ? c.cameras.find((x) => oscSlug(x.name) === inv.cameraName) : c.cameras[(inv.arg ?? 1) - 1];
         if (target) c.selectCamera(target.id);
+        return;
+      }
+      case 'cam.next':
+      case 'cam.prev': {
+        if (inv.phase !== 'press') return;
+        const id = cycleCamera(
+          c.cameras.map((x) => x.id),
+          c.selectedId,
+          inv.actionId === 'cam.next' ? 1 : -1,
+        );
+        if (id) c.selectCamera(id);
         return;
       }
       case 'log.toggle':
