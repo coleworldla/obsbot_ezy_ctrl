@@ -115,6 +115,8 @@ export const viscaZoomSpeed = (speed: number): number => Math.min(ZOOM_SPEED_MAX
 
 export const ACTIONS: ActionDef[] = [
   { id: 'cam.select', label: 'Select camera', group: 'Cameras', kind: 'trigger', arg: 'camera', osc: '/cam/select', key: k('1', { ctrl: true, span: 9 }) },
+  { id: 'cam.next', label: 'Next camera', group: 'Cameras', kind: 'trigger', osc: '/cam/next' },
+  { id: 'cam.prev', label: 'Previous camera', group: 'Cameras', kind: 'trigger', osc: '/cam/prev' },
   { id: 'tally.pgm', label: 'Tally: program', group: 'Cameras', kind: 'trigger', osc: '/cam/{i}/tally/pgm' },
   { id: 'tally.pvw', label: 'Tally: preview', group: 'Cameras', kind: 'trigger', osc: '/cam/{i}/tally/pvw' },
   { id: 'tally.clear', label: 'Tally: clear', group: 'Cameras', kind: 'trigger', osc: '/cam/{i}/tally/clear' },
@@ -167,6 +169,17 @@ export const ACTIONS: ActionDef[] = [
 ];
 
 export const actionById = (id: string): ActionDef | undefined => ACTIONS.find((a) => a.id === id);
+
+/**
+ * The camera one step along the rack from `current` (+1 next, -1 previous), wrapping at the ends. With nothing (or
+ * a camera no longer in the rack) selected, next is the first and previous the last; null for an empty rack.
+ */
+export function cycleCamera(ids: string[], current: string | null, step: 1 | -1): string | null {
+  if (!ids.length) return null;
+  const i = current ? ids.indexOf(current) : -1;
+  if (i < 0) return step > 0 ? ids[0] : ids[ids.length - 1];
+  return ids[(i + step + ids.length) % ids.length];
+}
 
 export const ACTION_GROUPS: string[] = [...new Set(ACTIONS.map((a) => a.group))];
 
@@ -287,7 +300,7 @@ export const oscSlugUsable = (slug: string): boolean => slug !== '' && !/^\d+$/.
 
 /**
  * Built-in OSC scheme, always active:
- *   /cam/select <i>                       /cam/<i>/preset/<n>          /cam/<i>/preset/save
+ *   /cam/select <i>   /cam/next   /cam/prev   /cam/<i>/preset/<n>   /cam/<i>/preset/save
  *   /cam/<i>/ptz/<dir> [0|1]              /cam/<i>/ptz/pan <-1..1>     /cam/<i>/ptz/tilt <-1..1>
  *   /cam/<i>/ptz/speed <1..24>            /cam/<i>/home                /cam/<i>/zoom <1..12>
  *   /cam/<i>/zoom/tele [0|1]              /cam/<i>/zoom/wide [0|1]     /cam/<i>/zoom/speed <1..8>
@@ -318,6 +331,7 @@ export function parseBuiltinOsc(input: OscInput): Invocation | null {
     return oscSlugUsable(slug) ? { actionId: `tally.${parts[1]}`, phase: 'press', camera: null, cameraName: slug } : null;
   }
   if (parts[0] !== 'cam') return null;
+  if ((parts[1] === 'next' || parts[1] === 'prev') && parts.length === 2) return v === 0 ? null : { actionId: `cam.${parts[1]}`, phase: 'press' };
   if (parts[1] === 'select') {
     const raw = input.args[0] ?? parts[2];
     const idx = num(raw);
@@ -402,7 +416,7 @@ export function keyInputFrom(e: { key: string; ctrlKey: boolean; shiftKey: boole
 
 /** The full list of built-in OSC addresses for `count` cameras, for the "copy address list" button. */
 export function oscAddressList(count: number): string[] {
-  const out: string[] = ['/cam/select <1..' + Math.max(1, count) + '>'];
+  const out: string[] = ['/cam/select <1..' + Math.max(1, count) + '>', '/cam/next', '/cam/prev'];
   const cams: (number | 'sel')[] = ['sel', ...Array.from({ length: count }, (_, i) => i + 1)];
   for (const c of cams) {
     for (const a of ACTIONS) {
@@ -489,6 +503,8 @@ export function oscMapRows(cameras: { id: string; name: string; kind?: string }[
   const byName = naming === 'name';
 
   push('Global', '/cam/select', byName ? '<name> or <1..' + n + '>' : `<1..${n}>`, 'Put that camera on stage');
+  push('Global', '/cam/next', '', 'Put the next camera in the rack on stage (wraps to the first)');
+  push('Global', '/cam/prev', '', 'Put the previous camera in the rack on stage (wraps to the last)');
   push('Global', '/tally/pgm', byName ? '<name> or <i>' : '<i>', 'Camera program (switcher style)');
   push('Global', '/tally/pvw', byName ? '<name> or <i>' : '<i>', 'Camera preview');
   push('Global', '/app/panel', '', 'Toggle the camera settings drawer');

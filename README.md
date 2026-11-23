@@ -122,11 +122,12 @@ Keyboard (defaults, change them in Mapping): `1-9` recall preset · `Ctrl+S` sav
 
 Open **Mapping** (top right or `M`). Every control is a row.
 
-- **MIDI**: click *Learn* on a row, then press a button or move a knob on your controller. Buttons work with notes or CC (≥ 64 = press). Knobs and faders drive zoom level, zoom speed, jog speed, the pan / tilt axes (centre = stop), and shutter and ISO (exposure on Manual). For *Recall preset* the learned note becomes preset 1 and the next 63 notes follow; for *Select camera* the next 8 notes follow. Devices can be switched off individually.
+- **MIDI**: click *Learn* on a row, then press a button or move a knob on your controller. Buttons work with notes or CC (≥ 64 = press). Knobs and faders drive zoom level, zoom speed, jog speed, the pan / tilt axes (centre = stop), and shutter and ISO (exposure on Manual). For *Recall preset* the learned note becomes preset 1 and the next 63 notes follow; for *Select camera* the next 8 notes follow. *Next camera* / *Previous camera* step through the rack in order (video-only sources included) and wrap at the ends; map them to two buttons to cycle cameras, or send `/cam/next` / `/cam/prev` over OSC. Devices can be switched off individually.
 - **OSC in**: the app listens on UDP 9000 (change it in the panel). The address scheme is always on, no mapping needed:
 
   ```
-  /cam/select <n>              /cam/<i>/preset/<n>        /cam/<i>/preset/save
+  /cam/select <n>              /cam/next                  /cam/prev
+  /cam/<i>/preset/<n>          /cam/<i>/preset/save
   /cam/<i>/ptz/<dir> [0|1]     /cam/<i>/ptz/pan <-1..1>   /cam/<i>/ptz/tilt <-1..1>
   /cam/<i>/ptz/speed <1..24>   /cam/<i>/home              /cam/<i>/zoom <1..12>
   /cam/<i>/zoom/tele [0|1]     /cam/<i>/zoom/wide [0|1]   /cam/<i>/zoom/speed <1..8>
