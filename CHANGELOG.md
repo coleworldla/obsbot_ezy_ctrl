@@ -2,6 +2,11 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [0.8.16] - 2026-11-23
+
+### Fixed
+- **The 0.8.15 freeze fix could itself hang, so 0.8.15 never shipped.** To find its sockets it asked Windows about every inheritable handle, and asking about a pipe that another thread is blocked reading waits until that read ends, possibly forever. GitHub's test machine has such pipes, so the 0.8.15 build stalled in its tests, and the app could have hung the same way. Sockets are now recognised by the object type and access rights of a socket made for the purpose, read from the process's handle list; no handle is asked anything, so nothing can block. The startup freeze with an RTSP camera next to NDI cameras stays fixed (checked on the same three-camera setup).
+
 ## [0.8.15] - 2026-11-23
 
 ### Fixed
