@@ -2,6 +2,17 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
+## [Unreleased]
+
+### Changed
+- **Works on any screen size.** On a smaller screen the layout used to overlap and get cut off: the window could not shrink below 1100 × 700 points, and the side columns, control row and Camera settings drawer had fixed sizes, so the picture shrank first and then everything collided (at 800 × 500 it was unusable). Now:
+  - the side columns and the Camera settings drawer stretch with the window, and dialogs never get larger than it;
+  - below about 1280 × 760 points the whole interface zooms out evenly (down to 60 %), so nothing is cut off or overlapping; the window can be as small as 640 × 400;
+  - thin strips beside the camera rack and the presets fold them away for more picture (remembered);
+  - a narrow presets column drops its count and puts its hint above the buttons;
+  - the window opens where it was last closed (the first time, 90 % of the main screen), reopens on the main screen if its screen is gone, and stays fully on the screen it is dragged to.
+- Checked at 1700 × 1000, 1440 × 900, 1280 × 720, 1024 × 640 and 800 × 500 with a layout check that flags anything outside the window or cut off: all clean (before: cut-off slider rows from 1280 × 720 down, and a cut-off picture at 800 × 500).
+
 ## [0.8.16] - 2026-11-23
 
 ### Fixed

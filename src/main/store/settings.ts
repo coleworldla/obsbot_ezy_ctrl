@@ -46,5 +46,6 @@ function merge(base: Settings, patch: Partial<Settings>): Settings {
     updates: { ...base.updates, ...(patch.updates ?? {}) },
     ndi: { ...base.ndi, ...(patch.ndi ?? {}) },
     show: { ...base.show, ...(patch.show ?? {}) },
+    window: patch.window ?? base.window,
   };
 }

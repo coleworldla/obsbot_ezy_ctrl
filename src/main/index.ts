@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, shell } from 'electron';
+import { app, BrowserWindow, screen, session, shell } from 'electron';
 import fs from 'node:fs';
 import { join } from 'node:path';
 import { CameraManager } from './cameras';
@@ -7,6 +7,7 @@ import { errMsg, logger } from './log';
 import { NdiManager } from './ndi/manager';
 import { OscServer, type OscIncoming } from './osc/server';
 import { showFileFromArgv } from '../shared/show';
+import { fitToWorkArea, placeWindow, uiZoom } from '../shared/window-fit';
 import { ShowService } from './show';
 import { createShowActions, type ShowActions } from './show-dialogs';
 import { CameraStore } from './store/cameras';
@@ -19,6 +20,7 @@ import { VideoManager } from './video/manager';
 // Dev / test hooks (harmless when unset):
 //   EZY_USER_DATA=<dir>     use a different config directory (keeps test runs away from real presets)
 //   EZY_CAPTURE=<file.png>  screenshot the window after EZY_CAPTURE_DELAY ms (default 8000) and quit
+//   EZY_WINDOW_SIZE=<WxH>   open the window at this size (layout checks at different screen sizes)
 //   EZY_AUTOTEST=<steps>    let the renderer run scripted interactions (see renderer App.tsx);
 //                           the step "shows" also answers the show dialogs by themselves
 if (process.env.EZY_USER_DATA) app.setPath('userData', process.env.EZY_USER_DATA);
@@ -77,15 +79,26 @@ app.on('open-file', (e, file) => {
   openShowFromOs(file);
 });
 
-function createWindow(): BrowserWindow {
+function createWindow(settings: SettingsStore): BrowserWindow {
   // Screenshot runs open without taking keyboard focus, so typing elsewhere cannot jog their cameras.
   const quiet = !!process.env.EZY_CAPTURE;
+  const [testW, testH] = (process.env.EZY_WINDOW_SIZE ?? '').split('x').map(Number);
+  const primary = screen.getPrimaryDisplay().workArea;
+  const saved = settings.get().window;
+  // Where it was if that screen is still there, else centred on the main screen; always fully on a screen.
+  const bounds =
+    testW && testH
+      ? { x: primary.x, y: primary.y, width: testW, height: testH }
+      : placeWindow(
+          saved,
+          screen.getAllDisplays().map((d) => d.workArea),
+          primary,
+        );
   const w = new BrowserWindow({
     show: !quiet,
-    width: 1440,
-    height: 900,
-    minWidth: 1100,
-    minHeight: 700,
+    ...bounds,
+    minWidth: 640,
+    minHeight: 400,
     backgroundColor: '#1c2026',
     title: 'EZY CTRL',
     autoHideMenuBar: true,
@@ -101,7 +114,33 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' };
   });
   w.webContents.on('render-process-gone', (_e, details) => logger.error('app', `renderer gone: ${details.reason}`));
+  if (saved?.maximized && !testW) w.maximize();
+
+  // Below the size the layout is drawn for, the whole interface zooms out evenly instead of getting cut off.
+  const zoomToFit = () => {
+    if (w.isDestroyed()) return;
+    const [cw, ch] = w.getContentSize();
+    w.webContents.setZoomFactor(uiZoom(cw, ch));
+  };
+  // Dragged onto a smaller screen, or a screen changed or went away: stay fully on the screen it is on.
+  const keepOnScreen = () => {
+    if (w.isDestroyed() || w.isMaximized() || w.isFullScreen()) return;
+    const b = w.getBounds();
+    const fit = fitToWorkArea(b, screen.getDisplayMatching(b).workArea);
+    if (fit.x !== b.x || fit.y !== b.y || fit.width !== b.width || fit.height !== b.height) w.setBounds(fit);
+    zoomToFit();
+  };
+  w.on('resize', zoomToFit);
+  w.webContents.on('did-finish-load', zoomToFit);
+  w.on('moved', keepOnScreen);
+  screen.on('display-removed', keepOnScreen);
+  screen.on('display-metrics-changed', keepOnScreen);
+  w.on('close', () => {
+    if (!testW) settings.set({ window: { ...w.getNormalBounds(), maximized: w.isMaximized() } });
+  });
   w.on('closed', () => {
+    screen.off('display-removed', keepOnScreen);
+    screen.off('display-metrics-changed', keepOnScreen);
     if (win === w) win = null;
   });
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -211,7 +250,7 @@ app.whenReady().then(() => {
   manager.startPolling();
   void applyOsc();
 
-  win = createWindow();
+  win = createWindow(settings);
   installCaptureHook(win);
   if (pendingShow) {
     const file = pendingShow;
@@ -224,7 +263,7 @@ app.whenReady().then(() => {
   }
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) win = createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) win = createWindow(settings);
   });
 });
 
