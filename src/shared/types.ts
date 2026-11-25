@@ -185,6 +185,8 @@ export interface Settings {
     /** Full path to the NDI runtime library when the app cannot find it on its own (Locate runtime…). */
     runtimePath?: string;
   };
+  /** Where the window was when it last closed (screen points), so it reopens there. */
+  window?: { x: number; y: number; width: number; height: number; maximized?: boolean };
   /** The show file (.ezy) this setup was last saved to or opened from. */
   show?: {
     path?: string;

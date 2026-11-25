@@ -24,6 +24,8 @@ export type { Speed } from './control/executor';
 
 const RECALL_KEY = 'ezy.recallSpeed';
 const SPEED_KEY = 'ezy.speed';
+/** Which side columns are folded away (camera rack, presets). */
+const FOLD_KEY = 'ezy.fold';
 const TRACKBOX_KEY = 'ezy.trackBox';
 const PRESET_TOLERANCE = { deg: 1.0, zoom: 0.15 };
 const DRIFT_GRACE_MS = 5000;
@@ -35,9 +37,49 @@ function keyLabel(k: { key: string; ctrl?: boolean; shift?: boolean; alt?: boole
   return `${[k.ctrl && 'Ctrl', k.shift && 'Shift', k.alt && 'Alt', name].filter(Boolean).join('+')} key`;
 }
 
+/** Layout check for scripted runs: elements outside the window, and boxes whose content is cut off. */
+function layoutCheck(): string {
+  const vw = document.documentElement.clientWidth;
+  const vh = document.documentElement.clientHeight;
+  const label = (el: Element) => {
+    const c = typeof el.className === 'string' ? el.className.trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.') : '';
+    return c ? `.${c}` : el.tagName.toLowerCase();
+  };
+  const scrolls = (el: Element | null): boolean => {
+    for (let p = el?.parentElement; p; p = p.parentElement) {
+      const o = getComputedStyle(p);
+      if (/(auto|scroll)/.test(o.overflow + o.overflowX + o.overflowY)) return true;
+    }
+    return false;
+  };
+  const found = new Map<string, number>();
+  const add = (k: string) => found.set(k, (found.get(k) ?? 0) + 1);
+  for (const el of Array.from(document.querySelectorAll<HTMLElement>('#root *'))) {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    if ((r.right > vw + 1 || r.bottom > vh + 1) && !scrolls(el)) add(`outside ${label(el)}`);
+    if (cs.textOverflow === 'ellipsis' || /(auto|scroll)/.test(cs.overflowX + cs.overflowY)) continue;
+    if (cs.overflowX === 'hidden' && el.scrollWidth > el.clientWidth + 1) add(`cut-x ${label(el)}`);
+    if (cs.overflowY === 'hidden' && el.scrollHeight > el.clientHeight + 1) add(`cut-y ${label(el)}`);
+  }
+  const list = [...found].map(([k, n]) => (n > 1 ? `${k} ×${n}` : k));
+  return `layout-check ${vw}x${vh} @${window.devicePixelRatio}: ${list.length ? list.join(' | ') : 'clean'}`;
+}
+
 function isTyping(e: KeyboardEvent): boolean {
   const t = e.target as HTMLElement | null;
   return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+}
+
+function loadFold(): { rack: boolean; presets: boolean } {
+  try {
+    const v = JSON.parse(localStorage.getItem(FOLD_KEY) ?? '');
+    return { rack: v?.rack === true, presets: v?.presets === true };
+  } catch {
+    return { rack: false, presets: false };
+  }
 }
 
 function loadRecallSpeed(): RecallSpeed {
@@ -302,6 +344,18 @@ export default function App() {
   }, [status, active, presets, clearActive]);
 
   // ---- action executor with a ref to the latest app state ----
+  const [fold, setFold] = useState(loadFold);
+  const toggleFold = (k: 'rack' | 'presets') =>
+    setFold((f) => {
+      const next = { ...f, [k]: !f[k] };
+      try {
+        localStorage.setItem(FOLD_KEY, JSON.stringify(next));
+      } catch {
+        /* remembered for this session only */
+      }
+      return next;
+    });
+
   const ctxRef = useRef<ExecContext>(null as unknown as ExecContext);
   ctxRef.current = {
     cameras,
@@ -492,6 +546,10 @@ export default function App() {
     if (steps.includes('oscmap')) timers.push(window.setTimeout(() => setShowOscMap(true), 3000));
     if (steps.includes('oscmap-scroll')) timers.push(window.setTimeout(() => document.querySelector('.oscmap-body')?.scrollTo({ top: 1500 }), 4500));
     if (steps.includes('panel')) timers.push(window.setTimeout(() => setShowPanel(true), 3000));
+    // Fold both side columns away, as the thin strips beside them do.
+    if (steps.includes('fold')) timers.push(window.setTimeout(() => document.querySelectorAll<HTMLElement>('.fold').forEach((b) => b.click()), 4000));
+    // Log what sticks out of the window or is cut off inside its box (not "…" text, not scrolled lists).
+    if (steps.includes('layout-check')) timers.push(window.setTimeout(() => void window.ezy.log.report('info', layoutCheck()), 6000));
     // Hold E (jog up-right) for 3 s: the joystick should follow the key.
     if (steps.includes('joy-key')) {
       timers.push(window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' })), 4000));
@@ -636,7 +694,10 @@ export default function App() {
       </header>
 
       <div className="body">
-        <Rack cameras={cameras} status={status} selectedId={selectedId} tally={tally} onSelect={setSelectedId} onTally={setTally} onAdd={() => setShowAdd(true)} onEdit={setEditCamera} />
+        {!fold.rack && <Rack cameras={cameras} status={status} selectedId={selectedId} tally={tally} onSelect={setSelectedId} onTally={setTally} onAdd={() => setShowAdd(true)} onEdit={setEditCamera} />}
+        <button className="fold" onClick={() => toggleFold('rack')} title={fold.rack ? 'Show the cameras' : 'Fold the cameras away (more room for the picture)'}>
+          {fold.rack ? '›' : '‹'}
+        </button>
 
         {selected ? (
           <Stage
@@ -682,7 +743,10 @@ export default function App() {
 
         {showHelp && cameras.length > 0 && <Help {...helpProps} onClose={() => setShowHelp(false)} />}
 
-        <Presets
+        <button className="fold" onClick={() => toggleFold('presets')} title={fold.presets ? 'Show the presets' : 'Fold the presets away (more room for the picture)'}>
+          {fold.presets ? '‹' : '›'}
+        </button>
+        {!fold.presets && <Presets
           camera={selected}
           online={selectedOnline}
           monitor={isMonitor(selected)}
@@ -695,7 +759,7 @@ export default function App() {
           onChanged={loadPresets}
           onSnapshot={() => (selected ? (snapshotFor(selected.id, 240) ?? undefined) : undefined)}
           onNames={() => setShowOscMap(true)}
-        />
+        />}
 
         {showMapping && settings && (
           <MappingPanel
