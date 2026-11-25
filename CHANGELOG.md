@@ -2,7 +2,7 @@
 
 All notable changes to EZY CTRL. Each version here has a matching GitHub Release with the Windows installer attached.
 
-## [Unreleased]
+## [0.8.17] - 2026-11-24
 
 ### Changed
 - **Works on any screen size.** On a smaller screen the layout used to overlap and get cut off: the window could not shrink below 1100 × 700 points, and the side columns, control row and Camera settings drawer had fixed sizes, so the picture shrank first and then everything collided (at 800 × 500 it was unusable). Now:
